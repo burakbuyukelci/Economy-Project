@@ -22,7 +22,7 @@ from harness.as_of import resolve_as_of
 from harness.event_log import EventLog
 from harness.routing import DEFAULT_ROUTING, ReviewStatus, Routing
 from harness.state_machine import Decision, StateMachine
-from harness.tool_runner import RealToolUnavailable, run_tool
+from harness.tool_runner import RealToolUnavailable, ToolRejected, run_tool
 from schemas.enums import AllowedAction, ToolName
 from schemas.registry import validate_envelope, validate_params
 
@@ -93,6 +93,8 @@ class HarnessSession:
             parsed = validate_envelope(envelope)
             if parsed.as_of != self.as_of:
                 raise ValueError(f"zarf as_of ({parsed.as_of}) != oturum as_of ({self.as_of})")
+        except ToolRejected as exc:  # gerçek araç as_of'u reddetti: modelin geçersiz çağrısı sayılır
+            return self._invalid(tool, exc.code, exc.message)
         except RealToolUnavailable as exc:
             return self._harness_error(tool, "TOOL_UNAVAILABLE", str(exc))
         except (ValidationError, ValueError, KeyError) as exc:

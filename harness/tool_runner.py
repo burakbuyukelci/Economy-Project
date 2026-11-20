@@ -20,6 +20,19 @@ class RealToolUnavailable(RuntimeError):
     """Backend 'real' seçildi ama modül/fonksiyon bulunamadı."""
 
 
+class ToolRejected(Exception):
+    """Gerçek araç çağrıyı reddetti (sözleşme: yalnızca as_of yok/bozuksa tools.common.InvalidToolCall).
+
+    Oturum bunu 'geçersiz araç çağrısı' olarak loglar; durum ilerlemez. Diğer hatalar (UNKNOWN_TICKER,
+    NO_DATA, INVALID_PARAMS) zaten status=ERROR zarfıyla döner ve istisna OLUŞTURMAZ.
+    """
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(f"{code}: {message}")
+        self.code = code
+        self.message = message
+
+
 def run_tool(tool: ToolName | str, params: dict[str, Any]) -> dict[str, Any]:
     tool = ToolName(tool)
     if settings.backend_for(tool) == "mock":
@@ -35,4 +48,9 @@ def run_tool(tool: ToolName | str, params: dict[str, Any]) -> dict[str, Any]:
     entry = getattr(module, settings.REAL_TOOL_ENTRYPOINT, None)
     if entry is None:
         raise RealToolUnavailable(f"{module_name}.{settings.REAL_TOOL_ENTRYPOINT} tanımlı değil")
-    return entry(params)
+    from tools.common import InvalidToolCall  # araç modülü zaten yüklü; sınıfı gerçek kaynağından al
+
+    try:
+        return entry(params)
+    except InvalidToolCall as exc:
+        raise ToolRejected("AS_OF_INVALID", str(exc)) from exc
