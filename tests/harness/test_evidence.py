@@ -147,6 +147,17 @@ def test_subset_request_after_superset_returns_only_requested_sources_with_stabl
     assert all(by_id[e["evidence_id"]] == e for e in sub_items)
 
 
+def test_numbering_follows_production_order_not_hash_order():
+    # params.source_input_hashes alfabetik sıralanır; numaralama yine de araç çağrı sırasını izlemeli
+    store, h = make_store(*ANALYSIS)
+    env = EvidenceBundle(AID, store).build(bparams(*h.values()))
+    seen: list[str] = []
+    for item in env["results"]["full_evidence_set"]:
+        if item["source_tool"] not in seen:
+            seen.append(item["source_tool"])
+    assert seen == [t.value for t in ANALYSIS if t != T.CHECK_DATA_QUALITY]
+
+
 def test_numbering_is_deterministic_across_independent_runs():
     def run():
         store, h = make_store(*ANALYSIS)
