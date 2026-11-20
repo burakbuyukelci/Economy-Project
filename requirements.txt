@@ -7,3 +7,4 @@ yfinance
 pydantic>=2
 pytest
 python-dotenv
+mcp==2.3.0
