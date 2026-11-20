@@ -53,6 +53,11 @@ WEEKDAY_OOS_MIN_HIT_RATE_PCT = 50.0
 # --- Veri kalitesi ---
 # BIST günlük fiyat limiti ±%10: bunu aşan günlük sıçrama düzeltilmemiş bedelsiz/bölünme şüphesi.
 PRICE_JUMP_LIMIT_PCT = 10.0
+# Tick yuvarlaması ve düzeltme katsayısı yuvarlaması limitin hemen üstünde (ör. %10,0001) değer üretebilir.
+# Bayrak: |günlük adj_close getirisi| > PRICE_JUMP_LIMIT_PCT + PRICE_JUMP_TOLERANCE_PP.
+PRICE_JUMP_TOLERANCE_PP = 0.5
+# Birleşik işlem takvimi: bir gün, XU100'de VEYA hisselerin en az bu oranında veri varsa işlem günüdür.
+TRADING_DAY_MIN_STOCK_SHARE = 0.5
 
 # --- Backtest ---
 BACKTEST_TRADE_LOG_MAX = 200
