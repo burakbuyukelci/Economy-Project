@@ -300,3 +300,83 @@ Veri 2023-01-02'den başlar (§11.1). En uzun ısınma `SMA_200` (200 bar); THYA
 `as_of = 2024-01-01` (tatil → `state_date` 2023-12-29) için TÜM kolonlar ve durumlar geçerlidir ve `INSUFFICIENT_HISTORY` uyarısı yoktur
 (`tests/tools/test_calculate_indicators.py::test_real_all_columns_valid_on_2024_01_01_for_all_30_tickers`).
 `CCOLA` 2024-08-01 çevresinde SMA/EMA/KAMA/Bollinger/Ichimoku'da sıçrama yoktur (v2); aynı test v1'de (düzeltilmemiş) kırılır.
+
+## 14. Sektör göreli güç ve tarihsel catch-up (`rank_sector_relative_strength`, `tools/rank_sector_relative_strength.py`)
+Parametre `sector` = `peer_group` kimliği (§6). Fiyat `adj_close`, getiri basit getiri. Bu bölüm §6'yı tamamlar; çelişirse §6'nın
+şema tanımları (kendisi dahil medyan, eşikler) geçerlidir.
+
+### 14.1 Ortak gün paneli ve lag penceresi
+- Panel = grubun TÜM üyeleri + XU100 `adj_close`, `as_of`'a kesilmiş (`enforce_as_of`), **ortak günler** (inner join; doldurma yok, §11.4).
+  Bir üyede veya XU100'de eksik gün panelden düşer ve `MISSING_TRADING_DAYS` uyarısıyla (panel düzeyinde, tarihler listelenerek) bildirilir.
+  Retail, `as_of = 2026-09-10`: 2024-04-09, 2024-12-25, 2025-12-25 düşer. "h işlem günü" = panelde h satır.
+- Lag penceresi `horizon` gün: `getiri_t = (p_t / p_{t−h} − 1)·100`. `window_end` = `as_of`'ta veya öncesindeki son panel günü;
+  `window_start` = `window_end`'den h−1 satır önceki gün (getiri bir önceki kapanıştan ölçülür).
+- **Yuvarlama:** getiriler 4 ondalığa yuvarlanır; medyan, `lag_score_pp`, XU100 farkı yuvarlanmış getirilerden türetilir. Böylece zarftaki
+  sayılar birbiriyle birebir tutarlıdır (`lag = return − medyan`). Sınıflandırma (`is_laggard`, `sector_strength`) da yuvarlanmış değerlerle yapılır;
+  sınırlar dahildir (`lag ≤ −eşik`, `lag ≥ +eşik`, `fark ≥ +2,0` STRONG, `≤ −2,0` WEAK). Negatif sıfır (`-0.0`) `0.0`'a çevrilir.
+- Sıralama: getiri azalan; eşitlikte ticker alfabetik (determinizm). Rank 1 = en güçlü.
+- **Tek hisseli grup:** `ERROR` değil. `SOLO_PEER_GROUP` uyarısı, `insufficient_peers = true`; sıralamada tek satır (rank 1, `lag_score_pp = 0.0`,
+  `is_laggard = is_leader = false`); sektör medyanı, XU100 farkı ve `sector_strength` `null`; `historical_catch_up = []`, `n_events = null`.
+  **İki hisseli grup:** `SMALL_PEER_GROUP`; medyan iki hissenin ortalaması olduğundan lag skorları birbirinin aynasıdır (A = −B) ve olaylar birbirine bağımlıdır.
+
+### 14.2 İKİ AYRI medyan tanımı (tespit ≠ sonuç)
+| | Tespit (laggard / leader, `lag_score_pp`, `sector_median`) | Sonuç (tarihsel ileri getiri farkı, `excess`) |
+|---|---|---|
+| Ölçüt | grubun TÜM üyeleri DAHİL medyanı (şema: `includes_subject_stock = true`) | **KENDİSİ HARİÇ** diğer üyelerin medyanı (leave-one-out) |
+| Formül | `lag = getiri_i − medyan(getiri_1..n)` | `excess_i = ileri_getiri_i − medyan(ileri_getiri_j, j ≠ i)` |
+
+**Neden iki tanım:** sonuçta kendisi dahil medyan kullanmak, 3 hisseli grupta başarıyı "grubun en iyisi olmak"a indirir: medyan her zaman üyelerden
+biridir; geride kalmaya devam etmeyip medyan hisseye yetişen hisse `excess = 0` alır ve "yanlış pozitif" sayılır; baz isabet oranı da `%33`e düşer.
+Kendisi hariç medyan bu yapay sınırı kaldırır.
+
+**Sayısal örnek:** ileri +5 günde B +%6, A (laggard) +%4, C +%1. Kendisi dahil medyan %4 → `excess = 0` (yanlış pozitif). A için kendisi hariç
+medyan = medyan(6, 1) = %3,5 → `excess = +0,5` (başarı). (Test: `test_leave_one_out_outcome_user_example_is_a_success_not_a_false_positive`.)
+
+Başarı: `excess > 0`. Yanlış pozitif: `excess ≤ 0` (geride kalmaya devam etti); eşitlik başarı değildir (`HorizonStats` sözleşmesi).
+3 üyede kendisi hariç medyan = diğer ikisinin ortalaması olduğundan, `excess` toplamı her gün tam sıfırdır (baz ortalama = 0, yuvarlama hariç).
+Kendisi hariç tanımla **baz isabet oranı ≈ %50** çıkar (iid hisse yürüyüşlerinde test edilir; gerçek retail: %49,7 / %50,6 / %48,7).
+`HISTORICAL_ONLY` uyarı metni her çağrıda şunu yazar: *"tespit: grup medyanı (kendisi dahil); sonuç: kendisi hariç peer medyanı"*.
+
+### 14.3 Tarihsel olay kuralı
+Her `t ∈ [analysis_start, as_of]` günü ve her üye için **aynı** kural uygulanır (yalnızca `≤ t` verisi): `lag_t ≤ −lag_threshold_pp`
+(kendisi dahil medyanla). Lag penceresi `analysis_start`'tan önceki geçmişe uzanabilir (nedensel; veri 2023-01-02'den başlar).
+- **Sınırlama:** kural, o gün **sektörün güçlü olup olmadığını aramaz** (`sector_strength` koşulu yoktur). Sektör genel olarak düşerken
+  medyanın gerisinde kalmak ile sektör yükselirken gerisinde kalmak aynı olay sayılır. Bu bir tasarım sınırlamasıdır; sonuçlar bu karışımı yansıtır.
+- **Havuzlama:** `historical_catch_up` grubun tüm üyelerinin olaylarını birleştirir; hisse bazlı kırılım şemada yoktur. Ham/bağımsız olay sayılarının
+  hisse bazlı dağılımı `HISTORICAL_ONLY` uyarı metnindedir (ör. retail'de MAVI ham gözlemlerin çoğunu verir: 227 / 398).
+
+### 14.4 Bağımsızlaştırma (cooldown)
+**Sorun:** bir hisse ardışık günlerde geride kalırsa ileri pencereler örtüşür; aynı fiyat hareketi onlarca "olay" olarak sayılır, `n_events` şişer
+ve güven aralığı yanlış daralır. **Kural:** her hissede, kronolojik tarama; `laggard[t, i]` doğruysa ve `t ≥ (son kabul edilen olay + cooldown)`
+ise olay kabul edilir. `cooldown = max(forward_horizons)` işlem günü (varsayılan 20). Kabul edilen bir hissenin olaylarının en uzun ileri
+pencereleri örtüşmez. Cooldown KABUL EDİLEN olaydan sayılır (arada laggard olmayan gün olması süreyi sıfırlamaz). Kural yalnızca geçmiş
+olaylara bağlıdır; `as_of` sonrası veri kabul kararını etkileyemez. Şemada ayrı bir cooldown alanı yoktur; kural `forward_horizons`'tan türetilir.
+- **Retail, `as_of = 2026-09-10`, eşik 3 pp:** ham laggard hisse-günü BIMAS 43, MAVI 227, MGROS 128 (toplam 398) → cooldown=20 sonrası
+  bağımsız olay BIMAS 9, MAVI 21, MGROS 14 (toplam 44). Bu sayılar `HISTORICAL_ONLY` metninde yazar.
+- **Hisseler arası bağımlılık KALIR:** cooldown hisse bazındadır. Aynı gün/komşu günlerde farklı hisselerin olayları ortak sektör şoklarını paylaşır
+  (ve 2 hisseli grupta birbirinin aynasıdır); olaylar tam bağımsız değildir. Bu yüzden isabet oranları güven aralığı olmadan, yaklaşık göstergedir.
+
+### 14.5 İstatistikler (`historical_catch_up[]`)
+- `forward_horizons` (varsayılan 5/10/20) başına bir `HorizonBlock`. Olay (i, t) için ufuk f: `ileri_getiri = (p_{t+f}/p_t − 1)·100`; `excess` §14.2.
+  `HorizonStats.mean_return_pct` / `median_return_pct` **hissenin ham getirisi değil, `excess`'in (pp) ortalaması/medyanıdır.**
+- **Ufku dolmamış olaylar (kural 2):** `t + f` panelin son gününü (`≤ as_of`) aşıyorsa olay o ufkun istatistiğine girmez;
+  `n_excluded_incomplete_horizon` olarak sayılır (`INCOMPLETE_HORIZON_EXCLUDED`). Kabul edilen her olay her ufukta ya tamamlanmıştır ya dışlanmıştır
+  (`n_events_complete + n_excluded_incomplete_horizon` ufuktan bağımsız sabit: retail'de 44).
+- `median_catch_up_size_pp` = başarılı olaylarda (`excess > 0`) `excess` medyanı; başarılı olay yoksa `null`.
+- **Baz (`baseline`):** aynı dönem (`t ≥ analysis_start`), aynı ufuk, tüm (hisse, gün) gözlemleri (olay şartı yok; örtüşen pencereler dahil, bu yüzden
+  yalnızca referans düzeyidir); aynı `excess` tanımı. `mean_diff_vs_baseline_pct` = olay ortalaması − baz ortalaması.
+- **`cost_adjusted_mean_return_pct` = `mean_return_pct − round_trip_cost_pct` (varsayılan 0,50 pp). VARSAYIM:** bu, yalnızca laggard hissede **uzun
+  pozisyonun tur maliyetidir**; kendisi hariç medyan "bacağı" için maliyet düşülmez ve böyle bir bacak işlem olarak varsayılmaz. Yani `excess`
+  uygulanabilir bir strateji getirisi değil, göreli performans ölçüsüdür; gerçek işlem testi `run_backtest`'tedir (§5).
+- **Örneklem içi/dışı:** `split_date` verilirse olay tarihi `< split_date` ise IS, `≥ split_date` ise OOS. Olay, **tarihine** göre atanır; bir IS olayının ileri
+  penceresi `split_date`'in ötesine uzanabilir. `oos_degradation_flag` §9'a göre (`tools/stability.py::oos_degradation`); OOS tamamlanmış olay `< MIN_OOS_EVENTS`
+  ise `false` + `OOS_TOO_SMALL`; `true` ise `OOS_DEGRADATION`. `split_date` yoksa IS/OOS blokları ve bayrak `null`.
+- **Zarf:** `n_events` = en uzun ufukta **tamamlanmış** bağımsız olay sayısı; `n_excluded_incomplete_horizon` = aynı ufukta dışlananlar.
+  `n_events < MIN_EVENTS` ise `FEW_EVENTS`. Her çağrıda `HISTORICAL_ONLY` ve `MULTIPLE_TESTING_RISK` (3 ufuk + pencere/eşik seçimi, düzeltme uygulanmaz) bulunur.
+- `structural_vs_temporary` şimdilik `null` (temel/makro araçları gelince doldurulacak).
+
+### 14.6 Gerçek örnek (v2, retail = BIMAS, MGROS, MAVI, `as_of = 2026-09-10`, horizon 20, eşik 3 pp, `split_date = 2026-01-01`)
+- Pencere 2026-08-14 → 2026-09-10: BIMAS +14,2098 %, MGROS −1,8116 % (medyan), MAVI −5,0568 %; XU100 +1,8518 %; sektör − XU100 = −3,6634 pp → `WEAK`.
+  Lag: BIMAS +16,0214 (leader), MGROS 0,0, MAVI −3,2452 pp (laggard; eşikten yalnızca 0,2452 pp uzakta, eşik hassas).
+- Tarihsel (kendisi hariç excess, bağımsız olay 44, ufku dolmamış 1): isabet oranı 5g %46,5, 10g %48,8, 20g %48,8; baz %49,7 / %50,6 / %48,7.
+  20g'de ortalama +1,16 pp ama medyan −0,80 pp (büyük yakalamalar ortalamayı çekiyor); OOS (2026) isabet %40, `OOS_DEGRADATION` (20g).
