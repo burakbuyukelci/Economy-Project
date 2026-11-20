@@ -34,5 +34,11 @@ def _handler(p: GetStockHistoryParams, snap: Snapshot) -> ToolOutput:
     return ToolOutput(results=res, warnings=warnings)
 
 
-def run(params: dict[str, Any], *, snapshot_root: Path | None = None, data_version: str | None = None) -> dict[str, Any]:
+def run(params: dict) -> dict:
+    """ARAÇ GİRİŞ NOKTASI SÖZLEŞMESİ: run(params: dict) -> dict (zarf). Harness bu imzayla çağırır."""
+    return run_on(params)
+
+
+def run_on(params: dict, *, snapshot_root: Path | None = None, data_version: str | None = None) -> dict:
+    """Test/çevrimdışı kullanım: snapshot kökünü/sürümünü açıkça verir. Sözleşmenin parçası DEĞİLDİR."""
     return run_tool(TOOL, params, _handler, snapshot_root=snapshot_root, data_version=data_version)  # type: ignore[arg-type]

@@ -11,12 +11,12 @@ from tools.common import InvalidToolCall
 
 def call_stock(snapshot_root, **over):
     p = {"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-18", "as_of": AS_OF, **over}
-    return get_stock_history.run(p, snapshot_root=snapshot_root)
+    return get_stock_history.run_on(p, snapshot_root=snapshot_root)
 
 
 def call_index(snapshot_root, **over):
     p = {"index": "XU100", "start": "2026-08-24", "end": "2026-09-18", "as_of": AS_OF, **over}
-    return get_index_history.run(p, snapshot_root=snapshot_root)
+    return get_index_history.run_on(p, snapshot_root=snapshot_root)
 
 
 def dates(env):
@@ -87,7 +87,7 @@ def test_same_call_same_hash_and_output(snapshot_root):
 
 def test_equivalent_param_spellings_same_hash(snapshot_root):
     a = call_stock(snapshot_root)
-    b = get_stock_history.run(
+    b = get_stock_history.run_on(
         {"as_of": AS_OF, "end": "2026-09-18", "start": "2026-08-24", "ticker": "THYAO"}, snapshot_root=snapshot_root)
     assert a["input_hash"] == b["input_hash"]
 
@@ -133,10 +133,10 @@ def test_start_after_end_is_invalid_params(snapshot_root):
 
 def test_missing_or_bad_as_of_raises_invalid_tool_call(snapshot_root):
     with pytest.raises(InvalidToolCall):
-        get_stock_history.run({"ticker": "THYAO", "start": "2026-09-01", "end": "2026-09-10"},
+        get_stock_history.run_on({"ticker": "THYAO", "start": "2026-09-01", "end": "2026-09-10"},
                               snapshot_root=snapshot_root)
     with pytest.raises(InvalidToolCall):
-        get_stock_history.run({"ticker": "THYAO", "start": "2026-09-01", "end": "2026-09-10",
+        get_stock_history.run_on({"ticker": "THYAO", "start": "2026-09-01", "end": "2026-09-10",
                                "as_of": "10/09/2026"}, snapshot_root=snapshot_root)
 
 
@@ -216,11 +216,11 @@ def test_day_missing_only_in_index_is_flagged_for_index_not_for_stock(tmp_path):
     index = make_frame("XU100", 10000, DATES, 1.0).drop(columns=["ticker"])
     index = index[index["date"] != pd.Timestamp("2026-09-02")]
     root = make_snapshot(tmp_path, stocks, index)
-    idx_env = get_index_history.run({"index": "XU100", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
+    idx_env = get_index_history.run_on({"index": "XU100", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
                                     snapshot_root=root)
     w = [x for x in idx_env["warnings"] if x.startswith("MISSING_TRADING_DAYS")]
     assert w and "2026-09-02" in w[0]
-    stk_env = get_stock_history.run({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
+    stk_env = get_stock_history.run_on({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
                                     snapshot_root=root)
     assert not any(x.startswith("MISSING_TRADING_DAYS") for x in stk_env["warnings"])
 
@@ -234,7 +234,7 @@ def test_day_missing_in_stocks_but_present_in_index_is_flagged_for_stocks(tmp_pa
     stocks = stocks[stocks["date"] != drop]
     index = make_frame("XU100", 10000, DATES, 1.0).drop(columns=["ticker"])
     root = make_snapshot(tmp_path, stocks, index)
-    env = get_stock_history.run({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
+    env = get_stock_history.run_on({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-10", "as_of": AS_OF},
                                 snapshot_root=root)
     w = [x for x in env["warnings"] if x.startswith("MISSING_TRADING_DAYS")]
     assert w and "2026-09-02" in w[0]
@@ -248,7 +248,7 @@ def test_calendar_never_includes_dates_after_as_of_in_warnings(tmp_path):
     stocks = stocks[~((stocks["ticker"] == "THYAO") & (stocks["date"] == pd.Timestamp("2026-09-15")))]
     index = make_frame("XU100", 10000, DATES, 1.0).drop(columns=["ticker"])
     root = make_snapshot(tmp_path, stocks, index)
-    env = get_stock_history.run({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-18", "as_of": AS_OF},
+    env = get_stock_history.run_on({"ticker": "THYAO", "start": "2026-08-24", "end": "2026-09-18", "as_of": AS_OF},
                                 snapshot_root=root)
     assert "2026-09-15" not in json.dumps(env)  # as_of sonrası eksik gün bilgisi sızmaz
 
