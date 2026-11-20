@@ -126,6 +126,14 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
   `unadjusted` modda Yahoo değerleri aynen döner. `adj_close` alanı her iki modda Yahoo'nun değeridir.
 - **Hacim** düzeltilmez. `dividends` ve `stock_splits` Yahoo'nun kayıtlarıdır ve **güvenilir kabul edilmemelidir**
   (CCOLA örneği §11.5).
+- **Düzeltme geleceğe bağımlıdır (`as_of` notu):** `adj_close`, Yahoo'nun geriye dönük düzeltme tanımı gereği indirme günündeki (2026-11-20) tüm
+  bölünme ve temettüleri geçmişe uygular. `as_of` SONRASINDA gerçekleşen bir temettü/bölünme, `as_of` öncesindeki TÜM `adj_close` seviyelerini
+  aynı çarpanla ölçekler. İki gün arasındaki **getiri** bundan etkilenmez (çarpan sadeleşir); ölçekten bağımsız göstergeler (RSI, `%B`, KAMA eğimi,
+  Supertrend yönü, Ichimoku konumu, hacim durumu) ve sektör getiri sıralamaları değişmez. Buna karşılık **mutlak seviyeler** (ATR, SMA/EMA/Bollinger
+  bant değerleri, Supertrend çizgisi, Ichimoku çizgileri, destek/direnç fiyatları) bu çarpanla ölçeklenmiş gelir; `as_of` günündeki gerçek işlem
+  fiyatı değildir ve ham `close` ile doğrudan karşılaştırılmamalıdır. Karar mantığı (olay tespiti, getiri) yalnızca ölçekten bağımsız büyüklüklere
+  dayanır. Bu, veri kaynağının (Yahoo) bir özelliğidir ve araç katmanından giderilemez; gerçek ham fiyatlar için `unadjusted` mod kullanılır (§11.3, temettü
+  düzeltmesi bu modda da uygulanmaz).
 
 ### 11.4 Eksik veri yönetimi
 - **Hiçbir değer doldurulmaz** (forward-fill, interpolasyon yok). Atılan satırlar: `close/open/high/low/adj_close`
