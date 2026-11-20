@@ -70,16 +70,24 @@ def routing_for(profile: StageProfile) -> Routing:
     return routing
 
 
+def harness_only_tools(profile: StageProfile) -> set[T]:
+    """Kapıları harness çalıştırıyorsa (auto_gates) yalnızca harness'in çağırdığı araçlar."""
+    if not profile.auto_gates:
+        return set()
+    routing = routing_for(profile)
+    only: set[T] = set()
+    for tool in T:
+        states = [s for s in routing.order if tool in routing.state_tools[s]]
+        if states and all(s in routing.auto_states for s in states):
+            only.add(tool)
+    return only
+
+
 def visible_tools(profile: StageProfile) -> list[T]:
     """MODELE gösterilen araçlar (MCP listesi). Harness-içi araçlar ve kapalı özellikler çıkarılır."""
     if not profile.tools_enabled:
         return []
-    routing = routing_for(profile)
-    hidden: set[T] = set()
+    hidden = harness_only_tools(profile)
     if not profile.evidence:
         hidden.add(T.BUILD_EVIDENCE_BUNDLE)
-    for tool in T:
-        states = [s for s in routing.order if tool in routing.state_tools[s]]
-        if profile.auto_gates and states and all(s in routing.auto_states for s in states):
-            hidden.add(tool)
     return [t for t in T if t not in hidden]

@@ -5,6 +5,9 @@ import pytest
 
 from harness import settings
 from harness.mock_tools import is_mock_envelope
+import dataclasses
+
+from harness.profiles import PROFILES
 from harness.routing import State as S
 from harness.session import HarnessSession
 from harness.tool_runner import ToolRejected, run_tool
@@ -14,6 +17,9 @@ from schemas.registry import validate_envelope
 from tools.common import InvalidToolCall
 
 QUESTION = "Analiz tarihi: 10.09.2026\nTHYAO son günlerde nasıl?"
+
+
+MANUAL = dataclasses.replace(PROFILES["D"], name="D-manual", auto_gates=False)
 
 
 @pytest.fixture
@@ -53,7 +59,7 @@ def test_session_logs_tool_rejection_as_invalid_call_and_does_not_advance():
     def runner(tool, params):
         raise ToolRejected("AS_OF_INVALID", "get_stock_history: as_of eksik veya geçersiz ('x')")
 
-    s = HarnessSession.from_question(QUESTION, runner=runner)
+    s = HarnessSession.from_question(QUESTION, runner=runner, profile=MANUAL)
     r = s.call_tool("get_stock_history", example_params(T.GET_STOCK_HISTORY))
     assert not r.ok and r.error["type"] == "INVALID_TOOL_CALL" and r.error["code"] == "AS_OF_INVALID"
     assert s.machine.n_invalid_calls == 1 and s.machine.state == S.LOAD_MARKET_DATA
@@ -63,7 +69,7 @@ def test_session_logs_tool_rejection_as_invalid_call_and_does_not_advance():
 
 # --- gerçek zarfla uçtan uca ------------------------------------------------------------------------
 def test_real_get_stock_history_through_the_session_is_a_real_non_mock_envelope(real_stock_history):
-    s = HarnessSession.from_question(QUESTION)
+    s = HarnessSession.from_question(QUESTION, profile=MANUAL)
     r = s.call_tool("get_stock_history", example_params(T.GET_STOCK_HISTORY))
     assert r.ok, r.error
     env = r.envelope

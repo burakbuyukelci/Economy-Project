@@ -10,12 +10,16 @@ import pytest
 from mcp.client import Client
 
 from harness.mcp_server import build_server
+import dataclasses
+
+from harness.profiles import PROFILES
 from harness.session import HarnessSession
 from schemas.enums import ToolName as T
 from schemas.examples import example_params
 
 QUESTION = "Analiz tarihi: 10.09.2026\nTHYAO'da örüntü var mı?"
 REPO = Path(__file__).resolve().parents[2]
+MANUAL = dataclasses.replace(PROFILES["D"], name="D-manual", auto_gates=False)
 
 
 def run(coro):
@@ -31,7 +35,7 @@ def with_client(session, fn):
 
 
 def test_exposes_exactly_the_15_domain_tools_and_no_state_control_tools():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     result = with_client(session, lambda c: c.list_tools())
     names = {t.name for t in result.tools}
     assert names == {t.value for t in T}
@@ -40,7 +44,7 @@ def test_exposes_exactly_the_15_domain_tools_and_no_state_control_tools():
 
 
 def test_tool_input_schema_comes_from_pydantic_models_and_requires_as_of():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
     schema = tools["get_stock_history"].input_schema
     assert "as_of" in schema["required"] and "ticker" in schema["required"]
@@ -48,7 +52,7 @@ def test_tool_input_schema_comes_from_pydantic_models_and_requires_as_of():
 
 
 def test_valid_call_returns_the_envelope_as_json():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     res = with_client(session, lambda c: c.call_tool("check_data_quality", example_params(T.CHECK_DATA_QUALITY)))
     assert not res.is_error
     body = json.loads(res.content[0].text)
@@ -57,7 +61,7 @@ def test_valid_call_returns_the_envelope_as_json():
 
 
 def test_out_of_state_call_is_an_mcp_error_with_allowed_tools_and_is_logged():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     res = with_client(session, lambda c: c.call_tool("test_weekday_pattern", example_params(T.TEST_WEEKDAY_PATTERN)))
     assert res.is_error
     err = json.loads(res.content[0].text)
@@ -67,32 +71,37 @@ def test_out_of_state_call_is_an_mcp_error_with_allowed_tools_and_is_logged():
 
 
 def test_as_of_mismatch_over_mcp_is_invalid():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     params = {**example_params(T.CHECK_DATA_QUALITY), "as_of": "2026-09-11"}
     res = with_client(session, lambda c: c.call_tool("check_data_quality", params))
     assert res.is_error and json.loads(res.content[0].text)["code"] == "AS_OF_MISMATCH"
 
 
 def test_unknown_tool_name_over_mcp_is_invalid_not_a_crash():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     res = with_client(session, lambda c: c.call_tool("place_order", {"as_of": "2026-09-10"}))
     assert res.is_error and json.loads(res.content[0].text)["code"] == "UNKNOWN_TOOL"
 
 
 def test_full_weekday_flow_through_mcp_ends_ready_for_explanation():
-    session = HarnessSession.from_question(QUESTION)
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
 
     async def flow(client):
         for tool in (T.CHECK_DATA_QUALITY, T.TEST_WEEKDAY_PATTERN, T.BUILD_EVIDENCE_BUNDLE, T.CHECK_DATA_QUALITY):
-            res = await client.call_tool(tool.value, example_params(tool))
+            params = example_params(tool)
+            if tool == T.BUILD_EVIDENCE_BUNDLE:  # manuel akışta model oturumun analysis_id'sini ve hash'lerini kullanır
+                params = {"as_of": "2026-09-10", "analysis_id": session.analysis_id,
+                          "source_input_hashes": [r.envelope["input_hash"] for r in session.store.records
+                                                  if r.envelope["status"] == "OK"]}
+            res = await client.call_tool(tool.value, params)
             assert not res.is_error, res.content[0].text
 
     with_client(session, flow)
     assert session.get_state()["state"] == "GENERATE_EXPLANATION"
 
 
-def test_stdio_process_starts_and_lists_tools():
-    """Gerçek süreç + stdio: `python -m harness.mcp_server` çalışır ve 15 aracı listeler."""
+def test_stdio_process_starts_and_lists_the_13_model_tools_by_default():
+    """Gerçek süreç + stdio: varsayılan aşama D -> kapı araçları harness'in, model 13 araç görür."""
     from mcp.client.stdio import StdioServerParameters
 
     params = StdioServerParameters(command=sys.executable,
@@ -101,11 +110,14 @@ def test_stdio_process_starts_and_lists_tools():
     async def go():
         async with Client(params) as client:
             tools = await client.list_tools()
-            res = await client.call_tool("check_data_quality", example_params(T.CHECK_DATA_QUALITY))
-            return len(tools.tools), res.is_error
+            names = {t.name for t in tools.tools}
+            res = await client.call_tool("get_stock_history", example_params(T.GET_STOCK_HISTORY))
+            gate = await client.call_tool("check_data_quality", example_params(T.CHECK_DATA_QUALITY))
+            return names, res.is_error, gate.is_error, json.loads(gate.content[0].text)["code"]
 
-    n, is_error = run(go())
-    assert n == 15 and not is_error
+    names, call_error, gate_error, gate_code = run(go())
+    assert len(names) == 13 and "check_data_quality" not in names and "build_evidence_bundle" not in names
+    assert not call_error and gate_error and gate_code == "HARNESS_ONLY_TOOL"
 
 
 # --- komut satırı: as_of seçenekleri --------------------------------------------------------
@@ -133,3 +145,36 @@ def test_cli_without_any_date_fails(monkeypatch):
     monkeypatch.delenv(settings.DEFAULT_AS_OF_ENV, raising=False)
     with pytest.raises(AsOfError):
         session_from_args(["--question", NO_MARKER])
+
+
+# --- D profili (varsayılan): model 13 araç görür, kapıları harness çalıştırır ---------------------------
+def test_stage_d_lists_13_tools_and_runs_the_gates_for_the_model():
+    session = HarnessSession.from_question("Analiz tarihi: 10.09.2026\nPerakende (BIMAS, MGROS, MAVI) geride kalan?",
+                                           profile="D")
+    names = {t.name for t in with_client(session, lambda c: c.list_tools()).tools}
+    assert len(names) == 13 and not {"check_data_quality", "build_evidence_bundle"} & names
+
+    async def flow(client):
+        for tool in (T.RANK_SECTOR_RELATIVE_STRENGTH, T.RUN_BACKTEST):
+            res = await client.call_tool(tool.value, example_params(tool))
+            assert not res.is_error, res.content[0].text
+
+    with_client(session, flow)
+    assert session.request_explanation().allowed
+    assert session.get_state()["evidence"]["locked"] and session.machine.n_invalid_calls == 0
+
+
+def test_safe_failure_over_mcp_is_an_error_result_with_the_required_action():
+    from harness.mock_tools import run_mock_tool
+
+    def runner(tool, params):
+        env = run_mock_tool(tool, params)
+        if tool == T.CHECK_DATA_QUALITY:
+            env["results"].update({"gate_status": "HARD_BLOCK", "soft_warnings": [],
+                                   "hard_blocks": [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "x"}]})
+        return env
+
+    session = HarnessSession.from_question("Analiz tarihi: 10.09.2026\nTHYAO?", profile="D", runner=runner)
+    res = with_client(session, lambda c: c.call_tool("test_weekday_pattern", example_params(T.TEST_WEEKDAY_PATTERN)))
+    body = json.loads(res.content[0].text)
+    assert res.is_error and body["type"] == "SAFE_FAILURE" and body["required_action"] == "ANALYSIS_UNSAFE"

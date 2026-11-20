@@ -6,7 +6,8 @@ Bu dosyada hiçbir kural mantığı yok: araç listesi `schemas.registry.TOOL_RE
 Doğrulanan SDK API'si (mcp 2.3.0): `FastMCP` 2.x'te `MCPServer` olarak yeniden adlandırıldı. Araç şemasını
 pydantic modellerinden vermek için düşük seviyeli `mcp.server.Server` (on_list_tools / on_call_tool) kullanıldı.
 
-LLM'e yalnızca 15 ALAN aracı açılır. Durum geçişi (advance_state) ve get_state AÇILMAZ: durumu harness yönetir.
+LLM'e yalnızca profilin gösterdiği ALAN araçları açılır (D/E'de 13: kalite kapısı ve kanıt paketi harness'indir).
+Durum geçişi (advance_state) ve get_state AÇILMAZ: durumu harness yönetir.
 
 Çalıştırma (stdio):
     python -m harness.mcp_server --question "Analiz tarihi: 10.09.2026 ... soru metni"
@@ -53,7 +54,8 @@ TOOL_DESCRIPTIONS: dict[ToolName, str] = {
 }
 
 
-def _tool_list() -> list[types.Tool]:
+def _tool_list(visible: list[ToolName]) -> list[types.Tool]:
+    """Yalnızca oturum profilinin MODELE gösterdiği araçlar (harness-içi kapı araçları listelenmez)."""
     return [
         types.Tool(
             name=spec.name.value,
@@ -61,6 +63,7 @@ def _tool_list() -> list[types.Tool]:
             input_schema=spec.params_model.model_json_schema(),
         )
         for spec in TOOL_REGISTRY.values()
+        if spec.name in visible
     ]
 
 
@@ -69,8 +72,8 @@ def _text(payload: dict[str, Any]) -> list[types.TextContent]:
 
 
 def build_server(session: HarnessSession) -> Server[Any]:
-    """Verilen oturumu 15 aracla sunan MCP sunucusu kurar (bir bağlantı = bir oturum)."""
-    tools = _tool_list()
+    """Verilen oturumu, profilin görünür kıldığı araçlarla sunan MCP sunucusu kurar (bir bağlantı = bir oturum)."""
+    tools = _tool_list(session.visible_tools)
 
     async def on_list_tools(ctx: ServerRequestContext[Any], params: types.PaginatedRequestParams | None) -> types.ListToolsResult:
         return types.ListToolsResult(tools=tools)

@@ -7,7 +7,10 @@ from datetime import date
 import pytest
 
 from harness.as_of import AsOfError
+import dataclasses
+
 from harness.mock_tools import is_mock_envelope, run_mock_tool
+from harness.profiles import PROFILES
 from harness.routing import ReviewStatus, State as S
 from harness.session import HarnessSession
 from harness.state_machine import HarnessRuleViolation
@@ -18,18 +21,31 @@ from schemas.examples import example_params
 QUESTION = "Veri dönemi: 01.01.2024 – 10.09.2026\nAnaliz tarihi: 10.09.2026\n\nPerakende sektöründe ... soru ..."
 
 
+# Bu dosyadaki testler KAPILARI MODELİN çağırdığı (manuel) akışı sınar; otomatik kapılar test_auto_gates.py'de.
+MANUAL = dataclasses.replace(PROFILES["D"], name="D-manual", auto_gates=False)
+
+
 def new(runner=None) -> HarnessSession:
-    return HarnessSession.from_question(QUESTION, runner=runner)
+    return HarnessSession.from_question(QUESTION, runner=runner, profile=MANUAL)
 
 
 def P(tool: T, **over) -> dict:
     return {**example_params(tool), **over}
 
 
+def PP(s: HarnessSession, tool: T) -> dict:
+    """Modelin göndereceği params: kanıt paketi için oturumun analysis_id'si ve o ana kadarki başarılı çıktıların hash'leri."""
+    if tool == T.BUILD_EVIDENCE_BUNDLE:
+        hashes = [r.envelope["input_hash"] for r in s.store.records
+                  if r.tool != T.BUILD_EVIDENCE_BUNDLE and r.envelope["status"] == "OK"]
+        return {"as_of": "2026-09-10", "analysis_id": s.analysis_id, "source_input_hashes": hashes}
+    return P(tool)
+
+
 def run_catch_up(s: HarnessSession) -> None:
     for tool in (T.CHECK_DATA_QUALITY, T.RANK_SECTOR_RELATIVE_STRENGTH, T.BUILD_EVIDENCE_BUNDLE,
                  T.RUN_BACKTEST, T.CHECK_DATA_QUALITY):
-        r = s.call_tool(tool.value, P(tool))
+        r = s.call_tool(tool.value, PP(s, tool))
         assert r.ok, r.error
 
 
@@ -104,7 +120,7 @@ def test_catch_up_flow_end_to_end_with_mock_tools():
 def test_catch_up_flow_cannot_skip_backtest():
     s = new()
     for tool in (T.CHECK_DATA_QUALITY, T.RANK_SECTOR_RELATIVE_STRENGTH, T.BUILD_EVIDENCE_BUNDLE):
-        assert s.call_tool(tool.value, P(tool)).ok
+        assert s.call_tool(tool.value, PP(s, tool)).ok
     r = s.call_tool("check_data_quality", P(T.CHECK_DATA_QUALITY))
     assert not r.ok and r.error["code"] == "MANDATORY_STATE_SKIPPED" and "RUN_BACKTEST" in r.error["message"]
     assert not s.request_explanation().allowed
@@ -113,7 +129,7 @@ def test_catch_up_flow_cannot_skip_backtest():
 def test_weekday_flow_needs_no_backtest():
     s = new()
     for tool in (T.CHECK_DATA_QUALITY, T.TEST_WEEKDAY_PATTERN, T.BUILD_EVIDENCE_BUNDLE, T.CHECK_DATA_QUALITY):
-        assert s.call_tool(tool.value, P(tool)).ok
+        assert s.call_tool(tool.value, PP(s, tool)).ok
     assert s.request_explanation().allowed
 
 
@@ -232,7 +248,7 @@ def test_marker_in_question_has_no_assumption_warning():
 
 
 def test_default_as_of_is_used_with_a_harness_level_warning_and_event():
-    s = HarnessSession.from_question(NO_MARKER, default_as_of=date(2026, 9, 10))
+    s = HarnessSession.from_question(NO_MARKER, default_as_of=date(2026, 9, 10), profile=MANUAL)
     assert s.as_of == date(2026, 9, 10) and s.as_of_source == "default"
     assert len(s.warnings) == 1 and s.warnings[0].startswith("AS_OF_ASSUMED: ") and "2026-09-10" in s.warnings[0]
     ev = [e for e in s.events if e["kind"] == "AS_OF_ASSUMED"]
