@@ -88,10 +88,20 @@ def test_every_ticker_respects_as_of(snap):
         assert env["results"]["last_date"] <= AS_OF, tk
 
 
-def test_ccola_unadjusted_split_is_flagged_in_range(snap):
-    env = get_stock_history.run({"ticker": "CCOLA", "start": "2024-07-25", "end": "2024-08-10", "as_of": AS_OF})
+def test_v1_ccola_unadjusted_split_is_flagged_in_range():
+    """v1 (ham Yahoo) CCOLA'daki düzeltilmemiş bedelsiz hâlâ uyarı olarak görünür (v1 değişmez)."""
+    env = get_stock_history.run_on({"ticker": "CCOLA", "start": "2024-07-25", "end": "2024-08-10", "as_of": AS_OF},
+                                   data_version="snap_2026-11-20_v1")
     w = [x for x in env["warnings"] if x.startswith("PRICE_JUMP_OVER_LIMIT")]
-    assert w and "2024-08-01" in w[0]
+    assert w and "2024-08-01" in w[0] and env["data_version"] == "snap_2026-11-20_v1"
+
+
+def test_v2_ccola_series_is_continuous_and_has_no_jump_warning():
+    env = get_stock_history.run({"ticker": "CCOLA", "start": "2024-07-25", "end": "2024-08-10", "as_of": AS_OF})
+    assert env["data_version"] == "snap_2026-11-20_v2"
+    assert not [x for x in env["warnings"] if x.startswith("PRICE_JUMP_OVER_LIMIT")]
+    by_date = {r["date"]: r for r in env["results"]["rows"]}
+    assert 70 < by_date["2024-07-31"]["close"] < 80 and 70 < by_date["2024-08-01"]["close"] < 80
 
 
 def test_known_calendar_gaps_are_reported(snap):
@@ -105,3 +115,12 @@ def test_determinism_on_real_data():
     p = {"ticker": "THYAO", "start": "2024-01-01", "end": "2026-09-10", "as_of": AS_OF}
     a, b = get_stock_history.run(p), get_stock_history.run(p)
     assert a == b and a["input_hash"] == b["input_hash"]
+
+
+def test_hashed_text_files_are_lf_in_working_tree():
+    """Manifest/LATEST/csv sha256'ları başka manifest'lere yazılıyor; her makinede aynı baytlar olmalı."""
+    from config.settings import PRICE_CORRECTIONS_CSV
+    files = [SNAPSHOT_DIR / "LATEST", PRICE_CORRECTIONS_CSV, *SNAPSHOT_DIR.glob("*/manifest.json")]
+    assert len(files) >= 3
+    for f in files:
+        assert b"\r" not in f.read_bytes(), f"{f} CRLF içeriyor"

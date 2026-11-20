@@ -1,0 +1,615 @@
+{
+  "analysis_start_default": "2024-01-01",
+  "corrections_applied": [
+    {
+      "date_from": null,
+      "date_to": "2024-07-31",
+      "n_rows_affected": 392,
+      "price_divisor": 11,
+      "price_fields_divided": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "adj_close",
+        "dividends"
+      ],
+      "source": "KAP bildirim 1323127",
+      "ticker": "CCOLA",
+      "untouched_fields": [
+        "stock_splits"
+      ],
+      "volume_multiplied": true,
+      "volume_multiplier": 11
+    }
+  ],
+  "corrections_csv": {
+    "file": "price_corrections.csv",
+    "sha256": "ef037c51c233891bcd21c7545f6d3b14dafd35704a63571ff7e55916db9367ad"
+  },
+  "created_utc": "2026-11-20T17:29:44Z",
+  "created_utc_note": "kaynak snapshot'tan miras; türetme deterministiktir, duvar saati içermez",
+  "data_version": "snap_2026-11-20_v2",
+  "derived_from": {
+    "data_version": "snap_2026-11-20_v1",
+    "index_sha256": "3b1daec62ecd351a89f0cbc671286d3eb8a58421c59fcf0020303fa5091eed5b",
+    "manifest_sha256": "35c44ec8b5240a7440a00bed074b08ade838451d3be35b30ec72bdfe9d0ccd83",
+    "stocks_sha256": "36cc10685c0829962b43e3a58c5a211a8510602bbbd91ad09d0e53d25e276269"
+  },
+  "download_start": "2023-01-01",
+  "downloaded_at_istanbul": "2026-11-20T20:29:37+0300",
+  "dropped_rows": {
+    "AKBNK": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "AKSEN": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ARCLK": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ASELS": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "BIMAS": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "CCOLA": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ECILC": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "EKGYO": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ENJSA": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ENKAI": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "EREGL": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "FROTO": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "GUBRF": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "ISMEN": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "KCHOL": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "KRDMD": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "MAVI": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "MGROS": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "MPARK": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "OYAKC": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "PETKM": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "PGSUS": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "SASA": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TCELL": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "THYAO": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TOASO": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TRALT": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TTKOM": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TUPRS": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    },
+    "TURSG": {
+      "duplicate_date": 0,
+      "nan_or_nonpositive_price": 0
+    }
+  },
+  "failed_symbols": {},
+  "files": {
+    "index.parquet": {
+      "rows": 969,
+      "sha256": "3b1daec62ecd351a89f0cbc671286d3eb8a58421c59fcf0020303fa5091eed5b"
+    },
+    "stocks.parquet": {
+      "rows": 29139,
+      "sha256": "90f34454d54d379c42412d33e0b4574865021648c88a939b6603d1a53897db9a"
+    }
+  },
+  "index_summary": {
+    "first_date": "2023-01-02",
+    "last_date": "2026-11-20",
+    "rows": 969
+  },
+  "index_symbol": "XU100.IS",
+  "per_ticker": {
+    "AKBNK": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "AKSEN": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "ARCLK": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "ASELS": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "BIMAS": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "CCOLA": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "ECILC": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "EKGYO": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "ENJSA": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "ENKAI": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "EREGL": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "FROTO": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "GUBRF": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "ISMEN": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "KCHOL": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "KRDMD": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "MAVI": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "MGROS": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "MPARK": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "OYAKC": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "PETKM": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "PGSUS": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "SASA": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    },
+    "TCELL": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "THYAO": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "TOASO": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "TRALT": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "TTKOM": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "TUPRS": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 971
+    },
+    "TURSG": {
+      "first_date": "2023-01-02",
+      "last_date": "2026-11-20",
+      "rows": 972
+    }
+  },
+  "price_jump_limit_pct": 10.0,
+  "price_jump_report": [
+    {
+      "adj_close": 13.324692,
+      "adj_close_prev": 11.289317,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.0292,
+      "ticker": "AKBNK"
+    },
+    {
+      "adj_close": 32.435295,
+      "adj_close_prev": 27.84486,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 16.4858,
+      "ticker": "AKSEN"
+    },
+    {
+      "adj_close": 102.526978,
+      "adj_close_prev": 86.356613,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.7251,
+      "ticker": "ARCLK"
+    },
+    {
+      "adj_close": 28.960733,
+      "adj_close_prev": 23.735861,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 22.0126,
+      "ticker": "ASELS"
+    },
+    {
+      "adj_close": 61.094532,
+      "adj_close_prev": 54.290833,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 12.5319,
+      "ticker": "BIMAS"
+    },
+    {
+      "adj_close": 16.675909,
+      "adj_close_prev": 14.03643,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.8045,
+      "ticker": "CCOLA"
+    },
+    {
+      "adj_close": 23.008972,
+      "adj_close_prev": 18.878687,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 21.878,
+      "ticker": "ECILC"
+    },
+    {
+      "adj_close": 6.59127,
+      "adj_close_prev": 5.474416,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 20.4013,
+      "ticker": "EKGYO"
+    },
+    {
+      "adj_close": 25.335987,
+      "adj_close_prev": 20.738337,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 22.1698,
+      "ticker": "ENJSA"
+    },
+    {
+      "adj_close": 24.385279,
+      "adj_close_prev": 20.303694,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 20.1027,
+      "ticker": "ENKAI"
+    },
+    {
+      "adj_close": 19.947666,
+      "adj_close_prev": 17.205587,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 15.9371,
+      "ticker": "EREGL"
+    },
+    {
+      "adj_close": 43.161274,
+      "adj_close_prev": 36.866257,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 17.0753,
+      "ticker": "FROTO"
+    },
+    {
+      "adj_close": 190.766205,
+      "adj_close_prev": 156.153366,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 22.1659,
+      "ticker": "GUBRF"
+    },
+    {
+      "adj_close": 9.290083,
+      "adj_close_prev": 7.917705,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 17.333,
+      "ticker": "ISMEN"
+    },
+    {
+      "adj_close": 65.746971,
+      "adj_close_prev": 57.2467,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 14.8485,
+      "ticker": "KCHOL"
+    },
+    {
+      "adj_close": 17.315527,
+      "adj_close_prev": 14.18705,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 22.0516,
+      "ticker": "KRDMD"
+    },
+    {
+      "adj_close": 11.791574,
+      "adj_close_prev": 10.064249,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 17.163,
+      "ticker": "MAVI"
+    },
+    {
+      "adj_close": 127.322189,
+      "adj_close_prev": 110.389084,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 15.3395,
+      "ticker": "MGROS"
+    },
+    {
+      "adj_close": 79.349998,
+      "adj_close_prev": 69.0,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 15.0,
+      "ticker": "MPARK"
+    },
+    {
+      "adj_close": 6.703364,
+      "adj_close_prev": 5.930274,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 13.0363,
+      "ticker": "OYAKC"
+    },
+    {
+      "adj_close": 15.49,
+      "adj_close_prev": 12.89,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 20.1707,
+      "ticker": "PETKM"
+    },
+    {
+      "adj_close": 103.220406,
+      "adj_close_prev": 85.890831,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 20.1763,
+      "ticker": "PGSUS"
+    },
+    {
+      "adj_close": 5.447205,
+      "adj_close_prev": 4.577799,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.9918,
+      "ticker": "SASA"
+    },
+    {
+      "adj_close": 33.606739,
+      "adj_close_prev": 28.356255,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.5161,
+      "ticker": "TCELL"
+    },
+    {
+      "adj_close": 136.666092,
+      "adj_close_prev": 112.341682,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 21.6522,
+      "ticker": "THYAO"
+    },
+    {
+      "adj_close": 121.642998,
+      "adj_close_prev": 100.508102,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 21.0281,
+      "ticker": "TOASO"
+    },
+    {
+      "adj_close": 25.214972,
+      "adj_close_prev": 21.058861,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 19.7357,
+      "ticker": "TRALT"
+    },
+    {
+      "adj_close": 20.879999,
+      "adj_close_prev": 17.549999,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 18.9744,
+      "ticker": "TTKOM"
+    },
+    {
+      "adj_close": 51.99971,
+      "adj_close_prev": 44.094379,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 17.9282,
+      "ticker": "TUPRS"
+    },
+    {
+      "adj_close": 0.524492,
+      "adj_close_prev": 0.470684,
+      "calendar_gap_days": 7,
+      "date": "2023-02-15",
+      "prev_date": "2023-02-08",
+      "return_pct": 11.432,
+      "ticker": "TURSG"
+    }
+  ],
+  "price_jump_tolerance_pp": 0.5,
+  "price_policy": {
+    "adjusted": "Yahoo 'Adj Close' (bölünme + temettü düzeltmeli). Araçlarda adjusted modda open/high/low/close = ham değer * (adj_close/close); close = adj_close.",
+    "corrections": "config/price_corrections.csv kurallarına göre belirtilen hisse/tarih aralığında open/high/low/close/adj_close/dividends ÷ price_divisor, volume × volume_multiplier; stock_splits dokunulmaz. Ayrıntı: corrections_applied ve docs/data_dictionary.md §12.",
+    "default_price_field": "adj_close",
+    "incomplete_bar": "İndirme günü, seans sonu (18:30 İstanbul) öncesi alınan o güne ait yarım mum atılır.",
+    "missing_days": "Eksik günler DOLDURULMAZ (forward-fill yok). Close/OHLC NaN veya close <= 0 satırlar atılır; yinelenen tarihlerde son satır tutulur. Eksik işlem günü, check_data_quality ile XU100 takvimine göre raporlanır.",
+    "unadjusted": "Yahoo 'Close/Open/High/Low' (bölünme/bedelsiz düzeltmeli, TEMETTÜ düzeltmesiz). Yahoo gerçek 'ham' (hiç düzeltilmemiş) fiyat vermez."
+  },
+  "source": "Yahoo Finance via yfinance 1.8.0"
+}
