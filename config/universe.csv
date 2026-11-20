@@ -1,0 +1,31 @@
+ticker,yahoo_symbol,sector,peer_group,peer_group_size
+ASELS,ASELS.IS,Technology / Defense,solo_asels,1
+TUPRS,TUPRS.IS,Petroleum / Refining,energy_petrochem,2
+BIMAS,BIMAS.IS,Retail Trade,retail,3
+THYAO,THYAO.IS,Transportation / Airlines,airlines,2
+AKBNK,AKBNK.IS,Banking,solo_akbnk,1
+KCHOL,KCHOL.IS,Holding / Investment,solo_kchol,1
+EREGL,EREGL.IS,Basic Metals / Steel,steel,2
+TCELL,TCELL.IS,Telecommunications,telecom,2
+CCOLA,CCOLA.IS,Food & Beverage,solo_ccola,1
+MGROS,MGROS.IS,Retail Trade,retail,3
+SASA,SASA.IS,Chemicals / Plastics,chemicals,2
+TRALT,TRALT.IS,Mining,solo_tralt,1
+FROTO,FROTO.IS,Automotive,automotive,2
+ENKAI,ENKAI.IS,Construction,solo_enkai,1
+PGSUS,PGSUS.IS,Transportation / Airlines,airlines,2
+MPARK,MPARK.IS,Healthcare,healthcare,2
+EKGYO,EKGYO.IS,Real Estate Investment Trust,solo_ekgyo,1
+GUBRF,GUBRF.IS,Chemicals / Fertilizer,chemicals,2
+TURSG,TURSG.IS,Insurance,solo_tursg,1
+ENJSA,ENJSA.IS,Electric Utilities,electric_utilities,2
+TTKOM,TTKOM.IS,Telecommunications,telecom,2
+OYAKC,OYAKC.IS,Cement,solo_oyakc,1
+AKSEN,AKSEN.IS,Electric Utilities,electric_utilities,2
+ISMEN,ISMEN.IS,Brokerage / Capital Markets,solo_ismen,1
+ARCLK,ARCLK.IS,Durables / Machinery,solo_arclk,1
+ECILC,ECILC.IS,Healthcare / Pharmaceuticals,healthcare,2
+MAVI,MAVI.IS,Retail / Apparel,retail,3
+PETKM,PETKM.IS,Petrochemicals,energy_petrochem,2
+TOASO,TOASO.IS,Automotive,automotive,2
+KRDMD,KRDMD.IS,Basic Metals / Steel,steel,2
