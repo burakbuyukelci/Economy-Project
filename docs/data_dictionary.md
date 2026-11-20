@@ -232,3 +232,71 @@ Her olay için: bölünme tarihinden önceki/sonraki 10 satırın medyan fiyat v
 - **Yahoo `stock_splits` tarihleri güvenilir değildir:** CCOLA'da kayıt (08-13) ile fiyat ölçeği değişimi (08-01) arasında 12 gün
   fark vardı. Tarih eşleşmesi için bu alana değil sıçrama raporuna ve KAP'a güvenin. Yeni bir bayrak çıkarsa kural
   eklemeden önce KAP'tan doğrulayın.
+
+## 13. Göstergeler: formül, tohum, ısınma (`calculate_indicators`, `tools/indicators/`)
+Kod: `tools/indicators/` (saf pandas/numpy). Varsayılan parametreler tek kaynaktan gelir: `schemas/params.py::IndicatorConfig`.
+Durum eşikleri: `config/settings.py`, gerekçe `docs/calibration_thresholds.md`.
+
+### 13.1 Genel ilkeler
+- **Nedensellik / `as_of`:** `t` günündeki her değer yalnızca `<= t` verisinden hesaplanır. Araç, hesaptan ÖNCE tabloyu `as_of`'a keser
+  (`enforce_as_of`); `as_of` sonrası satırlar hesaba hiç girmez (testler: `as_of` sonrası 1e6 kat aşırı satır eklenince `results`
+  birebir aynı; gerçek snapshot'ı `as_of`'ta kesip çalıştırınca birebir aynı; kütüphanede "önek değişmezliği").
+  Tek ileri bakan seri `chikou_plotted` (Ichimoku grafik Chikou'su) yalnızca kütüphanede vardır; araca ve sinyallere girmez.
+- **Hesap, `start`'tan bağımsızdır:** gösterge snapshot'ın ilk barından (2023-01-02) `as_of`'a kadar hesaplanır; `start/end` yalnızca
+  DÖNEN satırları sınırlar. `state_date` = `min(end, as_of)` günü veya öncesindeki son işlem günü (`start`'tan bağımsız); `recent_rows`
+  yalnızca `>= start` olanlardır. Hafta sonu/tatil `as_of`'ta son işlem günü kullanılır (ör. 2024-01-01 → 2023-12-29).
+- **Fiyat modu:** `adjusted` (varsayılan) açık/yüksek/düşük/kapanışı `adj_close/close` ile ölçekler, `close = adj_close` (§11.3).
+  `unadjusted` Yahoo `open/high/low/close` değerlerini kullanır; Yahoo `close`'u bölünmeye göre zaten düzeltilmiştir, temettüye göre değildir.
+  Hacim düzeltilmez. CCOLA için v2'de iki mod da 2024-07-31 öncesi bölünme-düzeltilmiş fiyatı verir (§12.3).
+- **Isınma = `None`:** ısınma günlerinde değer `None` (NaN zarfa girmez), `valid_at_as_of=False`, `INSUFFICIENT_HISTORY` uyarısı verilir.
+  `columns[].warmup_bars` analitiktir; testler ampirik ilk geçerli bar ile eşitliği doğrular.
+- **Tohum etkisi:** özyinelemeli göstergeler (EMA, RSI, ATR, KAMA, MACD sinyali, Supertrend bantları) başlangıç tohumundan etkilenir.
+  Tohum snapshot'ın başındadır (2023-01-02), bu yüzden 2024'ten sonraki değerler 2023 tohumuna bağlıdır; EMA/RSI/ATR için etki üstel
+  sönümlenir (`ta` ile karşılaştırmada 400 barda göreli fark < 1e-8). Aynı snapshot → aynı değer (determinizm).
+- **Birimler:** sayılar 4 ondalığa yuvarlanır. `BB_BANDWIDTH_PCT_*` yüzde (0-100 ölçeği); `BB_B_*` birimsiz oran (alt bant 0, üst bant 1).
+  `ICHIMOKU_CHIKOU_VS_CLOSE_*` fiyat birimi (TL).
+- **2023-02-15 uyarısı:** tüm hisselerde SOFT sıçrama (§11.5) ısınma döneminde yer alır; etkisi 2024 başında üstel olarak sönmüştür.
+  Analiz penceresinde (2024-01-01 →) v2'de sıçrama yoktur.
+
+### 13.2 Formüller, tohum, ısınma (n = istenen bar sayısı; "ısınma" = ilk geçerli değer için gereken bar)
+| Gösterge | Formül | Tohum | Isınma (bar) | Kolon adı (varsayılan) |
+|---|---|---|---|---|
+| SMA(w) | son w kapanışın ortalaması | – | w | `SMA_20`, `SMA_50`, `SMA_200` |
+| EMA(w) | `α·x_t + (1−α)·EMA_{t−1}`, α = 2/(w+1) | ilk w değerin SMA'sı | w | `EMA_12`, `EMA_26` |
+| RSI(p) Wilder | `100 − 100/(1+RS)`, RS = ort. kazanç/ort. kayıp; `avg_t = (avg_{t−1}·(p−1)+x_t)/p` | ilk p değişimin basit ortalaması; kayıp=0 → 100, düz seri → 50 | p+1 | `RSI_14` |
+| MACD(f,s,g) | `EMA(f) − EMA(s)`; sinyal = MACD'nin EMA(g)'si; hist = MACD − sinyal | EMA tohumları | MACD: s; sinyal/hist: s+g−1 | `MACD_12_26_9`, `MACD_SIGNAL_12_26_9`, `MACD_HIST_12_26_9` |
+| Bollinger(w,k) | orta = SMA(w); üst/alt = orta ± k·std; `%B` = (c−alt)/(üst−alt); bant genişliği % = (üst−alt)/orta·100 | – | w | `BB_UPPER_20_2.0`, `BB_MID_20_2.0`, `BB_LOWER_20_2.0`, `BB_B_20_2.0`, `BB_BANDWIDTH_PCT_20_2.0` |
+| ATR(p) Wilder | `TR = max(h−l, \|h−c₋₁\|, \|l−c₋₁\|)`; `ATR_t = (ATR_{t−1}·(p−1)+TR_t)/p` | ilk p TR'nin (idx 1..p) basit ortalaması (TR₀ yok) | p+1 | `ATR_14` |
+| KAMA(n,f,s) | `ER = \|c_t−c_{t−n}\|/Σ\|Δc\|`; `sc = (ER·(2/(f+1)−2/(s+1))+2/(s+1))²`; `KAMA_t = KAMA_{t−1}+sc·(c_t−KAMA_{t−1})` | önceki KAMA = c_{n−1} (ilk çıktı idx n); hareket yoksa ER=0 | n+1 | `KAMA_10_2_30` |
+| Supertrend(p,m) | hl2 = (h+l)/2; bantlar hl2 ± m·ATR(p); üst bant yalnız düşer, alt bant yalnız yükselir (önceki kapanış bandı geçince sıfırlanır); çizgi = yükselişte alt, düşüşte üst bant | ilk gün yön: c ≥ hl2 → yükseliş | p+1 | `SUPERTREND_10_3.0` (çizgi; yön `states.supertrend`) |
+| Ichimoku(t,k,b) | Tenkan = (max H + min L)/2 (t gün); Kijun (k gün); Senkou A = (Tenkan+Kijun)/2, Senkou B = (max H + min L)/2 (b gün), ikisi k bar İLERİ kaydırılır (kaydırma = kijun = 26); Chikou karşılığı = c_t − c_{t−26} | – | Tenkan t; Kijun k; Senkou A max(t,k)+k; Senkou B b+k; Chikou karşılığı k+1 | `ICHIMOKU_TENKAN_9`, `ICHIMOKU_KIJUN_26`, `ICHIMOKU_SENKOU_A_9_26`, `ICHIMOKU_SENKOU_B_52`, `ICHIMOKU_CHIKOU_VS_CLOSE_26` |
+| Hacim z-skoru(w) | `(v_t − ort)/std`, son w gün, BUGÜN DAHİL; std = 0 → `None` | – | w | `VOLUME_ZSCORE_20` |
+| Getiri / volatilite (yalnız kütüphane) | `c_t/c_{t−h} − 1` (kesir); yıllıklandırılmış std(1g log getiri, ddof=1)·√252 | – | h+1 / w+1 | araca girmez |
+
+Ichimoku bulutu: gün `t`'deki Senkou A/B, `t−26` gününün verisinden hesaplanıp ileri kaydırılmıştır (gelecek bilgisi yok).
+Klasik "Chikou Span" (kapanışın 26 gün GERİYE çizilmesi) geleceğe bakacağı için sinyalde kullanılmaz; yerine nedensel karşılığı
+`ICHIMOKU_CHIKOU_VS_CLOSE_26` (c_t − c_{t−26}) verilir.
+
+### 13.3 Standart sapma tanımı (Bollinger = hacim z-skoru)
+**Her ikisinde de popülasyon std'si (`ddof = 0`)** kullanılır: `std = sqrt( Σ(x_i − ort)² / w )`, `w` = pencere uzunluğu, pencere bugün dahil.
+Doğrulama: `tests/tools/test_indicators_config.py::test_bollinger_and_volume_zscore_use_same_population_std_ddof0` aynı seride
+Bollinger'ın std'sinin `(üst−orta)/k`, hacim z-skorunun paydasının ve `numpy ddof=0` değerinin birebir aynı olduğunu, `ddof=1`'den farklı
+olduğunu doğrular; ayrıca `ta` kütüphanesinin (ddof=0) bant değerleriyle birebir eşleşir. Getiri volatilitesi ise örneklem std'sidir (`ddof=1`);
+bu gösterge ayrıdır ve araca girmez.
+
+### 13.4 Kategorik durumlar (`states`; `None` = gösterge istenmedi veya ısınmada)
+| Durum | Sınıflar | Tanım |
+|---|---|---|
+| `supertrend` | `BULLISH` / `BEARISH` | yön +1 → BULLISH (çizgi fiyatın altında, alt bant); yön −1 → BEARISH (çizgi fiyatın üstünde, üst bant). Yönün dönmesi: yükselişteyken kapanış nihai alt bandın altına inerse, düşüşteyken nihai üst bandın üstüne çıkarsa |
+| `ichimoku_position` | `ABOVE_CLOUD` / `IN_CLOUD` / `BELOW_CLOUD` | bulut = [min(Senkou A, B), max(Senkou A, B)] (günün kendi değerleri). Kapanış > üst → ABOVE; < alt → BELOW; sınırlar dahil arası → IN |
+| `kama_slope` | `RISING` / `FLATTENING` / `FALLING` | `eğim_pct = (KAMA_t/KAMA_{t−1} − 1)·100` (KAMA'nın 1 günlük % değişimi). `> +0,10` RISING; `< −0,10` FALLING; sınır dahil arası FLATTENING (`KAMA_FLAT_SLOPE_PCT`). İlk geçerli KAMA gününde önceki yok → `None` |
+| `volume_regime` | `HIGH` / `NORMAL` / `LOW` | hacim z-skoru `> +1,0` HIGH; `< −1,0` LOW; sınır dahil arası NORMAL (`VOLUME_HIGH_Z`, `VOLUME_LOW_Z`). z tanımsızsa (std = 0) `None` |
+
+Eşikler ileri getiriye bakılmadan seçilmiştir ve olay sonuçlarına bakılarak değiştirilmez (`docs/calibration_thresholds.md`).
+Bu durumlar nedensellik iddiası değildir; yalnızca o günkü gösterge konumunu betimler (`HISTORICAL_ONLY`).
+
+### 13.5 Isınma ve analiz başlangıcı
+Veri 2023-01-02'den başlar (§11.1). En uzun ısınma `SMA_200` (200 bar); THYAO'da ilk geçerli gün 2023-10-23. Test: 30 hissenin hepsinde
+`as_of = 2024-01-01` (tatil → `state_date` 2023-12-29) için TÜM kolonlar ve durumlar geçerlidir ve `INSUFFICIENT_HISTORY` uyarısı yoktur
+(`tests/tools/test_calculate_indicators.py::test_real_all_columns_valid_on_2024_01_01_for_all_30_tickers`).
+`CCOLA` 2024-08-01 çevresinde SMA/EMA/KAMA/Bollinger/Ichimoku'da sıçrama yoktur (v2); aynı test v1'de (düzeltilmemiş) kırılır.
