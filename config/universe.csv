@@ -1,4 +1,4 @@
-ticker,yahoo_symbol,sector,peer_group,peer_group_size
+﻿ticker,yahoo_symbol,sector_label,peer_group,peer_group_size
 ASELS,ASELS.IS,Technology / Defense,solo_asels,1
 TUPRS,TUPRS.IS,Petroleum / Refining,energy_petrochem,2
 BIMAS,BIMAS.IS,Retail Trade,retail,3

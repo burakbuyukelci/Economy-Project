@@ -1,0 +1,239 @@
+"""Her araç için minimal GEÇERLİ örnek zarf (mock araçlar ve contract testleri kullanır).
+
+Değerler uydurmadır; yalnızca şekli gösterir. as_of = 2026-09-10.
+"""
+from __future__ import annotations
+
+import copy
+from typing import Any
+
+from schemas.common import SCHEMA_VERSION, make_cost_model
+from schemas.enums import ToolName
+from schemas.hashing import compute_input_hash
+from schemas.registry import validate_params
+
+EXAMPLE_AS_OF = "2026-09-10"
+EXAMPLE_DATA_VERSION = "snap_2026-11-20_v1"
+
+_HASH = "0" * 64
+_COST = make_cost_model().model_dump(mode="json")
+_PCT = {"cumulative_return_pct": 10.0, "annualized_return_pct": 12.0, "sharpe_ratio": 0.8, "max_drawdown_pct": -9.5,
+        "win_rate_pct": 55.0, "n_trades": 22, "avg_trade_return_pct": 0.6, "median_trade_return_pct": 0.4,
+        "exposure_pct": 30.0}
+_STATS = {"n_events_complete": 10, "n_excluded_incomplete_horizon": 1, "n_success": 6, "n_false_positive": 4,
+          "hit_rate_pct": 60.0, "false_positive_rate_pct": 40.0, "mean_return_pct": 1.2, "median_return_pct": 0.9,
+          "cost_adjusted_mean_return_pct": 0.5, "mean_reversal_strength_pct": 2.0, "median_reversal_strength_pct": 1.8}
+_BASE = {"n_obs": 400, "mean_return_pct": 0.2, "median_return_pct": 0.1, "hit_rate_pct": 51.0}
+_BLOCK = {"horizon": 5, "full": _STATS, "in_sample": _STATS, "out_of_sample": _STATS, "baseline": _BASE,
+          "mean_diff_vs_baseline_pct": 1.0, "median_diff_vs_baseline_pct": 0.8, "oos_degradation_flag": False}
+_MT = {"n_tests_declared": 1, "alpha": 0.05, "adjusted_alpha": 0.05, "method": "bonferroni",
+       "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."}
+_ROW = {"date": "2026-09-10", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5, "adj_close": 10.4, "volume": 1000.0}
+
+
+def _wk(start: str, end: str) -> dict[str, Any]:
+    return {
+        "window": {"start": start, "end": end}, "n_weeks_total": 10, "n_excluded_holiday_weeks": 1,
+        "n_excluded_incomplete_horizon": 0, "n_weeks_complete": 9, "n_trigger_weeks": 3, "n_occurrences": 2,
+        "n_false_positive": 1, "occurrence_rate_pct": 22.2, "hit_rate_pct": 66.7,
+        "expected_occurrences_if_independent": 0.3,
+        "per_day": [{"weekday": "THU", "expected_direction": "UP", "role": "OUTCOME", "n_obs": 9,
+                     "mean_return_pct": 0.3, "median_return_pct": 0.2, "direction_match_rate_pct": 55.0,
+                     "unconditional_mean_return_pct": 0.1, "unconditional_median_return_pct": 0.1}],
+        "outcome_mean_return_pct": 0.8, "outcome_median_return_pct": 0.7,
+        "unconditional_outcome_mean_return_pct": 0.2, "unconditional_outcome_median_return_pct": 0.1,
+        "outcome_mean_diff_vs_unconditional_pct": 0.6, "cost_adjusted_outcome_mean_return_pct": 0.1,
+        "t_stat": 1.1, "p_value_raw": 0.3, "p_value_adjusted": 0.3,
+    }
+
+
+_PARAMS: dict[ToolName, dict[str, Any]] = {
+    ToolName.GET_STOCK_HISTORY: {"ticker": "THYAO", "start": "2026-09-08", "end": "2026-09-10"},
+    ToolName.GET_INDEX_HISTORY: {"index": "XU100", "start": "2026-09-08", "end": "2026-09-10"},
+    ToolName.CALCULATE_INDICATORS: {"ticker": "THYAO", "indicators": ["RSI"], "end": "2026-09-10"},
+    ToolName.DETECT_REVERSAL_EVENTS: {"ticker": "ASELS", "event_family": "BB_LOWER_TOUCH", "touch_mode": "close"},
+    ToolName.FIND_SUPPORT_RESISTANCE: {"ticker": "THYAO", "end": "2026-09-10"},
+    ToolName.RANK_SECTOR_RELATIVE_STRENGTH: {"sector": "retail", "horizon": 20},
+    ToolName.TEST_WEEKDAY_PATTERN: {
+        "ticker": "THYAO",
+        "pattern": [{"weekday": "MON", "direction": "DOWN", "role": "TRIGGER"},
+                    {"weekday": "THU", "direction": "UP", "role": "OUTCOME"}],
+        "in_sample_start": "2024-01-01", "in_sample_end": "2025-12-31",
+        "out_of_sample_start": "2026-01-01", "out_of_sample_end": "2026-09-10"},
+    ToolName.GET_FUNDAMENTAL_METRICS: {"ticker": "TUPRS"},
+    ToolName.CALCULATE_FUNDAMENTAL_CHANGE: {"ticker": "TUPRS"},
+    ToolName.GET_MACRO_CONTEXT: {"start": "2026-01-01", "end": "2026-09-10"},
+    ToolName.GET_NEWS_EVENTS: {"ticker": "EREGL", "start": "2026-09-01", "end": "2026-09-10"},
+    ToolName.GET_SPEECH_FEATURES: {"source_id": "damodaran_valuation_01"},
+    ToolName.RUN_BACKTEST: {
+        "strategy": {"variant": "B", "signal_type": "CATCH_UP"},
+        "universe": ["BIMAS", "MAVI", "MGROS"], "start": "2024-01-01", "end": "2026-09-10"},
+    ToolName.CHECK_DATA_QUALITY: {"tickers": ["THYAO"], "end": "2026-09-10"},
+    ToolName.BUILD_EVIDENCE_BUNDLE: {"analysis_id": "demo-001", "source_input_hashes": [_HASH]},
+}
+
+_RESULTS: dict[ToolName, dict[str, Any]] = {
+    ToolName.GET_STOCK_HISTORY: {
+        "ticker": "THYAO", "yahoo_symbol": "THYAO.IS", "price_adjustment": "adjusted",
+        "requested_start": "2026-09-08", "requested_end": "2026-09-10", "effective_end": "2026-09-10",
+        "first_date": "2026-09-10", "last_date": "2026-09-10", "n_rows": 1, "rows": [_ROW]},
+    ToolName.GET_INDEX_HISTORY: {
+        "index": "XU100", "yahoo_symbol": "XU100.IS", "requested_start": "2026-09-08",
+        "requested_end": "2026-09-10", "effective_end": "2026-09-10", "first_date": "2026-09-10",
+        "last_date": "2026-09-10", "n_rows": 1, "rows": [_ROW]},
+    ToolName.CALCULATE_INDICATORS: {
+        "ticker": "THYAO", "first_valid_date": "2026-09-10", "last_date": "2026-09-10", "columns": ["RSI_14"],
+        "n_rows": 1, "rows": [{"date": "2026-09-10", "values": {"RSI_14": 41.2}}]},
+    ToolName.DETECT_REVERSAL_EVENTS: {
+        "ticker": "ASELS", "event_family": "BB_LOWER_TOUCH", "touch_mode": "close", "expected_direction": "UP",
+        "analysis_start": "2024-01-01", "analysis_end": "2026-09-10", "split_date": "2026-01-01",
+        "cost_model": _COST,
+        "groups": [{"label": "single_indicator", "conditions": None, "n_events_detected": 11,
+                    "per_horizon": [_BLOCK],
+                    "regime_breakdown": [{"regime": "XU100_UP", "horizon": 10, "n_events": 5, "hit_rate_pct": 60.0,
+                                          "mean_return_pct": 1.0}],
+                    "events": [{"date": "2026-09-01", "close": 100.0,
+                                "states": {"rsi": "LOCAL_LOW", "supertrend": "BEARISH", "kama_slope": "FLATTENING",
+                                           "ichimoku": "BELOW_CLOUD", "volume": "HIGH"},
+                                "forward_returns": [{"horizon": 1, "complete": True, "return_pct": 0.5,
+                                                     "reversal_success": True, "reversal_strength_pct": 1.0},
+                                                    {"horizon": 10, "complete": False, "return_pct": None,
+                                                     "reversal_success": None, "reversal_strength_pct": None}]}],
+                    "events_truncated": False}],
+        "multiple_testing": _MT},
+    ToolName.FIND_SUPPORT_RESISTANCE: {
+        "ticker": "THYAO", "last_close": 300.0, "last_date": "2026-09-10", "nearest_support": 290.0,
+        "nearest_resistance": 320.0,
+        "levels": [{"type": "SUPPORT", "price": 290.0, "zone_low": 288.0, "zone_high": 292.0, "touch_count": 3,
+                    "last_touch_date": "2026-08-20", "strength": 0.7}]},
+    ToolName.RANK_SECTOR_RELATIVE_STRENGTH: {
+        "sector": "retail", "peer_group_size": 3, "insufficient_peers": False, "horizon": 20,
+        "window_start": "2026-08-12", "window_end": "2026-09-10",
+        "benchmark_definition": {"type": "peer_median", "includes_subject_stock": True, "price_field": "adj_close",
+                                 "return_type": "simple", "peer_group": "retail",
+                                 "members": ["BIMAS", "MAVI", "MGROS"]},
+        "sector_median_return_pct": 12.0, "xu100_return_pct": 4.0, "sector_median_vs_xu100_pp": 8.0,
+        "sector_strength": "STRONG",
+        "strength_thresholds": {"strong_min_vs_xu100_pp": 2.0, "weak_max_vs_xu100_pp": -2.0},
+        "lag_threshold_pp": 3.0,
+        "ranking": [{"rank": 1, "ticker": "BIMAS", "return_pct": 15.0, "lag_score_pp": 3.0,
+                     "return_vs_xu100_pp": 11.0, "is_laggard": False, "is_leader": True}],
+        "historical_catch_up": [{"block": {**_BLOCK, "horizon": 5}, "median_catch_up_size_pp": 2.1}],
+        "cost_model": _COST, "structural_vs_temporary": None},
+    ToolName.TEST_WEEKDAY_PATTERN: {
+        "ticker": "THYAO", "pattern_label": "MON-DOWN | THU-UP", "conditioning": "NONE", "cost_model": _COST,
+        "in_sample": _wk("2024-01-01", "2025-12-31"), "out_of_sample": _wk("2026-01-01", "2026-09-10"),
+        "stability_verdict": "INSUFFICIENT_DATA", "verdict_reason": "Örnek.", "multiple_testing": _MT},
+    ToolName.GET_FUNDAMENTAL_METRICS: {
+        "ticker": "TUPRS", "metric_set": "INDUSTRIAL", "fiscal_period": "2026Q2", "period_end_date": "2026-06-30",
+        "disclosure_date": "2026-08-12", "tms29_comparable": True,
+        "metrics": [{"name": "EBITDA_MARGIN", "value": 8.5, "unit": "PCT"}]},
+    ToolName.CALCULATE_FUNDAMENTAL_CHANGE: {
+        "ticker": "TUPRS", "metric_set": "INDUSTRIAL",
+        "benchmark_definition": {"type": "peer_median", "includes_subject_stock": True, "price_field": "adj_close",
+                                 "return_type": "simple", "peer_group": "energy_petrochem",
+                                 "members": ["PETKM", "TUPRS"]},
+        "improvement_metric": "EBITDA_MARGIN", "improvement_basis": "YOY",
+        "n_quarters_disclosed_by_as_of": 6, "n_quarters_excluded_not_yet_disclosed": 0,
+        "quarters": [{"fiscal_period": "2026Q2", "period_end_date": "2026-06-30", "disclosure_date": "2026-08-12",
+                      "tms29_comparable": True,
+                      "metrics": [{"name": "EBITDA_MARGIN", "value": 8.5, "qoq_change": 0.4, "yoy_change": 1.2,
+                                   "change_unit": "PP", "qoq_direction": "IMPROVED", "yoy_direction": "IMPROVED"}],
+                      "reactions": [{"horizon": 20, "window_end_date": None, "complete": False,
+                                     "stock_return_pct": None, "xu100_return_pct": None, "sector_return_pct": None,
+                                     "abnormal_vs_xu100_pct": None, "abnormal_vs_sector_pct": None}]}],
+        "reaction_summary": [{"horizon": 5, "group": "IMPROVED", "n": 3, "n_excluded_incomplete_horizon": 0,
+                              "mean_abnormal_vs_xu100_pct": 0.8, "median_abnormal_vs_xu100_pct": 0.6,
+                              "hit_rate_vs_xu100_pct": 66.7, "mean_abnormal_vs_sector_pct": 0.4,
+                              "median_abnormal_vs_sector_pct": 0.3}]},
+    ToolName.GET_MACRO_CONTEXT: {
+        "start": "2026-01-01", "end": "2026-09-10",
+        "series": [{"series": "USDTRY", "source": "TCMB/EVDS", "frequency": "daily", "n_points": 1,
+                    "last_publication_date": "2026-09-10", "gaps": [],
+                    "points": [{"observation_date": "2026-09-10", "publication_date": "2026-09-10",
+                                "value": 41.0}]}]},
+    ToolName.GET_NEWS_EVENTS: {
+        "n_events_returned": 1,
+        "events": [{"event_id": "kap-0001", "published_date": "2026-09-05", "published_time": "18:30",
+                    "headline": "Örnek KAP açıklaması", "source": "KAP", "url": None, "tickers": ["EREGL"],
+                    "topics": ["earnings"], "category": "EARNINGS", "stance": None}]},
+    ToolName.GET_SPEECH_FEATURES: {
+        "source_id": "damodaran_valuation_01", "video_url": "https://example.org/video",
+        "speaker_channel": "Örnek kanal", "published_date": "2026-05-01", "transcript_quality": 0.9,
+        "segments": [{"start_sec": 0.0, "end_sec": 30.0, "topics": ["valuation"], "stance": None,
+                      "uncertainty": None,
+                      "claims": [{"text": "Örnek iddia", "claim_type": "OPINION", "numerical_claim_verified": None}]}]},
+    ToolName.RUN_BACKTEST: {
+        "strategy": {"variant": "B", "signal_type": "CATCH_UP", "signal_params": {}, "holding_days": 5,
+                     "signal_lag_days": 1, "benchmarks": ["BUY_AND_HOLD", "XU100"], "train_end": None,
+                     "validation_end": None, "walk_forward": False, "transaction_cost_bps": 20.0,
+                     "slippage_bps": 5.0},
+        "universe": ["BIMAS", "MAVI", "MGROS"], "period": {"start": "2024-01-01", "end": "2026-09-10"},
+        "signal_lag_days_applied": 1, "cost_model": _COST,
+        "sharpe_definition": "günlük getiri, rf=0, yıllıklandırma sqrt(252)",
+        "n_signals": 22, "n_excluded_incomplete_horizon": 1, "n_winning_trades": 12, "n_losing_trades": 10,
+        "strategy_gross": _PCT, "strategy_net": _PCT,
+        "benchmarks": [{"name": "XU100", "metrics": _PCT, "cumulative_return_diff_pct": 1.5, "sharpe_diff": 0.1}],
+        "splits": [{"name": "TEST", "window": {"start": "2026-01-01", "end": "2026-09-10"}, "n_signals": 5,
+                    "net_metrics": _PCT, "benchmark_diff_pct": 0.5}],
+        "oos_degradation_flag": False, "low_signal_flag": False,
+        "trade_log": [{"ticker": "MAVI", "signal_date": "2026-03-02", "entry_date": "2026-03-03",
+                       "exit_date": "2026-03-10", "gross_return_pct": 2.0, "net_return_pct": 1.4}],
+        "trade_log_truncated": False},
+    ToolName.CHECK_DATA_QUALITY: {
+        "gate_status": "PASS_WITH_WARNINGS", "gate_reason": "1 yumuşak uyarı",
+        "hard_blocks": [],
+        "soft_warnings": [{"code": "PRICE_JUMP_OVER_LIMIT", "severity": "SOFT",
+                           "message": "Olası düzeltilmemiş bedelsiz", "ticker": "THYAO", "date": "2025-06-01",
+                           "value": 25.0}],
+        "checks_run": ["PRICE_JUMPS"], "price_jump_limit_pct": 10.0,
+        "ticker_reports": [{"ticker": "THYAO", "n_rows": 400, "first_date": "2024-01-02",
+                            "last_date": "2026-09-10", "n_missing_trading_days": 0, "last_data_age_days": 0,
+                            "max_abs_daily_return_pct": 25.0, "max_abs_daily_return_date": "2025-06-01",
+                            "n_price_jumps_over_limit": 1}]},
+    ToolName.BUILD_EVIDENCE_BUNDLE: {
+        "analysis_id": "demo-001",
+        "full_evidence_set": [{"evidence_id": "E1", "statement": "Örnek", "source_tool": "rank_sector_relative_strength",
+                               "source_input_hash": _HASH,
+                               "values": [{"name": "lag_score_pp", "value": -8.5, "unit": "pp"}]}],
+        "committed_evidence_set": [{"evidence_id": "E1", "statement": "Örnek",
+                                    "source_tool": "rank_sector_relative_strength", "source_input_hash": _HASH,
+                                    "values": []}],
+        "gate_status": "PASS_WITH_WARNINGS", "proposed_action": "WATCH"},
+}
+
+# Örnek zarflarda n_events (anlamlıysa)
+_N_EVENTS = {ToolName.DETECT_REVERSAL_EVENTS: 11, ToolName.TEST_WEEKDAY_PATTERN: 4, ToolName.RUN_BACKTEST: 22,
+             ToolName.CALCULATE_FUNDAMENTAL_CHANGE: 6, ToolName.RANK_SECTOR_RELATIVE_STRENGTH: 10,
+             ToolName.GET_NEWS_EVENTS: 1}
+
+
+def example_params(tool: ToolName) -> dict[str, Any]:
+    """as_of eklenmiş, varsayılanlar açılmış (normalize) örnek params."""
+    raw = {**copy.deepcopy(_PARAMS[tool]), "as_of": EXAMPLE_AS_OF}
+    return validate_params(tool, raw).model_dump(mode="json")
+
+
+def example_envelope(tool: ToolName | str) -> dict[str, Any]:
+    tool = ToolName(tool)
+    params = example_params(tool)
+    return {
+        "tool": tool.value,
+        "schema_version": SCHEMA_VERSION,
+        "params": params,
+        "as_of": EXAMPLE_AS_OF,
+        "data_version": EXAMPLE_DATA_VERSION,
+        "input_hash": compute_input_hash(tool, params, EXAMPLE_DATA_VERSION),
+        "results": copy.deepcopy(_RESULTS[tool]),
+        "n_events": _N_EVENTS.get(tool),
+        "n_excluded_incomplete_horizon": 0,
+        "warnings": ["HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."],
+        "status": "OK",
+        "error": None,
+    }
+
+
+def example_error_envelope(tool: ToolName | str, code: str = "UNKNOWN_TICKER", message: str = "Bilinmeyen ticker") -> dict[str, Any]:
+    env = example_envelope(tool)
+    env.update({"results": None, "status": "ERROR", "error": {"code": code, "message": message}, "n_events": None})
+    return env

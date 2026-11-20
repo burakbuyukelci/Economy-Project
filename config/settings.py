@@ -22,3 +22,25 @@ DEFAULT_PRICE_FIELD = "adj_close"
 
 # Rastgelelik gerekirse sabit seed (kural 8).
 RANDOM_SEED = 42
+
+# --- Maliyet modeli (docs/data_dictionary.md "Maliyet modeli") ---
+# Her bacak (alım VEYA satım) için bps. Bir tur (alım+satım) toplam = 2 * (maliyet + slippage).
+TRANSACTION_COST_BPS_PER_SIDE = 20.0
+SLIPPAGE_BPS_PER_SIDE = 5.0  # ÖNERİ: ekip onayına tabi, parametre ile değiştirilebilir
+
+# --- Sektör gücü eşikleri (rank_sector_relative_strength) ---
+# sector_strength = (peer medyan getirisi) - (XU100 getirisi), aynı pencerede, yüzde puan.
+SECTOR_STRONG_MIN_VS_XU100_PP = 2.0    # >= bu değer -> STRONG
+SECTOR_WEAK_MAX_VS_XU100_PP = -2.0     # <= bu değer -> WEAK; arası NEUTRAL
+
+# Laggard/leader varsayılan eşiği: lag_score (hisse - medyan) bu kadar pp altı/üstü.
+LAG_THRESHOLD_PP_DEFAULT = 3.0
+
+# --- Veri kalitesi ---
+# BIST günlük fiyat limiti ±%10: bunu aşan günlük sıçrama düzeltilmemiş bedelsiz/bölünme şüphesi.
+PRICE_JUMP_LIMIT_PCT = 10.0
+
+# --- Backtest ---
+BACKTEST_TRADE_LOG_MAX = 200
+SHARPE_ANNUALIZATION_DAYS = 252
+SHARPE_RISK_FREE_RATE = 0.0

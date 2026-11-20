@@ -6,6 +6,7 @@ def test_universe_has_30_unique_tickers():
     assert len(df) == 30
     assert df["ticker"].is_unique
     assert (df["yahoo_symbol"] == df["ticker"] + ".IS").all()
+    assert "sector_label" in df.columns and "sector" not in df.columns
 
 
 def test_each_ticker_in_exactly_one_peer_group():
