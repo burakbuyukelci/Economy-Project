@@ -123,7 +123,8 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
     ToolName.TEST_WEEKDAY_PATTERN: {
         "ticker": "THYAO", "pattern_label": "MON-DOWN | THU-UP", "conditioning": "NONE", "cost_model": _COST,
         "in_sample": _wk("2024-01-01", "2025-12-31"), "out_of_sample": _wk("2026-01-01", "2026-09-10"),
-        "stability_verdict": "INSUFFICIENT_DATA", "verdict_reason": "Örnek.", "multiple_testing": _MT},
+        "stability_verdict": "INSUFFICIENT_DATA", "verdict_codes": ["IS_TOO_FEW"],
+        "verdict_reason": "IS_TOO_FEW: n_trigger_weeks=3 < 10", "multiple_testing": _MT},
     ToolName.GET_FUNDAMENTAL_METRICS: {
         "ticker": "TUPRS", "metric_set": "INDUSTRIAL", "fiscal_period": "2026Q2", "period_end_date": "2026-06-30",
         "disclosure_date": "2026-08-12", "tms29_comparable": True,

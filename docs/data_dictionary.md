@@ -1,7 +1,7 @@
 # Veri sözlüğü ve tanımlar
 
-> Durum: **Bölüm 1-6 sözleşmeyle birlikte yazıldı (schemas v1.0.0).**
-> Bölüm 7 (fiyat verisinin kaynağı, aralığı, adjusted/unadjusted, eksik gün yönetimi, gerçek sayılar)
+> Durum: **Bölüm 1-10 sözleşmeyle birlikte yazıldı (schemas v1.0.0).**
+> Bölüm 11 (fiyat verisinin kaynağı, aralığı, adjusted/unadjusted, eksik gün yönetimi, gerçek sayılar)
 > veri indirme adımında (`scripts/download_prices.py`) doldurulacak.
 
 ## 1. Tarih ve `as_of` kuralı
@@ -42,7 +42,9 @@ düşüyorsa **o ufkun istatistiğine katılmaz**; `n_excluded_incomplete_horizo
 
 ## 5. Maliyet modeli
 - `transaction_cost_bps`: **tek yön, bacak başına** (varsayılan 20 bps). `slippage_bps`: bacak başına
-  (varsayılan 5 bps, **öneri; ekip onayına tabi**).
+  (varsayılan 5 bps). **VARSAYIM:** 5 bps slippage kaynaklı bir ölçüm değil, basit bir varsayımdır
+  (proje dokümanı §18 "simple slippage assumptions"); ekip onayladı, parametreyle değiştirilebilir ve
+  rapora varsayım olarak yazılmalıdır. Değerler `config/settings.py` içindedir.
 - Bir tur (alım + satım) toplam maliyeti: `round_trip_cost_pct = 2 × (transaction_cost_bps + slippage_bps) / 100`
   (varsayılanla `2 × 25 / 100 = 0,50` yüzde puan). Tur maliyeti **bir kez, tur başına** düşülür.
 - `cost_adjusted_*` alanları = brüt değer − `round_trip_cost_pct` (ortalama alan istatistiklerinde olay başına
@@ -64,7 +66,38 @@ düşüyorsa **o ufkun istatistiğine katılmaz**; `n_excluded_incomplete_horizo
   aynı pencerede. `>= SECTOR_STRONG_MIN_VS_XU100_PP` (2,0) → `STRONG`; `<= SECTOR_WEAK_MAX_VS_XU100_PP` (−2,0) → `WEAK`;
   arası `NEUTRAL`. Kullanılan eşikler `strength_thresholds` alanında döner. **Eşikler ilk öneridir, kalibre edilmelidir.**
 
-## 7. Fiyat verisi (Adım 4'te doldurulacak)
+## 8. `stability_verdict` (test_weekday_pattern)
+`n_trigger_weeks`: TRIGGER koşulu tutan hafta sayısı (TRIGGER günü yoksa tüm tam haftalar). Eşikler config'te:
+`MIN_WEEKDAY_IS_TRIGGER_WEEKS = 10`, `MIN_WEEKDAY_OOS_TRIGGER_WEEKS = 5`. Sıra (ilk eşleşen kazanır):
+1. IS `n_trigger_weeks` < IS eşiği → `INSUFFICIENT_DATA` (`IS_TOO_FEW`).
+2. IS yeterli, `p_value_adjusted >= alpha` (veya hesaplanamadı) → `UNSTABLE` (`IS_NOT_SIGNIFICANT`).
+3. IS anlamlı, OOS `n_trigger_weeks` < OOS eşiği → `INSUFFICIENT_DATA` (`OOS_TOO_FEW`).
+4. Aksi halde (b)–(e) denetlenir; hepsi geçerse `STABLE`, değilse `UNSTABLE` + kodlar:
+   - (b) OOS ile IS `outcome_mean_diff_vs_unconditional_pct` aynı işaretli, değilse `OOS_SIGN_FLIP`
+   - (c) OOS `cost_adjusted_outcome_mean_return_pct > 0`, değilse `OOS_COST_ADJ_NOT_POSITIVE`
+   - (d) OOS `hit_rate_pct >= 50`, değilse `OOS_HIT_RATE_TOO_LOW`
+   - (e) |OOS fark| >= 0,5 × |IS fark|, değilse `OOS_EFFECT_TOO_SMALL` (yalnızca (b) geçtiyse değerlendirilir)
+
+Notlar: OOS için anlamlılık testi koşulmaz (örneklem küçük, güç düşük). `cost_adjusted_outcome_mean_return_pct`
+**yönlüdür** (OUTCOME yönü DOWN ise `-ortalama - tur maliyeti`). **Verdict ne olursa olsun tüm sayısal alanlar
+hesaplanabildiği sürece dolu döner** (yalnızca n=0 iken `null`). `verdict_codes` makine okunur nedenler,
+`verdict_reason` her kod için sayılı açıklamadır. STABLE bile işlem yapılabilir demek değildir;
+`HISTORICAL_ONLY` uyarısı kalır. Uygulama: `tools/stability.py::weekday_stability_verdict`.
+
+## 9. `oos_degradation_flag` (rank_sector_relative_strength, detect_reversal_events, run_backtest)
+Ufuk başına, IS ve OOS `HorizonStats` karşılaştırılır (uygulama: `tools/stability.py::oos_degradation`):
+- `split_date` yoksa `null`.
+- OOS tamamlanmış olay sayısı < `MIN_OOS_EVENTS` (config, **varsayım: 5**) → `false` + `OOS_TOO_SMALL` uyarısı.
+- Aksi halde `true`, eğer **(OOS maliyet sonrası ort. ≤ 0 iken IS maliyet sonrası ort. > 0)** veya
+  **(IS isabet oranı − OOS isabet oranı > 15 yüzde puan, `OOS_DEGRADATION_HIT_RATE_DROP_PP`)**; değilse `false`.
+- `true` olduğunda araç `OOS_DEGRADATION` uyarısı ekler.
+
+## 10. Ufku dolmamış pencereler ve şema doğrulaması
+`complete = false` olan her ileri pencerede (`forward_returns[]`, `reactions[]`) tarih alanı (`window_end_date`)
+**ve tüm getiri alanları `null`** olmak zorundadır; şema bunu reddederek zorlar. `complete = true` iken tarih/getiri
+dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ayrıca denetler (`as_of` günü dahil).
+
+## 11. Fiyat verisi (Adım 4'te doldurulacak)
 Kaynak, tarih aralığı (2023-01-01'den; analiz penceresi varsayılan 2024-01-01), `adj_close` varsayılan /
 ham `close` da saklanır, eksik gün yönetimi, günlük fiyat limitini (`PRICE_JUMP_LIMIT_PCT = %10`) aşan
 sıçramaların `check_data_quality` ile işaretlenmesi: bkz. veri katmanı commit'i.

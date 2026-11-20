@@ -64,6 +64,7 @@ from schemas.enums import (
     SupertrendState,
     ToolName,
     TouchMode,
+    VerdictCode,
     VolumeRegime,
     Weekday,
 )
@@ -142,6 +143,16 @@ class ForwardReturn(Strict):
     return_pct: float | None = Field(description="Olay günü kapanışından t+h kapanışına; complete=False ise None")
     reversal_success: bool | None = None
     reversal_strength_pct: float | None = Field(default=None, description="Ufuk içi maksimum lehte hareket (MFE)")
+
+    @model_validator(mode="after")
+    def _complete_consistency(self):
+        # Ufku dolmamışsa hiçbir sonuç alanı dolu olamaz (look-ahead sızıntısı olmasın).
+        vals = (self.return_pct, self.reversal_success, self.reversal_strength_pct)
+        if not self.complete and any(v is not None for v in vals):
+            raise ValueError("complete=False iken return_pct/reversal_success/reversal_strength_pct None olmalı")
+        if self.complete and self.return_pct is None:
+            raise ValueError("complete=True iken return_pct dolu olmalı")
+        return self
 
 
 class ReversalEventRecord(Strict):
@@ -262,13 +273,18 @@ class WeekdayPeriodResult(Strict):
     unconditional_outcome_mean_return_pct: float | None = Field(description="Aynı OUTCOME günleri, TÜM tam haftalar")
     unconditional_outcome_median_return_pct: float | None
     outcome_mean_diff_vs_unconditional_pct: float | None
-    cost_adjusted_outcome_mean_return_pct: float | None
+    cost_adjusted_outcome_mean_return_pct: float | None = Field(
+        description="YÖNLÜ: OUTCOME yönü UP ise ortalama - tur maliyeti; DOWN ise (-ortalama) - tur maliyeti"
+    )
     t_stat: float | None
     p_value_raw: float | None = Field(ge=0, le=1)
     p_value_adjusted: float | None = Field(ge=0, le=1)
 
     @model_validator(mode="after")
     def _counts(self):
+        # Sayısal alanlar, verdict ne olursa olsun hesaplanabiliyorsa DOLU döner (None ancak n=0 iken).
+        if self.n_trigger_weeks > 0 and (self.outcome_mean_return_pct is None or self.outcome_median_return_pct is None):
+            raise ValueError("n_trigger_weeks > 0 iken outcome ortalama/medyan dolu olmalı")
         if self.n_false_positive != self.n_trigger_weeks - self.n_occurrences:
             raise ValueError("n_false_positive != n_trigger_weeks - n_occurrences")
         if self.n_weeks_complete + self.n_excluded_holiday_weeks + self.n_excluded_incomplete_horizon != self.n_weeks_total:
@@ -286,8 +302,25 @@ class TestWeekdayPatternResult(Strict):
     in_sample: WeekdayPeriodResult
     out_of_sample: WeekdayPeriodResult
     stability_verdict: StabilityVerdict
-    verdict_reason: str
+    verdict_codes: list[VerdictCode] = Field(description="Kararın nedenleri; STABLE ise boş")
+    verdict_reason: str = Field(description="Her kod için 'KOD: sayılı açıklama', ';' ile ayrılmış")
     multiple_testing: MultipleTesting
+
+    @model_validator(mode="after")
+    def _verdict_consistency(self):
+        codes = set(self.verdict_codes)
+        too_few = {VerdictCode.IS_TOO_FEW, VerdictCode.OOS_TOO_FEW}
+        v = self.stability_verdict
+        if v == StabilityVerdict.STABLE and codes:
+            raise ValueError("STABLE iken verdict_codes boş olmalı")
+        if v == StabilityVerdict.INSUFFICIENT_DATA and not (codes and codes <= too_few):
+            raise ValueError("INSUFFICIENT_DATA yalnızca IS_TOO_FEW/OOS_TOO_FEW kodlarını içerebilir")
+        if v == StabilityVerdict.UNSTABLE and (not codes or codes & too_few):
+            raise ValueError("UNSTABLE: en az bir neden kodu gerekli ve *_TOO_FEW içeremez")
+        for c in codes:
+            if c.value not in self.verdict_reason:
+                raise ValueError(f"verdict_reason {c.value} kodunu içermeli")
+        return self
 
 
 # ======================================================================
@@ -331,6 +364,19 @@ class QuarterReaction(Strict):
     sector_return_pct: float | None = Field(description="Peer medyan (hisse dahil); tek hisseli grupta None")
     abnormal_vs_xu100_pct: float | None
     abnormal_vs_sector_pct: float | None
+
+    @model_validator(mode="after")
+    def _complete_consistency(self):
+        # complete=False (pencere as_of'u aşıyor): tarih ve tüm getiri alanları None.
+        vals = (self.stock_return_pct, self.xu100_return_pct, self.sector_return_pct,
+                self.abnormal_vs_xu100_pct, self.abnormal_vs_sector_pct)
+        if not self.complete:
+            if self.window_end_date is not None or any(v is not None for v in vals):
+                raise ValueError("complete=False iken window_end_date ve getiri alanları None olmalı")
+        else:
+            if self.window_end_date is None or self.stock_return_pct is None:
+                raise ValueError("complete=True iken window_end_date ve stock_return_pct dolu olmalı")
+        return self
 
 
 class QuarterRow(Strict):

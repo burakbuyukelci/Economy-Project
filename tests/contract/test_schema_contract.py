@@ -203,6 +203,117 @@ def test_horizon_stats_counts_consistent():
         validate_envelope(env)
 
 
+# --- Ufku dolmamış pencereler: false-positive olmamalı, sızıntı yakalanmalı --------------------
+def _fund_reaction(env):
+    return env["results"]["quarters"][0]["reactions"][0]
+
+
+def test_incomplete_reaction_with_null_date_passes():
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    r = _fund_reaction(env)
+    assert r["complete"] is False and r["window_end_date"] is None  # örnek zaten böyle
+    validate_envelope(env)
+
+
+def test_incomplete_reaction_must_not_carry_date_or_returns():
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    _fund_reaction(env)["window_end_date"] = "2026-10-08"  # as_of'tan sonra
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    _fund_reaction(env)["stock_return_pct"] = 1.0
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+def test_complete_reaction_with_date_after_as_of_is_caught_as_lookahead():
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    r = _fund_reaction(env)
+    r.update(complete=True, window_end_date="2026-09-11", stock_return_pct=1.0)
+    with pytest.raises(ValueError, match="look-ahead"):
+        validate_envelope(env)
+
+
+def test_complete_reaction_on_or_before_as_of_passes():
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    r = _fund_reaction(env)
+    r.update(complete=True, window_end_date="2026-09-10", stock_return_pct=1.0)  # as_of DAHİL
+    validate_envelope(env)
+
+
+def test_complete_reaction_requires_date_and_return():
+    env = example_envelope(ToolName.CALCULATE_FUNDAMENTAL_CHANGE)
+    _fund_reaction(env).update(complete=True)  # tarih/getiri None kaldı
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+def _forward_returns(env):
+    return env["results"]["groups"][0]["events"][0]["forward_returns"]
+
+
+def test_incomplete_forward_return_is_null_in_example_and_passes():
+    env = example_envelope(ToolName.DETECT_REVERSAL_EVENTS)
+    fr = _forward_returns(env)
+    assert any(not f["complete"] and f["return_pct"] is None for f in fr)
+    validate_envelope(env)
+
+
+def test_incomplete_forward_return_must_not_have_value():
+    for field, value in [("return_pct", 1.0), ("reversal_success", True), ("reversal_strength_pct", 2.0)]:
+        env = example_envelope(ToolName.DETECT_REVERSAL_EVENTS)
+        f = next(x for x in _forward_returns(env) if not x["complete"])
+        f[field] = value
+        with pytest.raises(ValidationError):
+            validate_envelope(env)
+
+
+def test_complete_forward_return_requires_value():
+    env = example_envelope(ToolName.DETECT_REVERSAL_EVENTS)
+    f = next(x for x in _forward_returns(env) if x["complete"])
+    f["return_pct"] = None
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+# --- stability_verdict tutarlılığı --------------------------------------------------------------
+def test_verdict_codes_must_match_verdict():
+    base = example_envelope(ToolName.TEST_WEEKDAY_PATTERN)
+    validate_envelope(base)  # INSUFFICIENT_DATA + IS_TOO_FEW
+    cases = [
+        ("STABLE", ["IS_TOO_FEW"]),                     # STABLE kod içeremez
+        ("INSUFFICIENT_DATA", []),                      # kodsuz olamaz
+        ("INSUFFICIENT_DATA", ["IS_NOT_SIGNIFICANT"]),  # yanlış kod
+        ("UNSTABLE", []),                               # nedensiz olamaz
+        ("UNSTABLE", ["IS_TOO_FEW"]),                   # *_TOO_FEW UNSTABLE'a ait değil
+    ]
+    for verdict_, codes in cases:
+        env = copy.deepcopy(base)
+        env["results"]["stability_verdict"] = verdict_
+        env["results"]["verdict_codes"] = codes
+        env["results"]["verdict_reason"] = " ".join(codes) or "x"
+        with pytest.raises(ValidationError):
+            validate_envelope(env)
+
+
+def test_verdict_reason_must_mention_every_code():
+    env = example_envelope(ToolName.TEST_WEEKDAY_PATTERN)
+    env["results"]["verdict_reason"] = "açıklama kodsuz"
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+def test_weekday_numeric_fields_required_when_trigger_weeks_positive():
+    env = example_envelope(ToolName.TEST_WEEKDAY_PATTERN)
+    env["results"]["in_sample"]["outcome_mean_return_pct"] = None
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+def test_oos_too_small_warning_code_exists():
+    assert "OOS_TOO_SMALL" in {c.value for c in WarningCode}
+
+
 def test_gate_consistency_rules():
     env = example_envelope(ToolName.CHECK_DATA_QUALITY)
     # Kural yalnız şunları bağlar: hard_block varsa HARD_BLOCK; hiç sorun yoksa PASS.

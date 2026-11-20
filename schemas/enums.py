@@ -80,6 +80,7 @@ class WarningCode(StrEnum):
     UNSTABLE_PATTERN = "UNSTABLE_PATTERN"
     DATA_VERSION_MISMATCH = "DATA_VERSION_MISMATCH"
     INSUFFICIENT_HISTORY = "INSUFFICIENT_HISTORY"
+    OOS_TOO_SMALL = "OOS_TOO_SMALL"                            # OOS örneklemi küçük; oos_degradation_flag=False
 
 
 # --- Evren ---------------------------------------------------------------
@@ -234,6 +235,18 @@ class StabilityVerdict(StrEnum):
     STABLE = "STABLE"
     UNSTABLE = "UNSTABLE"
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
+
+
+class VerdictCode(StrEnum):
+    """stability_verdict nedenleri (docs/data_dictionary.md §8)."""
+
+    IS_TOO_FEW = "IS_TOO_FEW"                      # -> INSUFFICIENT_DATA
+    OOS_TOO_FEW = "OOS_TOO_FEW"                    # -> INSUFFICIENT_DATA
+    IS_NOT_SIGNIFICANT = "IS_NOT_SIGNIFICANT"      # -> UNSTABLE
+    OOS_SIGN_FLIP = "OOS_SIGN_FLIP"                # -> UNSTABLE   (koşul b)
+    OOS_COST_ADJ_NOT_POSITIVE = "OOS_COST_ADJ_NOT_POSITIVE"  # -> UNSTABLE (koşul c)
+    OOS_HIT_RATE_TOO_LOW = "OOS_HIT_RATE_TOO_LOW"  # -> UNSTABLE   (koşul d)
+    OOS_EFFECT_TOO_SMALL = "OOS_EFFECT_TOO_SMALL"  # -> UNSTABLE   (koşul e)
 
 
 # --- Temel analiz --------------------------------------------------------

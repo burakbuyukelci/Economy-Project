@@ -36,6 +36,20 @@ SECTOR_WEAK_MAX_VS_XU100_PP = -2.0     # <= bu değer -> WEAK; arası NEUTRAL
 # Laggard/leader varsayılan eşiği: lag_score (hisse - medyan) bu kadar pp altı/üstü.
 LAG_THRESHOLD_PP_DEFAULT = 3.0
 
+# --- Örneklem içi / dışı kararlılık eşikleri ---
+# Haftalık örüntü (test_weekday_pattern): n = TRIGGER koşulu tutan hafta sayısı.
+MIN_WEEKDAY_IS_TRIGGER_WEEKS = 10
+MIN_WEEKDAY_OOS_TRIGGER_WEEKS = 5
+# Olay tabanlı araçlar (reversal, catch-up, backtest): OOS'ta tamamlanmış olay sayısı bunun altındaysa
+# oos_degradation_flag=False + OOS_TOO_SMALL uyarısı. (VARSAYIM: 5; ekip değiştirebilir.)
+MIN_OOS_EVENTS = 5
+# oos_degradation_flag: OOS isabet oranı IS'den bu kadar yüzde puandan fazla düşükse True.
+OOS_DEGRADATION_HIT_RATE_DROP_PP = 15.0
+# STABLE koşulu (e): OOS etki büyüklüğü, IS etkisinin en az bu oranı olmalı.
+WEEKDAY_OOS_MIN_EFFECT_RATIO = 0.5
+# STABLE koşulu (d): OOS isabet oranı alt sınırı (yüzde).
+WEEKDAY_OOS_MIN_HIT_RATE_PCT = 50.0
+
 # --- Veri kalitesi ---
 # BIST günlük fiyat limiti ±%10: bunu aşan günlük sıçrama düzeltilmemiş bedelsiz/bölünme şüphesi.
 PRICE_JUMP_LIMIT_PCT = 10.0
