@@ -95,7 +95,10 @@ yakalar, **geçersiz çağrı** olarak loglar. `build_evidence_bundle` `tools/`t
 Mock/gerçek geçişi: `settings.TOOL_BACKEND_OVERRIDES = {ToolName.X: "real"}`.
 
 ## 8. Güvenlik bariyerleri (özet)
-* Mock çıktılar eğitim verisine girmez: `data_version=snap_1900-01-01_v0` sentineli + `assert_not_mock()`.
+* **Eğitim verisine uygunluk** (CLAUDE.md kural 12): eğitim kaydına yalnızca `data_version = snap_<tarih>_v<N>` ve **N ≥ 2** olan zarflar girer
+  (`settings.MIN_TRAINING_SNAPSHOT_VERSION`). Mock (`snap_1900-01-01_v0`), v1 (ham kaynak) ve bozuk/eksik `data_version` reddedilir; sürüm
+  numarası sayısal karşılaştırılır (v10 > v2). Eğitim verisi üreten kod her zarf için `harness.mock_tools.assert_training_eligible(env)`
+  çağırır (`is_training_eligible` bool döndürür). `assert_not_mock()` yalnızca mock'u eler; eğitim için yetersizdir.
 * Canlı testte insan incelemesi `PENDING_HUMAN_REVIEW` kalır; `APPROVED` yalnızca isimli inceleyen + gerekçeyle açıkça kaydedilir.
 * Geçersiz çağrılar (`UNKNOWN_TOOL`, `HARNESS_ONLY_TOOL`, `TOOL_NOT_EXPOSED`, `MANDATORY_STATE_SKIPPED`, `STATE_ALREADY_PASSED`,
   `PRECONDITION_FAILED`, `AS_OF_*`, `INVALID_PARAMS`, `TICKER_UNDETERMINED`, `AS_OF_INVALID`) sayılır ve olay günlüğüne yazılır.

@@ -4,11 +4,13 @@
 çağrıya göre yeniden kurulur. Her çıktı `validate_envelope`'tan geçer.
 
 UYARI: Mock çıktılar uydurmadır. EĞİTİM VERİSİNE GİRMEMELİDİR. Koruma: mock zarfın
-`data_version` değeri `settings.MOCK_DATA_VERSION` sentinelidir; `assert_not_mock()` bunu reddeder.
+`data_version` değeri `settings.MOCK_DATA_VERSION` sentinelidir. Eğitim verisi üreten kod `assert_training_eligible()`
+çağırır: mock ve v1 reddedilir, yalnızca snap_*_v2 ve sonraki üretilmiş sürümler geçer (CLAUDE.md kural 12).
 Bilinen sınırlama: sonuç sabittir; `results` içindeki ticker vb. alanlar çağrıdakiyle uyuşmayabilir.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from harness import settings
@@ -18,7 +20,14 @@ from schemas.hashing import compute_input_hash
 from schemas.registry import validate_envelope, validate_params
 
 
-class MockDataError(ValueError):
+_DATA_VERSION_RE = re.compile(r"^snap_\d{4}-\d{2}-\d{2}_v(\d+)$")
+
+
+class TrainingEligibilityError(ValueError):
+    """Zarf eğitim verisine alınamaz (mock, v1 ya da bozuk/eksik data_version)."""
+
+
+class MockDataError(TrainingEligibilityError):
     """Mock (uydurma) veri, gerçek veri gereken bir yere girmeye çalıştı."""
 
 
@@ -27,11 +36,30 @@ def is_mock_envelope(env: dict[str, Any]) -> bool:
 
 
 def assert_not_mock(env: dict[str, Any]) -> None:
-    """Eğitim verisi üreten kod bunu çağırır; mock zarf ise MockDataError fırlatır."""
+    """Mock zarfı reddeder. Eğitim verisi için bunun yerine `assert_training_eligible` kullanılır (daha sıkı)."""
     if is_mock_envelope(env):
         raise MockDataError(
             f"{env.get('tool')}: mock zarf eğitim/değerlendirme verisine alınamaz "
             f"(data_version={settings.MOCK_DATA_VERSION})"
+        )
+
+
+def is_training_eligible(env: dict[str, Any]) -> bool:
+    """CLAUDE.md kural 12: yalnızca snap_<tarih>_v<N>, N >= MIN_TRAINING_SNAPSHOT_VERSION (v2 ve sonrası).
+
+    Mock (v0), v1 ve biçimi bozuk/eksik data_version False döner. Sürüm numarası SAYISAL karşılaştırılır (v10 > v2).
+    """
+    match = _DATA_VERSION_RE.match(str(env.get("data_version") or ""))
+    return bool(match) and not is_mock_envelope(env) and int(match.group(1)) >= settings.MIN_TRAINING_SNAPSHOT_VERSION
+
+
+def assert_training_eligible(env: dict[str, Any]) -> None:
+    """Eğitim verisi üreten kod her zarf için bunu çağırır; uygun değilse hata fırlatır."""
+    assert_not_mock(env)
+    if not is_training_eligible(env):
+        raise TrainingEligibilityError(
+            f"{env.get('tool')}: eğitim verisi yalnızca snap_*_v{settings.MIN_TRAINING_SNAPSHOT_VERSION} ve sonraki "
+            f"üretilmiş sürümlerden olabilir (data_version={env.get('data_version')!r})"
         )
 
 

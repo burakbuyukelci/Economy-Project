@@ -35,6 +35,8 @@ def backend_for(tool: ToolName) -> str:
 # Mock zarfların data_version'ı bu sabittir (şema desenine uyar, gerçek snapshot ile karışmaz).
 # Eğitim verisi üretimi `assert_not_mock()` ile bu işareti reddeder.
 MOCK_DATA_VERSION = "snap_1900-01-01_v0"
+# CLAUDE.md kural 12: eğitim verisi yalnızca snap_<tarih>_v<N> ile N >= bu değer olan sürümlerden (v1 ham kaynaktır).
+MIN_TRAINING_SNAPSHOT_VERSION = 2
 # schemas/examples.py fixture'larındaki en geç tarih; as_of bundan öncesiyse mock ERROR döner.
 MOCK_FIXTURE_LAST_DATE = date(2026, 9, 10)
 MOCK_AS_OF_ERROR_CODE = "MOCK_FIXTURE_AFTER_AS_OF"  # ToolError.code serbest metindir, şema değişmedi
