@@ -245,13 +245,16 @@ def _speech(res: dict[str, Any]) -> list[Candidate]:
 
 
 def _indicators(res: dict[str, Any]) -> list[Candidate]:
-    rows = res.get("rows") or []
-    if not rows:
+    """schemas 1.1.0: sayılar `latest.values`, kategoriler `latest.states` (as_of günündeki durum)."""
+    latest = res.get("latest")
+    if not latest:
         return []
-    last = rows[-1]
-    vals = [_v(k, v) for k, v in sorted((last.get("values") or {}).items())]
-    shown = ", ".join(f"{k} {_fmt(v)}" for k, v in sorted((last.get("values") or {}).items()))
-    return [Candidate(f"{res.get('ticker')} son satır göstergeleri: {shown}", _vals(*vals), False)]
+    numbers = {k: v for k, v in sorted((latest.get("values") or {}).items()) if v is not None}
+    states = {k: v for k, v in sorted((latest.get("states") or {}).items()) if v is not None}
+    shown = ", ".join([f"{k} {_fmt(v)}" for k, v in numbers.items()] + [f"{k} {v}" for k, v in states.items()])
+    vals = [_v("close", latest.get("close"))] + [_v(k, v) for k, v in numbers.items()] + [_v(k, v) for k, v in states.items()]
+    return [Candidate(f"{res.get('ticker')} son gün göstergeleri: kapanış {_fmt(latest.get('close'))}, {shown}",
+                      _vals(*vals), False)]
 
 
 def _support_resistance(res: dict[str, Any]) -> list[Candidate]:
