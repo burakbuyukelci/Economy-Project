@@ -176,6 +176,20 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
 - Yeniden indirme: `python -m scripts.download_prices` (aynı komut `--start`, `--analysis-start`, `--allow-partial`).
   Yahoo geçmişi sonradan düzeltebildiği için iki indirme birebir aynı olmayabilir; bu yüzden sürümler saklanır.
 
+### 11.7 Hangi sürüm ne için kullanılır
+| Sürüm | Rol | Kullanım |
+|---|---|---|
+| **`snap_2026-11-20_v2`** | **Güncel / varsayılan.** `data/snapshots/LATEST` bunu gösterir. | Tüm araçlar, harness, deneyler, backtest, raporlar ve **eğitim verisi üretimi (`training/`)**. |
+| `snap_2026-11-20_v1` | Ham Yahoo indirmesi; v2'nin kaynağı (izlenebilirlik). **Değişmez.** | Yalnızca (a) v2'yi yeniden üretmek ve (b) CCOLA'nın v1'de HARD_BLOCK'a düştüğünü gösteren / HARD-SOFT sınıflandırma testleri. |
+
+- Araçlar varsayılan olarak `LATEST`'i (yani v2'yi) okur; kodda sabit sürüm yoktur (`tests/test_real_snapshot.py`
+  bunu denetler). v1'i okumak için `SNAPSHOT_VERSION` ortam değişkeni veya `run_on(..., data_version=...)` gerekir; bu
+  yalnızca yukarıdaki testler içindir.
+- **Eğitim verisi yalnızca v2'den üretilir.** Her eğitim kaydı, kullandığı araç çıktılarındaki `data_version` değerini (v2)
+  taşımalı; üreteç v1 (veya v2 dışı) bir `data_version` görürse kaydı reddetmelidir. v1'den üretilmiş herhangi bir
+  analiz/eğitim çıktısı (ör. CCOLA'nın 2024-08-01'de −%90,75 düştüğü seri) **geçersiz** sayılır.
+- Yeni bir veri sürümü (v3…) gelirse `LATEST` güncellenir ve eğitim verisi yeni sürümden yeniden üretilmelidir.
+
 ## 12. Fiyat düzeltme katmanı (`snap_2026-11-20_v2`)
 
 ### 12.1 İlke

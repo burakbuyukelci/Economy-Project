@@ -54,6 +54,39 @@ def test_market_wide_threshold_boundary_is_inclusive_at_half():
     assert classify(four, ["TCK0"])[0].severity == DQSeverity.HARD
 
 
+def test_market_wide_share_config_default_is_half():
+    from config.settings import PRICE_JUMP_MARKET_WIDE_SHARE
+    assert PRICE_JUMP_MARKET_WIDE_SHARE == 0.5
+
+
+def test_market_wide_boundary_49_vs_50_percent_of_100_tickers():
+    """Sınır: 49/100 = %49 -> hisseye özgü (HARD); 50/100 = %50 -> piyasa geneli (SOFT)."""
+    s49 = make_stocks(n_tickers=100, jumps={(f"TCK{k}", 4): 1.2 for k in range(49)})
+    i49 = classify(s49, ["TCK0"])
+    assert len(i49) == 1 and i49[0].severity == DQSeverity.HARD
+    assert i49[0].code == DQCode.WRONG_TICKER_OR_BROKEN_HISTORY and "%49.0" in i49[0].message
+    assert gate_from_issues(i49) == GateStatus.HARD_BLOCK
+
+    s50 = make_stocks(n_tickers=100, jumps={(f"TCK{k}", 4): 1.2 for k in range(50)})
+    i50 = classify(s50, ["TCK0"])
+    assert len(i50) == 1 and i50[0].severity == DQSeverity.SOFT
+    assert i50[0].code == DQCode.PRICE_JUMP_OVER_LIMIT and "%50.0" in i50[0].message
+    assert gate_from_issues(i50) == GateStatus.PASS_WITH_WARNINGS
+
+
+def test_market_wide_boundary_also_applies_to_unflagged_ticker_share_counts_only_flagged():
+    # 100 hisseden 50'si sıçradı; sıçramayan hisse için rapor yok, sıçrayan için SOFT
+    s = make_stocks(n_tickers=100, jumps={(f"TCK{k}", 4): 1.2 for k in range(50)})
+    assert classify(s, ["TCK99"]) == []
+
+
+def test_market_wide_share_parameter_overrides_default():
+    s = make_stocks(n_tickers=10, jumps={(f"TCK{k}", 4): 1.2 for k in range(3)})  # %30
+    assert classify(s, ["TCK0"])[0].severity == DQSeverity.HARD                        # varsayılan %50
+    assert classify(s, ["TCK0"], market_wide_share=0.3)[0].severity == DQSeverity.SOFT  # tam %30 sınırı dahil
+    assert classify(s, ["TCK0"], market_wide_share=0.31)[0].severity == DQSeverity.HARD
+
+
 def test_tolerance_prevents_flag_on_limit_moves():
     s = make_stocks(jumps={("TCK1", 4): 1.10})  # tam +%10 (limit): bayrak yok
     assert classify(s, ["TCK1"]) == []

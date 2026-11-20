@@ -117,6 +117,36 @@ def test_determinism_on_real_data():
     assert a == b and a["input_hash"] == b["input_hash"]
 
 
+V1_RAW, V2_DEFAULT = "snap_2026-11-20_v1", "snap_2026-11-20_v2"
+
+
+def test_latest_points_to_v2_and_tools_default_to_v2():
+    assert (SNAPSHOT_DIR / "LATEST").read_text(encoding="utf-8").strip() == V2_DEFAULT
+    s = get_stock_history.run({"ticker": "THYAO", "start": "2026-09-08", "end": "2026-09-10", "as_of": AS_OF})
+    i = get_index_history.run({"index": "XU100", "start": "2026-09-08", "end": "2026-09-10", "as_of": AS_OF})
+    assert s["data_version"] == i["data_version"] == V2_DEFAULT
+    assert load_snapshot().data_version == V2_DEFAULT
+
+
+def test_no_snapshot_version_hardcoded_in_tools_or_config():
+    """Araçlar sürümü LATEST/SNAPSHOT_VERSION'dan alır; kodda sabit sürüm (özellikle ham v1) olmamalı."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    pat = re.compile(r"snap_\d{4}-\d{2}-\d{2}_v\d+")
+    hits = {str(p.relative_to(root)): pat.findall(p.read_text(encoding="utf-8"))
+            for folder in ("tools", "config") for p in (root / folder).rglob("*.py")
+            if pat.search(p.read_text(encoding="utf-8"))}
+    assert not hits, hits
+
+
+def test_v1_is_raw_source_only_v2_manifest_declares_it_as_derived_from():
+    import json
+    man = json.loads((SNAPSHOT_DIR / V2_DEFAULT / "manifest.json").read_text(encoding="utf-8"))
+    assert man["derived_from"]["data_version"] == V1_RAW
+    assert load_snapshot(V1_RAW).data_version != load_snapshot().data_version
+
+
 def test_hashed_text_files_are_lf_in_working_tree():
     """Manifest/LATEST/csv sha256'ları başka manifest'lere yazılıyor; her makinede aynı baytlar olmalı."""
     from config.settings import PRICE_CORRECTIONS_CSV
