@@ -150,3 +150,11 @@ def test_write_snapshot_refuses_to_overwrite_existing_version(tmp_path):
     write_snapshot(stocks, index, tmp_path, "snap_2026-11-20_v1", {})
     with pytest.raises(FileExistsError):
         write_snapshot(stocks, index, tmp_path, "snap_2026-11-20_v1", {})
+
+
+def test_write_snapshot_text_files_are_lf_only_on_every_platform(tmp_path):
+    stocks = normalize_frame(raw_yahoo(), "THYAO")
+    index = normalize_frame(raw_yahoo(), None)
+    v = write_snapshot(stocks, index, tmp_path, "snap_2026-11-20_v1", {})
+    for f in (tmp_path / v / "manifest.json", tmp_path / "LATEST"):
+        assert b"\r" not in f.read_bytes(), f"{f.name} CRLF içeriyor: manifest sha256'ları makineler arası tutmaz"

@@ -56,6 +56,11 @@ PRICE_JUMP_LIMIT_PCT = 10.0
 # Tick yuvarlaması ve düzeltme katsayısı yuvarlaması limitin hemen üstünde (ör. %10,0001) değer üretebilir.
 # Bayrak: |günlük adj_close getirisi| > PRICE_JUMP_LIMIT_PCT + PRICE_JUMP_TOLERANCE_PP.
 PRICE_JUMP_TOLERANCE_PP = 0.5
+# Sıçrama şiddeti: aynı gün evrenin en az bu oranında hisse sıçradıysa "piyasa geneli olay" (SOFT);
+# yoksa tek hisseye özgü -> olası düzeltilmemiş kurumsal işlem / bozuk geçmiş (HARD, WRONG_TICKER_OR_BROKEN_HISTORY).
+PRICE_JUMP_MARKET_WIDE_SHARE = 0.5
+# Fiyat düzeltme tablosu (docs/data_dictionary.md §12)
+PRICE_CORRECTIONS_CSV = CONFIG_DIR / "price_corrections.csv"
 # Birleşik işlem takvimi: bir gün, XU100'de VEYA hisselerin en az bu oranında veri varsa işlem günüdür.
 TRADING_DAY_MIN_STOCK_SHARE = 0.5
 

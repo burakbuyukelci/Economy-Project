@@ -1,3 +1,8 @@
 * text=auto
 *.parquet binary
 *.pdf binary
+
+# Hash'i (sha256) manifest'lere yazılan dosyalar her makinede AYNI baytlara sahip olmalı: checkout'ta CRLF'e çevrilmesin.
+config/price_corrections.csv text eol=lf
+data/snapshots/LATEST text eol=lf
+data/snapshots/**/manifest.json text eol=lf

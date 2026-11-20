@@ -30,6 +30,7 @@ from config.settings import (
     SNAPSHOT_DIR,
 )
 from config.universe import load_universe
+from tools.price_quality import price_jump_report  # noqa: F401  (tek tanım tools/price_quality.py'de)
 
 INDEX_SYMBOL = "XU100.IS"  # '^XU100' Yahoo'da yok (404); doğrulandı: XU100.IS çalışıyor.
 ISTANBUL = ZoneInfo("Europe/Istanbul")
@@ -110,33 +111,6 @@ def next_data_version(root: Path, today: date) -> str:
     return f"snap_{today.isoformat()}_v{n}"
 
 
-def price_jump_report(
-    df: pd.DataFrame, limit_pct: float = PRICE_JUMP_LIMIT_PCT, tolerance_pp: float = PRICE_JUMP_TOLERANCE_PP,
-) -> list[dict]:
-    """|günlük adj_close getirisi| > limit_pct + tolerance_pp olan günler.
-
-    Olası düzeltilmemiş bedelsiz/bölünme, uzun işlem durması sonrası açılış veya veri hatası. BIST günlük
-    limiti ±%10'dur. `adj_close` kullanılır: temettü günlerindeki ham `close` düşüşü (ör. ISMEN 2025-03-28)
-    düzeltilmiş seride görünmez; bölünme DÜZELTİLMEMİŞSE (ör. CCOLA 2024-08-01) görünür.
-    Her kayıtta önceki satırın tarihi ve takvim günü farkı vardır (çok günlük boşluk = işlem durması işareti).
-    """
-    out: list[dict] = []
-    for tk, g in (df.groupby("ticker") if "ticker" in df.columns else [("", df)]):
-        g = g.sort_values("date")
-        ret = (g["adj_close"].pct_change() * 100).round(6)
-        prev_adj = g["adj_close"].shift(1)
-        prev_date = g["date"].shift(1)
-        for i in g.index[ret.abs() > limit_pct + tolerance_pp]:
-            out.append({
-                "ticker": str(tk), "date": g.loc[i, "date"].date().isoformat(),
-                "return_pct": round(float(ret.loc[i]), 4),
-                "adj_close_prev": round(float(prev_adj.loc[i]), 6), "adj_close": round(float(g.loc[i, "adj_close"]), 6),
-                "prev_date": prev_date.loc[i].date().isoformat(),
-                "calendar_gap_days": int((g.loc[i, "date"] - prev_date.loc[i]).days),
-            })
-    return sorted(out, key=lambda r: (r["ticker"], r["date"]))
-
-
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -168,9 +142,11 @@ def write_snapshot(stocks: pd.DataFrame, index: pd.DataFrame, root: Path, data_v
         "per_ticker": {tk: _summary(g) for tk, g in stocks.groupby("ticker")},
         "index_summary": _summary(index),
     }
-    (d / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
-                                     encoding="utf-8")
-    (root / "LATEST").write_text(data_version + "\n", encoding="utf-8")
+    # LF'e sabit, bayt düzeyinde yaz: manifest'lerin sha256'sı başka manifest'lere yazılıyor (derived_from);
+    # Windows'ta write_text CRLF üretir ve hash makineler arasında tutmaz.
+    (d / "manifest.json").write_bytes(
+        (json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8"))
+    (root / "LATEST").write_bytes((data_version + "\n").encode("utf-8"))
     return data_version
 
 
