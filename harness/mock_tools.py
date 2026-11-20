@@ -1,0 +1,63 @@
+"""Sahte (mock) araçlar: gerçek araçlar bitene kadar harness'i uçtan uca denemek için.
+
+Çıktı = `schemas/examples.py` örnek zarfı; yalnızca params / as_of / data_version / input_hash
+çağrıya göre yeniden kurulur. Her çıktı `validate_envelope`'tan geçer.
+
+UYARI: Mock çıktılar uydurmadır. EĞİTİM VERİSİNE GİRMEMELİDİR. Koruma: mock zarfın
+`data_version` değeri `settings.MOCK_DATA_VERSION` sentinelidir; `assert_not_mock()` bunu reddeder.
+Bilinen sınırlama: sonuç sabittir; `results` içindeki ticker vb. alanlar çağrıdakiyle uyuşmayabilir.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from harness import settings
+from schemas.enums import ToolName, ToolStatus
+from schemas.examples import example_envelope
+from schemas.hashing import compute_input_hash
+from schemas.registry import validate_envelope, validate_params
+
+
+class MockDataError(ValueError):
+    """Mock (uydurma) veri, gerçek veri gereken bir yere girmeye çalıştı."""
+
+
+def is_mock_envelope(env: dict[str, Any]) -> bool:
+    return env.get("data_version") == settings.MOCK_DATA_VERSION
+
+
+def assert_not_mock(env: dict[str, Any]) -> None:
+    """Eğitim verisi üreten kod bunu çağırır; mock zarf ise MockDataError fırlatır."""
+    if is_mock_envelope(env):
+        raise MockDataError(
+            f"{env.get('tool')}: mock zarf eğitim/değerlendirme verisine alınamaz "
+            f"(data_version={settings.MOCK_DATA_VERSION})"
+        )
+
+
+def run_mock_tool(tool: ToolName | str, params: dict[str, Any]) -> dict[str, Any]:
+    """Şemaya uygun sahte zarf döndürür. Geçersiz params -> pydantic ValidationError."""
+    tool = ToolName(tool)
+    parsed = validate_params(tool, params)
+    norm_params = parsed.model_dump(mode="json")
+    as_of = norm_params["as_of"]
+
+    env = example_envelope(tool)  # derin kopya; çağıranın etkileyeceği paylaşılan durum yok
+    env["params"] = norm_params
+    env["as_of"] = as_of
+    env["data_version"] = settings.MOCK_DATA_VERSION
+    env["input_hash"] = compute_input_hash(tool.value, norm_params, settings.MOCK_DATA_VERSION)
+
+    # Fixture tarihleri 2026-09-10'a kadar: daha eski bir as_of için sızıntı üretmek yerine hata döndür.
+    if parsed.as_of < settings.MOCK_FIXTURE_LAST_DATE:  # type: ignore[attr-defined]
+        env.update({
+            "results": None, "n_events": None, "n_excluded_incomplete_horizon": 0, "warnings": [],
+            "status": ToolStatus.ERROR.value,
+            "error": {
+                "code": settings.MOCK_AS_OF_ERROR_CODE,
+                "message": (f"Mock fixture verisi {settings.MOCK_FIXTURE_LAST_DATE.isoformat()} tarihine kadar; "
+                            f"as_of={as_of} bundan önce"),
+            },
+        })
+    validate_envelope(env)  # mock bile sözleşmeyi bozamaz
+    return env
