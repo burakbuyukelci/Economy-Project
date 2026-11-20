@@ -72,7 +72,7 @@ STATE_TOOLS: dict[State, frozenset[T]] = {
     S.BUILD_EVIDENCE: frozenset({T.BUILD_EVIDENCE_BUNDLE}),
     S.PREVIEW_STRATEGIES: frozenset(),
     S.RUN_BACKTEST: frozenset({T.RUN_BACKTEST}),
-    S.RISK_GATE: frozenset({T.CHECK_DATA_QUALITY}),
+    S.RISK_GATE: frozenset({T.CHECK_DATA_QUALITY, T.BUILD_EVIDENCE_BUNDLE}),  # aşama 2: backtest kanıtı + kapı
     S.GENERATE_EXPLANATION: frozenset(),
     S.HUMAN_REVIEW: frozenset(),
     S.LOG_AND_CLOSE: frozenset(),
@@ -110,6 +110,14 @@ GATE_STATES: frozenset[State] = frozenset({S.CHECK_DATA_QUALITY, S.RISK_GATE})
 # §26 güvenli hata yolu: bu kapı sonuçlarında doğrudan GENERATE_EXPLANATION'a (eylem ANALYSIS_UNSAFE) git.
 SAFE_FAILURE_GATES: frozenset[str] = frozenset({GateStatus.HARD_BLOCK.value, GateStatus.ANALYSIS_UNSAFE.value})
 
+# Harness'in KENDİSİ çalıştırdığı adımlar (profil D/E: auto_gates). Durum -> sırayla çağrılacak araçlar.
+# RISK_GATE'te önce aşama-2 kanıt paketi (backtest kanıtı eklenir), sonra son kalite kapısı çalışır.
+AUTO_STEPS: dict[State, tuple[T, ...]] = {
+    S.CHECK_DATA_QUALITY: (T.CHECK_DATA_QUALITY,),
+    S.BUILD_EVIDENCE: (T.BUILD_EVIDENCE_BUNDLE,),
+    S.RISK_GATE: (T.BUILD_EVIDENCE_BUNDLE, T.CHECK_DATA_QUALITY),
+}
+
 # LLM'in araç çağıramadığı (açıklama/inceleme/kapanış) aşama.
 POST_ANALYSIS_STATES: frozenset[State] = frozenset({S.GENERATE_EXPLANATION, S.HUMAN_REVIEW, S.LOG_AND_CLOSE})
 
@@ -129,6 +137,12 @@ class Routing:
     gate_states: frozenset[State] = GATE_STATES
     safe_failure_gates: frozenset[str] = SAFE_FAILURE_GATES
     post_analysis: frozenset[State] = POST_ANALYSIS_STATES
+    # Boşsa kapıları model çağırır (manuel). Doluysa harness çalıştırır ve bu araçlar modele KAPALIDIR.
+    auto_steps: dict[State, tuple[T, ...]] = field(default_factory=dict)
+
+    @property
+    def auto_states(self) -> frozenset[State]:
+        return frozenset(self.auto_steps)
 
 
 DEFAULT_ROUTING = Routing()

@@ -3,13 +3,18 @@
 Fikir: LLM yalnızca ALAN araçlarını çağırır; durum geçişlerini HARNESS yapar.
   1. Model bir araç çağırır -> `check(tool)`: bu araç hangi durumda çalışır, o duruma gidilebilir mi?
      Aracın izinli olduğu durumlardan, şimdiki durumdan SONRA gelen ilki hedef durumdur.
-     Araya giren durumlardan ZORUNLU ve henüz yerine getirilmemiş olan varsa çağrı INVALID.
+     Araya giren durumlardan ZORUNLU ve henüz yerine getirilmemiş olan varsa:
+       * manuel durumsa çağrı INVALID (MANDATORY_STATE_SKIPPED),
+       * harness'in kendi çalıştıracağı (auto) durumsa `Decision.auto_before` içinde listelenir; oturum
+         önce o adımları çalıştırır, sonra modelin çağrısını.
   2. Araç çalışır -> `commit(tool, envelope)`: harness hedef duruma geçer; durumun zorunlu aracı
      başarıyla çağrılmışsa otomatik bir sonraki duruma ilerler.
   3. Zorunlu durumlar tablodan (routing.py) ve modelin BAŞARIYLA çağırdığı araçlardan türetilir.
   4. check_data_quality sonucu HARD_BLOCK/ANALYSIS_UNSAFE ise doğrudan GENERATE_EXPLANATION
      (§26 güvenli hata yolu); eylem yalnızca ANALYSIS_UNSAFE olabilir.
   5. Geçersiz çağrılar sayılır ve EventLog'a yazılır (deney metriği: invalid tool-call rate).
+  6. Sıra sertliği: strict = geçilmiş duruma dönüş reddedilir; lenient = çalışır, durum geri gitmez.
+     İki modda da ORDER_VIOLATION olayı yazılır ve `n_order_violations` artar.
 """
 from __future__ import annotations
 
@@ -36,12 +41,19 @@ class Decision:
     target: State | None = None
     code: str | None = None
     message: str | None = None
+    auto_before: tuple[State, ...] = ()  # çağrıdan ÖNCE harness'in çalıştıracağı zorunlu durumlar
+    order_violation: bool = False        # geçilmiş bir duruma dönüş (strict: reddedildi, lenient: izin verildi)
 
 
 class StateMachine:
-    def __init__(self, log: EventLog | None = None, routing: Routing = DEFAULT_ROUTING) -> None:
+    def __init__(self, log: EventLog | None = None, routing: Routing = DEFAULT_ROUTING, *,
+                 order_mode: str = "strict", enforce: bool = True) -> None:
+        if order_mode not in ("strict", "lenient"):
+            raise ValueError(f"order_mode 'strict' veya 'lenient' olmalı: {order_mode!r}")
         self.log = log if log is not None else EventLog()
         self.routing = routing
+        self.order_mode = order_mode
+        self.enforce = enforce  # False: yalnızca bilgi amaçlı (profil A/B), sıra ve zorunluluk denetlenmez
         self._index = {s: i for i, s in enumerate(routing.order)}
         self.state: State = State.START
         self.completed: set[State] = set()
@@ -51,6 +63,7 @@ class StateMachine:
         self.explanation: str | None = None
         self.review_status = ReviewStatus.PENDING_HUMAN_REVIEW
         self.n_invalid_calls = 0
+        self.n_order_violations = 0
 
     # ---- başlangıç --------------------------------------------------------
     def begin(self) -> None:
@@ -78,10 +91,14 @@ class StateMachine:
         )
 
     def pending_mandatory(self) -> list[State]:
-        """Açıklamadan önce henüz yerine getirilmemiş zorunlu durumlar (sıralı)."""
+        """Açıklamadan önce henüz yerine getirilmemiş zorunlu durumlar (sıralı; auto olanlar dahil)."""
         if self.safe_failure:
             return []  # güvenli hata yolu: kalan analiz adımları aranmaz
         return [s for s in self.routing.order if self._unmet(s)]
+
+    def has_evidence_source(self) -> bool:
+        """Kanıt paketi için en az bir BAŞARILI analiz çağrısı var mı?"""
+        return any(s in self.routing.evidence_sources for _, s in self.ok_calls)
 
     # ---- çağrı denetimi (saf, durum DEĞİŞTİRMEZ) -------------------------------
     def check(self, tool: ToolName) -> Decision:
@@ -93,6 +110,8 @@ class StateMachine:
         if self.state in r.post_analysis:
             return Decision(False, code="NO_TOOLS_IN_STATE",
                             message=f"{self.state.value} aşamasında araç çağrılamaz; açıklama yazılmalı")
+        if not self.enforce:
+            return Decision(True)
 
         tool_states = [s for s in r.order if tool in r.state_tools[s]]
         if not tool_states:
@@ -100,21 +119,30 @@ class StateMachine:
 
         current = self._index[self.state]
         candidates = [s for s in tool_states if self._index[s] >= current]
-        if not candidates:
-            return Decision(False, code="STATE_ALREADY_PASSED",
-                            message=f"{tool.value} için uygun durum geçildi (şimdiki durum {self.state.value})")
-        target = candidates[0]
+        order_violation = False
+        if candidates:
+            target = candidates[0]
+        else:
+            order_violation = True
+            if self.order_mode == "strict":
+                return Decision(False, code="STATE_ALREADY_PASSED", order_violation=True,
+                                message=f"{tool.value} için uygun durum geçildi (şimdiki durum {self.state.value})")
+            target = tool_states[-1]  # lenient: en son uygun durum; durum geri gitmez
 
-        skipped = [s for s in r.order[current:self._index[target]] if self._unmet(s)]
+        skipped: list[State] = []
+        auto_before: list[State] = []
+        for s in r.order[current:self._index[target]]:
+            if self._unmet(s):
+                (auto_before if s in r.auto_states else skipped).append(s)
         if skipped:
             names = ", ".join(s.value for s in skipped)
-            return Decision(False, code="MANDATORY_STATE_SKIPPED",
+            return Decision(False, code="MANDATORY_STATE_SKIPPED", order_violation=order_violation,
                             message=f"{tool.value} çağrılmadan önce zorunlu durum(lar) tamamlanmalı: {names}")
 
-        if target == State.BUILD_EVIDENCE and not any(s in r.evidence_sources for _, s in self.ok_calls):
-            return Decision(False, code="PRECONDITION_FAILED",
+        if (target == State.BUILD_EVIDENCE or State.BUILD_EVIDENCE in auto_before) and not self.has_evidence_source():
+            return Decision(False, code="PRECONDITION_FAILED", order_violation=order_violation,
                             message="kanıt paketi için önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)")
-        return Decision(True, target=target)
+        return Decision(True, target=target, auto_before=tuple(auto_before), order_violation=order_violation)
 
     def callable_tools(self) -> list[ToolName]:
         """Şu anda geçerli olacak araçlar (model için ipucu; get_state çıktısında da var)."""
@@ -125,18 +153,30 @@ class StateMachine:
         d = self.check(tool)
         if not d.allowed:
             raise HarnessRuleViolation(d.code or "INVALID", d.message or "")
+        if d.auto_before:
+            raise HarnessRuleViolation("AUTO_STEP_PENDING",
+                                       "önce harness adımları çalıştırılmalı: " + ", ".join(s.value for s in d.auto_before))
+        ok = envelope.get("status") == "OK"
+        if not self.enforce:
+            if ok:
+                self.ok_calls.append((tool, self.state))
+            return
         target = d.target
         assert target is not None
         r = self.routing
+        backward = self._index[target] < self._index[self.state]
+        if d.order_violation:  # lenient: çağrı çalıştı ama sıra ihlali
+            self._order_violation(tool, enforced=False)
 
-        # araya giren araçsız durumlar (ör. PREVIEW_STRATEGIES) sessizce geçilir
-        for s in r.order[self._index[self.state]:self._index[target]]:
-            if not r.state_tools[s]:
-                self.completed.add(s)
-        if target != self.state:
-            self._transition(target, f"tool_call:{tool.value}")
+        if not backward:
+            # araya giren araçsız durumlar (ör. PREVIEW_STRATEGIES) sessizce geçilir
+            for s in r.order[self._index[self.state]:self._index[target]]:
+                if not r.state_tools[s]:
+                    self.completed.add(s)
+            if target != self.state:
+                self._transition(target, f"tool_call:{tool.value}")
 
-        if envelope.get("status") != "OK":
+        if not ok:
             return  # başarısız çağrı ne durumu tamamlar ne de zorunluluk tetikler
         self.ok_calls.append((tool, target))
         if r.satisfied_by.get(target) == tool:
@@ -151,7 +191,7 @@ class StateMachine:
                 self._transition(State.GENERATE_EXPLANATION, f"safe_failure:{gate}")
                 return
 
-        if target in r.auto_advance and target in self.completed:
+        if not backward and target in r.auto_advance and target in self.completed:
             self._transition(r.order[self._index[target] + 1], "auto_advance")
 
     # ---- geçersiz çağrı kaydı -------------------------------------------------------
@@ -159,18 +199,48 @@ class StateMachine:
         self.n_invalid_calls += 1
         name = tool.value if isinstance(tool, ToolName) else tool
         self.log.append("INVALID_TOOL_CALL", tool=name, state=self.state.value, code=code, message=message)
+        if code == "STATE_ALREADY_PASSED":
+            self._order_violation(name, enforced=True)
+
+    def _order_violation(self, tool: ToolName | str | None, *, enforced: bool) -> None:
+        self.n_order_violations += 1
+        name = tool.value if isinstance(tool, ToolName) else tool
+        self.log.append("ORDER_VIOLATION", tool=name, state=self.state.value, enforced=enforced,
+                        mode=self.order_mode)
 
     # ---- açıklama / insan incelemesi / kapanış (orkestratör tarafı) -----------------
     def request_explanation(self) -> Decision:
-        """Model açıklama yazmak istiyor: zorunlu durumlar tamamlandı mı?"""
+        """Model açıklama yazmak istiyor. Saf karar: zorunlu MANUEL durumlar tamam mı, harness'in
+        çalıştıracağı adımlar (auto_before) neler? Geçiş için `begin_explanation()` çağrılır."""
         if self.state == State.GENERATE_EXPLANATION:
             return Decision(True, target=State.GENERATE_EXPLANATION)
-        pending = self.pending_mandatory()
-        if self.state in self.routing.post_analysis or not pending:
+        if self.state in self.routing.post_analysis:
             return Decision(False, code="EXPLANATION_NOT_ALLOWED", message=f"şimdiki durum {self.state.value}")
-        msg = "açıklamadan önce zorunlu durum(lar) tamamlanmalı: " + ", ".join(s.value for s in pending)
-        self.reject(None, "MANDATORY_STATE_NOT_REACHED", msg)
-        return Decision(False, code="MANDATORY_STATE_NOT_REACHED", message=msg)
+        if not self.enforce:
+            return Decision(True, target=State.GENERATE_EXPLANATION)
+        pending = self.pending_mandatory()
+        manual = [s for s in pending if s not in self.routing.auto_states]
+        auto = [s for s in pending if s in self.routing.auto_states]
+        if manual:
+            msg = "açıklamadan önce zorunlu durum(lar) tamamlanmalı: " + ", ".join(s.value for s in manual)
+            self.reject(None, "MANDATORY_STATE_NOT_REACHED", msg)
+            return Decision(False, code="MANDATORY_STATE_NOT_REACHED", message=msg)
+        if auto and not self.has_evidence_source():
+            msg = "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+            self.reject(None, "PRECONDITION_FAILED", msg)
+            return Decision(False, code="PRECONDITION_FAILED", message=msg)
+        return Decision(True, target=State.GENERATE_EXPLANATION, auto_before=tuple(auto))
+
+    def begin_explanation(self) -> None:
+        """Zorunlu adımlar (auto olanlar dahil) bittikten sonra GENERATE_EXPLANATION'a geç."""
+        d = self.request_explanation()
+        if not d.allowed:
+            raise HarnessRuleViolation(d.code or "EXPLANATION_NOT_ALLOWED", d.message or "")
+        if d.auto_before:
+            raise HarnessRuleViolation("AUTO_STEP_PENDING",
+                                       "önce harness adımları çalıştırılmalı: " + ", ".join(s.value for s in d.auto_before))
+        if self.state != State.GENERATE_EXPLANATION:
+            self._transition(State.GENERATE_EXPLANATION, "explanation_requested")
 
     def complete_explanation(self, action: AllowedAction, text: str) -> None:
         if self.state != State.GENERATE_EXPLANATION:
@@ -203,7 +273,8 @@ class StateMachine:
             self._violation("CLOSE_NOT_ALLOWED", f"şimdiki durum {self.state.value}")
         self._transition(State.LOG_AND_CLOSE, "close")
         self.log.append("SESSION_CLOSED", review_status=self.review_status.value,
-                        action=self.action.value if self.action else None, n_invalid_calls=self.n_invalid_calls)
+                        action=self.action.value if self.action else None, n_invalid_calls=self.n_invalid_calls,
+                        n_order_violations=self.n_order_violations)
 
     # ---- salt-okunur görünüm (LLM'e AÇILMAZ; harness-içi) ------------------------------
     def snapshot(self) -> dict[str, Any]:
@@ -215,6 +286,8 @@ class StateMachine:
             "safe_failure": self.safe_failure,
             "review_status": self.review_status.value,
             "n_invalid_calls": self.n_invalid_calls,
+            "n_order_violations": self.n_order_violations,
+            "order_mode": self.order_mode,
         }
 
     # ---- iç yardımcılar -------------------------------------------------------------------

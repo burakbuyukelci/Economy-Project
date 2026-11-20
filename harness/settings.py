@@ -59,3 +59,26 @@ def default_as_of() -> date | None:
         except AsOfError as exc:
             raise AsOfError(f"{DEFAULT_AS_OF_ENV}={raw!r}: {exc}") from exc
     return DEFAULT_AS_OF
+
+# --- Deney aşaması ve durum sırası sertliği ------------------------------------------------
+# Aşama (A-E) profili harness/profiles.py'de tablo olarak durur; burada yalnızca seçilir.
+EXPERIMENT_STAGE = "D"
+EXPERIMENT_STAGE_ENV = "HARNESS_STAGE"
+
+# "strict": geçilmiş bir duruma ait araç çağrısı REDDEDİLİR (invalid call).
+# "lenient": aynı çağrı ÇALIŞIR, durum geri gitmez. Her iki modda ORDER_VIOLATION olayı loglanır.
+# Zorunlu adım atlama, as_of ve şema hataları iki modda da SERTTİR.
+STATE_ORDER_MODE = "strict"
+STATE_ORDER_MODE_ENV = "HARNESS_ORDER_MODE"
+_ORDER_MODES = ("strict", "lenient")
+
+
+def experiment_stage() -> str:
+    return os.environ.get(EXPERIMENT_STAGE_ENV, "").strip().upper() or EXPERIMENT_STAGE
+
+
+def state_order_mode() -> str:
+    mode = os.environ.get(STATE_ORDER_MODE_ENV, "").strip().lower() or STATE_ORDER_MODE
+    if mode not in _ORDER_MODES:
+        raise ValueError(f"STATE_ORDER_MODE {mode!r} geçersiz; geçerli: {_ORDER_MODES}")
+    return mode
