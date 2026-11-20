@@ -1,6 +1,7 @@
 # Veri sözlüğü ve tanımlar
 
-> Durum: Bölüm 1-10 sözleşmeyle (schemas v1.0.0), Bölüm 11 fiyat verisi indirmesiyle (`snap_2026-11-20_v1`) yazıldı.
+> Durum: Bölüm 1-10 sözleşmeyle (schemas v1.0.0), Bölüm 11 fiyat verisi indirmesiyle (`snap_2026-11-20_v1`), Bölüm 12
+> düzeltme katmanıyla (`snap_2026-11-20_v2`, güncel/varsayılan sürüm) yazıldı.
 > Temel/makro/haber veri setleri eklendikçe yeni bölümler gelecek.
 
 ## 1. Tarih ve `as_of` kuralı
@@ -107,7 +108,9 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
   (KAMA, Ichimoku 52 gün, Supertrend, 200 günlük SMA) analiz penceresinden önce veri ister. **Analiz penceresi**
   ayrı bir parametredir (`analysis_start`, varsayılan **2024-01-01**, `config/settings.py::ANALYSIS_START_DEFAULT`).
   Ufku dolmamış/`as_of` kuralı her zaman geçerlidir; örnek test `as_of = 2026-09-10`.
-- **Boyut:** 29.139 hisse satırı (hisse başına 971–972) + 969 XU100 satırı. Snapshot: `snap_2026-11-20_v1`.
+- **Boyut:** 29.139 hisse satırı (hisse başına 971–972) + 969 XU100 satırı. Ham Yahoo indirmesi: `snap_2026-11-20_v1`
+  (değişmez). **Güncel/varsayılan sürüm `snap_2026-11-20_v2`**: v1'den, tek bir belgeli düzeltmeyle (CCOLA, §12) türetildi;
+  satır sayıları ve diğer tüm hisseler v1 ile birebir aynıdır.
 
 ### 11.2 Sütunlar (`stocks.parquet`; `index.parquet` aynı, `ticker` yok)
 `ticker, date, open, high, low, close, adj_close, volume, dividends, stock_splits`. `date` saat dilimsiz düz tarih
@@ -146,24 +149,72 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
   AKBNK 2023-03-30: −%10,46 / −%1,30) bayraklanmaz.
 - Bayraklar `manifest.json > price_jump_report` içindedir; `get_stock_history/get_index_history` aralıktaki
   (≤ as_of) bayrakları `PRICE_JUMP_OVER_LIMIT` uyarısı olarak döndürür; `check_data_quality` aynı kuralı uygular.
-- **Bu indirmede 31 bayrak:**
+- **Şiddet (HARD / SOFT)** — `tools/price_quality.py::classify_price_jumps`: aynı gün, o gün verisi olan hisselerin
+  **≥ %50'si** sıçradıysa **piyasa geneli olay → SOFT** (`PRICE_JUMP_OVER_LIMIT`, tek başına HARD_BLOCK yapmaz); aksi halde
+  **hisseye özgü → HARD** (`WRONG_TICKER_OR_BROKEN_HISTORY`, olası düzeltilmemiş bedelsiz/bölünme) ve kapı **HARD_BLOCK**
+  olur (`gate_from_issues`). Eşik `PRICE_JUMP_MARKET_WIDE_SHARE` (config). Veri önce `as_of` ile kesilir.
+  (Tam `check_data_quality` aracı henüz yazılmadı; bu sınıflandırma onun fiyat bölümüdür.)
+- **`snap_2026-11-20_v1` (ham Yahoo) üzerinde 31 bayrak:**
   1. **2023-02-15 (30 hisse, +%11,43 … +%22,17):** hepsinde önceki satır **2023-02-08** (7 günlük takvim boşluğu).
-     6 Şubat 2023 depremi sonrası işlem durmasıyla uyumlu; nedeni bağımsız doğrulanmadı. Analiz penceresinin
-     (2024-01-01) **öncesinde**, yalnızca ısınma verisinde.
-  2. **CCOLA 2024-08-01: −%90,75** (846,00 → 78,27 ham). **`adj_close` da düzeltilmemiş** (düzeltme faktörü bu tarihte
-     değişmiyor). Gözlem: Yahoo'nun bölünme kaydı `stock_splits = 11` **2024-08-13** tarihli, oysa fiyat düşüşü
-     **2024-08-01**'de ve geçmiş fiyatlar düzeltilmemiş. Olası bedelsiz sermaye artırımı; nedeni bağımsız
-     doğrulanmadı. **Analiz penceresinin içinde.** CCOLA'nın 2024-08-01 öncesi getiri/indikatörleri bu haliyle
-     **güvenilmezdir**; **otomatik düzeltme yapılmadı** (insan kararı bekliyor).
+     6 Şubat 2023 depremi sonrası işlem durmasıyla uyumlu; nedeni bağımsız doğrulanmadı. Piyasa geneli (30/30) → **SOFT**.
+     Analiz penceresinin (2024-01-01) **öncesinde**, yalnızca ısınma verisinde. v2'de de aynen durur (düzeltilmez).
+  2. **CCOLA 2024-08-01: −%90,75** (846,00 → 78,27 ham) → **HARD_BLOCK** (v1'de). `adj_close` da düzeltilmemişti. Neden ve
+     düzeltme: **§12**. v1'de bu hâliyle kalır (testle sabit); **v2'de düzeltilmiştir**.
+- **`snap_2026-11-20_v2` üzerinde 30 bayrak:** hepsi 2023-02-15 (SOFT); **analiz penceresinde (2024-01-01 →) hiç bayrak yok**.
 - Ham veride bölünme düzeltmesi başarılı olan örnekler: ASELS 2023-08-25, FROTO 2025-05-07, EREGL 2024-11-27 vb.
-  (bayrak yok).
+  (bayrak yok). 18 `stock_splits > 0` olayının tamamı §12.3'te kontrol edildi.
 
 ### 11.6 Snapshot sürümleme ve okuma
 - `data/snapshots/<data_version>/{stocks.parquet, index.parquet, manifest.json}`; `data_version = snap_YYYY-MM-DD_vN`
   (aynı gün için N artar). **Mevcut sürümün üzerine yazılmaz**; yeni indirme yeni sürümdür.
-- `data/snapshots/LATEST` güncel sürümü gösterir; `SNAPSHOT_VERSION` ortam değişkeni bunu ezer. `manifest.json`
+- `data/snapshots/LATEST` güncel sürümü gösterir (**şu an `snap_2026-11-20_v2`**); `SNAPSHOT_VERSION` ortam değişkeni bunu ezer.
+  `LATEST`, `config/price_corrections.csv` ve `manifest.json` dosyalarının sha256'sı başka manifest'lere yazıldığı için
+  `.gitattributes` ile `eol=lf` sabitlenmiştir (Windows'ta CRLF'e çevrilmesin). `manifest.json`
   kaynak, sürüm, dosya sha256'ları, hisse başına satır/tarih aralığı, fiyat politikası ve sıçrama raporunu taşır.
 - Araçlar yalnızca bu dosyaları okur; **ağ kullanmaz** (`tests/test_no_network_in_tools.py` bunu denetler).
   `data_version` her araç çıktısında ve `input_hash` içinde yer alır.
 - Yeniden indirme: `python -m scripts.download_prices` (aynı komut `--start`, `--analysis-start`, `--allow-partial`).
   Yahoo geçmişi sonradan düzeltebildiği için iki indirme birebir aynı olmayabilir; bu yüzden sürümler saklanır.
+
+## 12. Fiyat düzeltme katmanı (`snap_2026-11-20_v2`)
+
+### 12.1 İlke
+Ham veri (v1) **asla değiştirilmez**. Düzeltme, `config/price_corrections.csv` tablosundan, **yeni bir sürüm olarak**
+üretilir: `v2 = f(v1, csv)` (`python -m scripts.apply_price_corrections --src snap_2026-11-20_v1`). Betik deterministiktir
+(duvar saati yok, rastgelelik yok; iki çalıştırma aynı parquet baytlarını ve aynı manifest'i üretir), kaynak v1'in
+sha256'sını doğrular ve var olan sürümün üzerine yazmaz. Her kural için **belgeli bir kaynak** (`source`) zorunludur.
+
+### 12.2 csv biçimi ve uygulama
+`ticker, date_from, date_to, price_divisor, volume_multiplier, source` (tarih aralığı dahil; boş = sınırsız). Aralıktaki satırlarda
+`open, high, low, close, adj_close, dividends` ÷ `price_divisor`, `volume` × `volume_multiplier`; `stock_splits` (Yahoo kaydı)
+dokunulmaz. Çakışan kural, bilinmeyen ticker, ≤ 0 çarpan ve hiç satır etkilemeyen kural **hatadır**.
+Manifest'e yazılanlar: `corrections_applied` (kural, etkilenen satır sayısı), `corrections_csv.sha256`,
+`derived_from` (v1'in `manifest/stocks/index` sha256'ları), yeniden üretilmiş `price_jump_report`.
+
+### 12.3 Tek kural: CCOLA
+`CCOLA, date_to=2024-07-31, price_divisor=11, volume_multiplier=11, source=KAP bildirim 1323127` (392 satır etkilenir).
+- **Kaynak:** yalnızca KAP bildirim 1323127: %1000 bedelsiz, sermaye 254.370.782 → 2.798.078.602 TL (tam 11 kat), bedelsiz pay
+  alma hakkı 13.08.2024.
+- **Veride gözlem (v1):** tek seviye değişimi 2024-07-31 → 2024-08-01 (close 846,00 → 78,27; hacim 691.171 → 3.966.028).
+  08-01..08-12 arası 8 satır, fiyat ve hacimde 08-13 sonrasıyla **aynı ölçekte** (medyan close 70,50 vs 61,80; medyan hacim
+  6,93 M vs 6,68 M; ≤ 07-31 medyanı 879,25 ve 0,58 M). 08-13'te ek sıçrama yok (+%0,31). Yani Yahoo serisindeki ölçek sınırı
+  KAP'taki hak tarihinden 12 gün erken (08-01). 846/11 = 76,91, 08-01 kapanışı 78,27 (+%1,77, olağan günlük hareket).
+- **Önemli sınırlama: 2024-08-01 … 2024-08-12 satırlarının GERÇEK ham (düzeltilmemiş) fiyatı hiçbir modda yoktur.**
+  KAP'taki hak tarihine göre o günlerde işlem gören ham fiyat bedelsiz öncesi düzeydeydi (yaklaşık 11 kat yüksek), ama
+  Yahoo bu satırları zaten bölünme-sonrası ölçekte verir ve düzeltme bunları değiştirmez. Bu yüzden CCOLA için `adjusted` **ve**
+  `unadjusted` modların ikisi de o 8 günde (ve v2'de 2024-07-31 ve öncesinde) bölünme-düzeltilmiş fiyatı döndürür; gerçek
+  işlem fiyatı değildir. Analiz bu seriyi **bölünme-düzeltilmiş getiri** serisi olarak kullanır.
+- **Sınıflandırma:** v1'de CCOLA hisseye özgü sıçramayla **HARD_BLOCK**'a düşer (test: `tests/test_price_corrections.py`); v2'de
+  analiz penceresinde bayrak yoktur ve kapı PASS'tir.
+
+### 12.4 Bölünme (`stock_splits > 0`) süreklilik kontrolü: 30 hissenin 18 olayı
+Her olay için: bölünme tarihinden önceki/sonraki 10 satırın medyan fiyat ve hacim oranı ve ±20 gün içindeki en büyük
+|`adj_close` günlük getirisi (`tests/test_price_corrections.py::test_split_events_price_and_volume_continuity_in_v2`).
+- **Fiyat:** 18 olayın 16'sında süreksizlik yok (medyan oranı 0,91–1,30; ±20 günde en büyük hareket ≤ %10). İstisnalar:
+  **CCOLA** (v1'de −%90,75; v2'de düzeldi) ve **TRALT 2023-02-17** (bölünme 21:1 sürekli: medyan oranı 0,998; ±20 günde
+  görülen +%19,74, bölünmeyle değil 2023-02-15 işlem durması sonrası açılışla ilgili).
+- **Hacim:** düzeltilmemiş hacim izi yok (bölünme faktörü ≥ 3 olan hiçbir olayda sonra/önce hacim oranı faktörün yarısını aşmıyor;
+  tüm oranlar 0,55–1,91, medyan 1,03). Hacim, Yahoo'da bölünmeye göre düzeltilmiş gelir.
+- **Yahoo `stock_splits` tarihleri güvenilir değildir:** CCOLA'da kayıt (08-13) ile fiyat ölçeği değişimi (08-01) arasında 12 gün
+  fark vardı. Tarih eşleşmesi için bu alana değil sıçrama raporuna ve KAP'a güvenin. Yeni bir bayrak çıkarsa kural
+  eklemeden önce KAP'tan doğrulayın.
