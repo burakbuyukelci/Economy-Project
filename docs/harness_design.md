@@ -103,7 +103,48 @@ Mock/gerçek geçişi: `settings.TOOL_BACKEND_OVERRIDES = {ToolName.X: "real"}`.
 * Geçersiz çağrılar (`UNKNOWN_TOOL`, `HARNESS_ONLY_TOOL`, `TOOL_NOT_EXPOSED`, `MANDATORY_STATE_SKIPPED`, `STATE_ALREADY_PASSED`,
   `PRECONDITION_FAILED`, `AS_OF_*`, `INVALID_PARAMS`, `TICKER_UNDETERMINED`, `AS_OF_INVALID`) sayılır ve olay günlüğüne yazılır.
 
-## 9. Açık noktalar
+## 9. Sayı doğrulayıcı (`harness/number_verifier.py`) ve eylem koruması (`harness/action_guard.py`)
+İkisi de **saf fonksiyon**dur (oturum/MCP bağımlılığı yok); oturuma bağlama (`complete_explanation` öncesi çağrı, yeniden deneme) sonraki iştir.
+`verify_session(session, metin)` yalnızca ince bir yardımcıdır.
+
+### 9.1 Sayı doğrulayıcı
+Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
+* **Sayı sayılmayanlar** (maskelenir): tanımlayıcılar (`XU100`, `2025Q1`, `BB_LOWER_20_2.0`, `RSI_14`, `E7`, `snap_..._v2`, `kap-0001`), URL, saat,
+  `[1]` dipnotu, satır başı liste numarası (`1)`, `2.`), `2. çeyrek` gibi sıra sayısı, hash.
+* **Biçimler:** `1.234,56`, `8,5`, `8.5`, `1,234.56`, `%8,5`, `8,5%`, `yüzde 8,5`, `8,5 puan/pp`, `38,4 milyon` (ölçek: bin/milyon/milyar/trilyon),
+  tarihler (`10.09.2026`, `2026-09-10`, `10 Eylül 2026`; geçersiz tarih halüsinasyondur). `1.234` belirsizdir (1234 ya da 1,234): **iki aday**, biri eşleşirse yeter.
+* **Sınıflar:** `ALLOWLISTED` (soruda ya da herhangi bir araç çağrısı parametresinde AYNEN var; iddia sayılmaz, paydaya girmez) →
+  `HALLUCINATION` (hiçbir araç çıktısında yok; hocanın metriği) → `UNEVIDENCED` (araç çıktısında var, kilitli `committed_evidence_set`'te yok; yumuşak uyarı) → `SUPPORTED`.
+  Kanıt kümesi verilmezse (`None`; A–C aşamaları, kilit yok) ikinci seviye kapalıdır.
+* **Metrikler:** `numerical_hallucination_rate = n_hallucinated / n_claims`; `unevidenced_rate` ayrı. `n_claims` izin listesindekileri içermez.
+  Eşleşme sayaçları: `n_exact`, `n_rounded` (d≥1), `n_rounded_coarse` (d=0), **`n_rounded_total`** (ikisinin toplamı), `n_sign_relaxed`.
+* **Yuvarlama kuralı:** yazılan sayı d ondalıklıysa havuz değeri d basamağa **yarıdan yukarı** (`Decimal`) yuvarlanınca eşitse doğru. Tam sayı (d=0) yalnızca
+  havuzdaki **aynı tam sayıyla** `EXACT` eşleşir; havuzda 8,46 varken yazılan "8" `ROUNDED_COARSE` etiketini alır (desteklenmiş ama ayrı sayılır). Kesme kabul edilmez.
+  İşaret yalnızca tutmuyorsa (`-8,5` ↔ 8.5) `SIGN_RELAXED`; yön hatası sayı halüsinasyonu sayılmaz, ayrı etiketle raporlanır.
+* **Türetilmiş sayı (14/22 → %64):** araç çıktısında yoksa **HALÜSİNASYON**. Rapor ayrıca `derivation_hint` yazar: aynı cevaptaki *diğer* (desteklenen/izinli)
+  sayılardan `a/b·100`, `a/b`, `(a−b)/b·100`, `a−b`, `a+b`, `a·b` ile üretilebiliyorsa nasıl üretildiğini gösterir (örn. `(299.25-305)/305*100=-1.89`). İpucu sayıyı **aklamaz**;
+  eğitim geri bildirimi için "model kendi hesapladı" bilgisidir.
+* **Bilinen sınırlar:** küçük tam sayılar (1, 2, 3 …) havuzda tesadüfen bulunabilir (halüsinasyon oranı *alt sınırdır*); kelimeyle yazılan sayılar çıkarılmaz;
+  yön denetlenmez; sorudaki sayı aynı zamanda araç değeriyse izin listesinde sayılır; büyük bir tarih sonrası (look-ahead) denetimi bu modülün işi değildir.
+* **Gerçek örnek (THYAO 10.09.2026, `get_stock_history` + `calculate_indicators` zarfları):** `299,25` → `EXACT` (`rows[2].close`); `44,83` → `ROUNDED`
+  (`latest.values.RSI_14 = 44.8273`); `38,4 milyon` → `ROUNDED` (`rows[2].volume = 38386110.0`); `10.09.2026` ve `08.09.2026` → `ALLOWLISTED`
+  (`as_of` ve çağrının `start` parametresi). Uydurma `RSI 31,2`, `310,50`, `61 milyon` → `HALLUCINATION` (oran 3/4).
+* **Not (gerçek kanıt paketi):** `calculate_indicators` kanıtı `commit=False` (bağlam) olduğundan RSI/Bollinger sayıları `UNEVIDENCED` çıkar; gösterge değerlerinin
+  sonuç gerekçesi olarak yazılması için ya göstergeler committed'a alınmalı ya da bu uyarı bilinçli kabul edilmeli (ekip kararı; kod değiştirilmedi).
+
+### 9.2 Eylem koruması
+* **Etiket:** nihai çıktıda `EYLEM: <ETİKET>` (ya da `ACTION:`) satırı **zorunlu**; etiket tam olarak `AllowedAction` değeri olmalı. Kodlar: `NO_ACTION`, `MULTIPLE_ACTIONS`,
+  `ACTION_NOT_IN_ENUM` (küçük harf/`BUY`/`WATCH (izle)` dahil), `ACTION_MISMATCH_REQUIRED` (`required_action`, güvenli hata yolu: `ANALYSIS_UNSAFE`). Metin içinde geçen enum adı etiket sayılmaz.
+* **Tavsiye dili:** kalıplar `harness/lexicons/advice_phrases.json` (veri; kural başına positive/negative örnek, testler çalıştırır). Kategoriler: `BUY_SELL`, `PRICE_TARGET`, `CERTAINTY`.
+  `alt`, `talep`, `satış`, `alınan`, `satın alma gücü`, `BUY_AND_HOLD`, `buyback`, `Garanti Bankası` gibi masum ifadeler testle korunur.
+* **Alıntılanan çürütme muafiyeti** (Soru 5 modelin "kesin yükselir iddiası doğrulanmamıştır" demesini bekler). Cümledeki kalıplar yalnızca **tümü** uygunsa muaf (`QUOTED_REFUTATION` notu):
+  cümlede olumsuzlanmamış, tırnak dışı bir çürütme/reddetme işareti var **ve** her kalıp şunlardan birini sağlıyor: tırnak içinde; ardından "iddia/ifade/söylem"; ≤4 sözcük yakınında *reddetme* işareti
+  ("hedef fiyat veremem", "garanti değildir"). AL/SAT kalıpları yalnızca tırnak içindeyse muaf. Aynı cümlede tırnaksız ikinci bir tavsiye varsa cümlenin tamamı ihlaldir.
+  `doğrulanmamış değil` (olumsuzlanmış çürütme), tırnak içine gizlenmiş çürütme, başka cümledeki çürütme, `Alın, doğrulanmamış iddialara bakmayın` gibi saldırılar testlidir.
+* **Sınırlar:** çürütme sözcüğü tek başına (`kesin yükselir, doğrulanmamıştır`) muafiyet vermez; ironi/dolaylı tavsiye ("bence düşünmeye değer") yakalanmaz; nedensellik iddiası
+  ("iyi bilanço = fiyat artar", kural 10) bu modülün kapsamında değildir.
+
+## 10. Açık noktalar
 * Hocadan teyit: `run_backtest` yalnızca catch-up'ta mı zorunlu (bölüm 3).
 * `RISK_GATE` ve `BUILD_EVIDENCE` için `tools/check_data_quality.py` henüz yok; kapı şimdilik mock. Gerçek kapıyla `analysis_bundle` ve
   `hard_blocks` alanlarının davranışı yeniden test edilmeli.
