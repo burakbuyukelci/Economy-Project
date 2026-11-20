@@ -26,7 +26,7 @@ TOOL_REGISTRY: dict[ToolName, ToolSpec] = {
     for s in [
         ToolSpec(ToolName.GET_STOCK_HISTORY, P.GetStockHistoryParams, R.GetStockHistoryResult, True),
         ToolSpec(ToolName.GET_INDEX_HISTORY, P.GetIndexHistoryParams, R.GetIndexHistoryResult, True),
-        ToolSpec(ToolName.CALCULATE_INDICATORS, P.CalculateIndicatorsParams, R.CalculateIndicatorsResult, False),
+        ToolSpec(ToolName.CALCULATE_INDICATORS, P.CalculateIndicatorsParams, R.CalculateIndicatorsResult, True),
         ToolSpec(ToolName.DETECT_REVERSAL_EVENTS, P.DetectReversalEventsParams, R.DetectReversalEventsResult, True),
         ToolSpec(ToolName.FIND_SUPPORT_RESISTANCE, P.FindSupportResistanceParams, R.FindSupportResistanceResult, False),
         ToolSpec(ToolName.RANK_SECTOR_RELATIVE_STRENGTH, P.RankSectorRelativeStrengthParams, R.RankSectorRelativeStrengthResult, True),
@@ -74,6 +74,7 @@ _PAST_ONLY_KEYS = {
     "date", "last_date", "first_date", "effective_end", "window_end", "analysis_end", "disclosure_date",
     "publication_date", "observation_date", "published_date", "signal_date", "entry_date", "exit_date",
     "last_publication_date", "last_touch_date", "window_end_date", "max_abs_daily_return_date",
+    "state_date", "history_first_date", "first_valid_date",  # calculate_indicators (1.1.0)
 }
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from schemas import validate_envelope
+from schemas import SCHEMA_VERSION, validate_envelope
 from tests.conftest import AS_OF, DATA_VERSION
 from tools import get_index_history, get_stock_history
 from tools.common import InvalidToolCall
@@ -102,7 +102,7 @@ def test_hash_changes_with_as_of_ticker_and_data_version(snapshot_root):
 def test_envelope_validates_against_contract(snapshot_root):
     for env in (call_stock(snapshot_root), call_index(snapshot_root)):
         assert validate_envelope(env).data_version == DATA_VERSION
-        assert env["schema_version"] == "1.0.0" and env["as_of"] == AS_OF
+        assert env["schema_version"] == SCHEMA_VERSION and env["as_of"] == AS_OF
         assert env["n_events"] is None and env["n_excluded_incomplete_horizon"] == 0
 
 

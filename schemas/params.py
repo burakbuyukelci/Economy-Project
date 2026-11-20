@@ -123,6 +123,8 @@ class CalculateIndicatorsParams(ToolParams):
     ticker: Ticker
     indicators: list[IndicatorName] = Field(min_length=1)
     config: IndicatorConfig = Field(default_factory=IndicatorConfig)
+    price_adjustment: PriceAdjustment = PriceAdjustment.ADJUSTED
+    last_n_rows: int = Field(default=5, ge=0, le=30, description="latest'ten önceki kaç gün satırı dönsün (0 = yalnızca durum)")
     start: date = ANALYSIS_START_DEFAULT
     end: date
 

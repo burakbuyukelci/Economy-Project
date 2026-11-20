@@ -21,3 +21,24 @@ davranışı değişikliklerinde artmayabilir (aşağıda belirtilir).
   `close = adj_close` olur (şekil değişmedi; docs/data_dictionary.md §11.3). Onaylandı.
 - Araç giriş noktası sözleşmesi (schemas dışı ama ortak): `tools/<ToolName>.py -> run(params: dict) -> dict`
   (`tests/contract/test_tool_entrypoint.py`).
+
+## 1.1.0 — 2026-11-20 (calculate_indicators kesinleşti; insan onayı: 2026-11-20)
+Yalnızca `calculate_indicators` etkilenir; diğer 14 araç şekil olarak aynıdır. **Kırıcı** değişiklik: eski "hafif" sonuç
+(`columns: list[str]`, `rows`, `last_date`, `n_rows`, `values: dict[str, float|str|None]`) kaldırıldı.
+- **Params:** `price_adjustment` (varsayılan `adjusted`, `get_stock_history` ile aynı anlam) ve `last_n_rows` (0–30, varsayılan 5)
+  eklendi. `start`/`end` yalnızca DÖNEN satırları sınırlar; hesap her zaman snapshot başından `as_of`'a kadar yapılır
+  (ısınma `start`'tan bağımsız). Yeni alanlar `input_hash`'i değiştirir (kanonik params genişledi).
+- **Result:** KOMPAKT zarf. `latest` (as_of günü durumu) + `recent_rows` (latest'ten önceki en fazla `last_n_rows` gün,
+  eskiden yeniye). Tüm zaman serisi zarfa girmez.
+  - `columns: list[IndicatorColumn]` — her kolon için `warmup_bars`, `first_valid_date`, `valid_at_as_of`.
+  - `IndicatorRow.values` YALNIZCA sayısal (`float | None`, NaN/inf yasak; ısınma = `None`); anahtarlar `columns[].name`
+    ile birebir aynı. Kategoriler `IndicatorRow.states: IndicatorStates` (supertrend, ichimoku_position, kama_slope,
+    volume_regime; mevcut enum'larla).
+  - Yeni üst alanlar: `price_adjustment`, `state_date`, `n_bars_used`, `history_first_date`; `first_valid_date` anlamı
+    "istenen TÜM kolonların geçerli olduğu ilk gün" olarak korundu. `last_date`/`n_rows` kaldırıldı.
+  - Doğrulayıcılar: kolon adları tekil; `state_date == latest.date`; `recent_rows` artan ve `latest`'ten önce;
+    `valid_at_as_of` ile `latest.values` tutarlı; `first_valid_date` yokken `valid_at_as_of` False olmalı.
+- **Doğrulama davranışı (`registry`):** `strict_result` bu araç için `True`; look-ahead taramasındaki geçmiş-only anahtarlara
+  `state_date`, `history_first_date`, `first_valid_date` eklendi.
+- `schemas/examples.py` örneği yeni şekle güncellendi (harness mock araçları `example_envelope`'u kullandığından Bilgisayar 2
+  tarafında ek değişiklik gerekmez; `tests/contract/test_indicators_schema.py` yeni sözleşmeyi denetler).

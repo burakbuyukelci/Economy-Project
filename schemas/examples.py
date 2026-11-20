@@ -82,8 +82,12 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
         "requested_end": "2026-09-10", "effective_end": "2026-09-10", "first_date": "2026-09-10",
         "last_date": "2026-09-10", "n_rows": 1, "rows": [_ROW]},
     ToolName.CALCULATE_INDICATORS: {
-        "ticker": "THYAO", "first_valid_date": "2026-09-10", "last_date": "2026-09-10", "columns": ["RSI_14"],
-        "n_rows": 1, "rows": [{"date": "2026-09-10", "values": {"RSI_14": 41.2}}]},
+        "ticker": "THYAO", "price_adjustment": "adjusted", "state_date": "2026-09-10", "n_bars_used": 900,
+        "history_first_date": "2023-01-02", "first_valid_date": "2023-01-23",
+        "columns": [{"name": "RSI_14", "indicator": "RSI", "warmup_bars": 14, "first_valid_date": "2023-01-23",
+                     "valid_at_as_of": True}],
+        "latest": {"date": "2026-09-10", "close": 299.25, "values": {"RSI_14": 41.2}, "states": {}},
+        "recent_rows": [{"date": "2026-09-09", "close": 301.0, "values": {"RSI_14": 44.0}, "states": {}}]},
     ToolName.DETECT_REVERSAL_EVENTS: {
         "ticker": "ASELS", "event_family": "BB_LOWER_TOUCH", "touch_mode": "close", "expected_direction": "UP",
         "analysis_start": "2024-01-01", "analysis_end": "2026-09-10", "split_date": "2026-01-01",

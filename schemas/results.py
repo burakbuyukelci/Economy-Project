@@ -1,9 +1,9 @@
 """15 aracın SONUÇ (`results`) şemaları (SÖZLEŞME).
 
 KESİN (alan listesi bağlayıcı): rank_sector_relative_strength, test_weekday_pattern,
-detect_reversal_events, calculate_fundamental_change, run_backtest, check_data_quality,
-get_stock_history, get_index_history.
-HAFİF (iskelet kesin, iç ayrıntı gevşek): calculate_indicators, find_support_resistance,
+detect_reversal_events, calculate_indicators (1.1.0), calculate_fundamental_change, run_backtest,
+check_data_quality, get_stock_history, get_index_history.
+HAFİF (iskelet kesin, iç ayrıntı gevşek): find_support_resistance,
 get_fundamental_metrics, get_macro_context, get_news_events, get_speech_features,
 build_evidence_bundle.
 
@@ -12,9 +12,9 @@ Birim kuralları için bkz. schemas/common.py başlığı (`_pct`, 0-100 ölçe�
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import Field, model_validator
+from pydantic import Field, StringConstraints, model_validator
 
 from schemas.common import (
     BaselineStats,
@@ -45,6 +45,7 @@ from schemas.enums import (
     GateStatus,
     IchimokuState,
     IndexId,
+    IndicatorName,
     KamaSlope,
     LevelType,
     MacroSeries,
@@ -110,20 +111,79 @@ class GetIndexHistoryResult(Strict):
 
 
 # ======================================================================
-# 3  calculate_indicators (HAFİF)
+# 3  calculate_indicators (KESİN, schema_version 1.1.0)
 # ======================================================================
+# Kompakt zarf: tüm zaman serisi DEĞİL; `latest` (as_of günü durumu) + `recent_rows` (önceki en fazla N gün).
+# Sayılar `values` içinde (yalnızca float|None; NaN/inf yasak, ısınma = None), kategoriler `states` içinde.
+FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
+ColumnName = Annotated[str, StringConstraints(pattern=r"^[A-Z0-9_.]+$")]
+
+
+class IndicatorColumn(Strict):
+    name: ColumnName = Field(description="ör. RSI_14, BB_LOWER_20_2.0, SMA_200")
+    indicator: IndicatorName
+    warmup_bars: int = Field(ge=0, description="İlk geçerli değer için gereken bar sayısı (ısınma)")
+    first_valid_date: date | None = Field(description="Bu kolonun (as_of'a kadar) ilk geçerli değerinin tarihi")
+    valid_at_as_of: bool = Field(description="state_date günündeki değer None değil mi")
+
+
+class IndicatorStates(Strict):
+    """Kategorik durumlar; None = ilgili gösterge istenmedi veya ısınmada. Tanımlar: docs/data_dictionary.md."""
+
+    supertrend: SupertrendState | None = None
+    ichimoku_position: IchimokuState | None = None
+    kama_slope: KamaSlope | None = None
+    volume_regime: VolumeRegime | None = None
+
+
 class IndicatorRow(Strict):
     date: date
-    values: dict[str, float | str | None] = Field(description="ör. {'RSI_14': 41.2, 'BB_LOWER_20_2': 273.4, 'SUPERTREND_DIR': 'BEARISH'}")
+    close: FiniteFloat = Field(description="Seçilen fiyat modunda kapanış")
+    values: dict[ColumnName, FiniteFloat | None] = Field(
+        description="YALNIZCA sayısal; anahtarlar columns[].name ile birebir aynı; None = ısınma")
+    states: IndicatorStates
 
 
 class CalculateIndicatorsResult(Strict):
     ticker: Ticker
-    first_valid_date: date | None = Field(description="Isınma sonrası tüm istenen göstergelerin geçerli olduğu ilk gün")
-    last_date: date | None
-    columns: list[str]
-    n_rows: int = Field(ge=0)
-    rows: list[IndicatorRow]
+    price_adjustment: PriceAdjustment
+    state_date: date | None = Field(description="min(end, as_of) günü veya öncesindeki son işlem günü")
+    n_bars_used: int = Field(ge=0, description="Hesapta kullanılan toplam bar (ısınma dahil, <= as_of)")
+    history_first_date: date | None = Field(description="Hesapta kullanılan ilk bar (snapshot başı)")
+    first_valid_date: date | None = Field(description="İstenen TÜM kolonların geçerli olduğu ilk gün")
+    columns: list[IndicatorColumn]
+    latest: IndicatorRow | None = Field(description="state_date günündeki gösterge durumu (as_of durumu)")
+    recent_rows: list[IndicatorRow] = Field(description="latest'ten ÖNCEKİ en fazla last_n_rows gün, eskiden yeniye")
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        names = [c.name for c in self.columns]
+        if len(set(names)) != len(names):
+            raise ValueError("kolon adları tekil olmalı")
+        for c in self.columns:
+            if c.first_valid_date is None and c.valid_at_as_of:
+                raise ValueError(f"{c.name}: first_valid_date yok ama valid_at_as_of=True")
+        if self.latest is None:
+            if self.state_date is not None or self.recent_rows:
+                raise ValueError("latest yoksa state_date None ve recent_rows boş olmalı")
+            if any(c.valid_at_as_of for c in self.columns):
+                raise ValueError("latest yoksa hiçbir kolonda valid_at_as_of=True olamaz")
+            return self
+        if self.state_date != self.latest.date:
+            raise ValueError("state_date, latest.date ile aynı olmalı")
+        rows = [*self.recent_rows, self.latest]
+        for r in rows:
+            if set(r.values) != set(names):
+                raise ValueError(f"{r.date}: values anahtarları columns ile birebir aynı olmalı")
+        dates = [r.date for r in rows]
+        if dates != sorted(set(dates)):
+            raise ValueError("recent_rows tarihleri artan ve tekil olmalı, hepsi latest.date'ten önce")
+        if self.recent_rows and self.recent_rows[-1].date >= self.latest.date:
+            raise ValueError("recent_rows latest'ten önce olmalı")
+        for c in self.columns:
+            if c.valid_at_as_of != (self.latest.values[c.name] is not None):
+                raise ValueError(f"{c.name}: valid_at_as_of, latest değeriyle tutarsız")
+        return self
 
 
 # ======================================================================
