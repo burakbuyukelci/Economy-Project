@@ -55,6 +55,10 @@ def validate_envelope(data: dict[str, Any]) -> ToolEnvelope:
     """
     env = ToolEnvelope.model_validate(data)
     spec = TOOL_REGISTRY[env.tool]
+    # INVALID_PARAMS hata zarfında params, şemaya uymayan ham girdidir; tipli doğrulama atlanır
+    # (zarfın as_of'u yine geçerli bir tarih olmak zorundadır, ToolEnvelope bunu zaten denetler).
+    if env.status == ToolStatus.ERROR and env.error is not None and env.error.code == "INVALID_PARAMS":
+        return env
     p = spec.params_model.model_validate(env.params)
     if p.as_of != env.as_of:  # type: ignore[attr-defined]
         raise ValueError(f"zarf as_of ({env.as_of}) != params.as_of ({p.as_of})")  # type: ignore[attr-defined]
