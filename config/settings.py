@@ -64,6 +64,19 @@ PRICE_CORRECTIONS_CSV = CONFIG_DIR / "price_corrections.csv"
 # Birleşik işlem takvimi: bir gün, XU100'de VEYA hisselerin en az bu oranında veri varsa işlem günüdür.
 TRADING_DAY_MIN_STOCK_SHARE = 0.5
 
+# --- Gösterge durum eşikleri (calculate_indicators) ---
+# Seçim: YALNIZCA KAMA eğimi ve hacim z-skoru dağılımına göre; ileri getiriye bakılmadan. Sonradan olay sonuçlarına
+# bakılarak DEĞİŞTİRİLMEZ. Tablolar: docs/calibration_thresholds.md (scripts/calibrate_indicator_thresholds.py).
+# KAMA eğimi birimi: yüzde. kama_slope_pct_t = (KAMA_t / KAMA_{t-1} - 1) * 100 (KAMA'nın 1 günlük % değişimi).
+# slope > +eşik -> RISING ; slope < -eşik -> FALLING ; aksi halde FLATTENING.
+KAMA_FLAT_SLOPE_PCT = 0.10
+# Hacim z-skoru (IndicatorConfig.volume_zscore_window gün, bugün dahil, ddof=0): z > HIGH -> HIGH ; z < LOW -> LOW ; aksi NORMAL.
+VOLUME_HIGH_Z = 1.0
+VOLUME_LOW_Z = -1.0
+# Gerçekleşen volatilite penceresi (gün) ve getiri ufukları (gün) — yalnızca tools/indicators kütüphanesi.
+VOLATILITY_WINDOW = 20
+RETURN_HORIZONS = [1, 5, 20]
+
 # --- Backtest ---
 BACKTEST_TRADE_LOG_MAX = 200
 SHARPE_ANNUALIZATION_DAYS = 252
