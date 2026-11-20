@@ -1,0 +1,4 @@
+# Yalnızca geliştirme/test bağımlılıkları (çalışma zamanı araçları bunları İÇE AKTARMAZ).
+# ta: tests/tools/test_indicators_properties.py içinde gösterge çapraz doğrulaması; yoksa test importorskip ile atlanır.
+-r requirements.txt
+ta==0.11.0
