@@ -18,7 +18,7 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from harness import settings
-from harness.as_of import extract_as_of
+from harness.as_of import resolve_as_of
 from harness.event_log import EventLog
 from harness.routing import DEFAULT_ROUTING, ReviewStatus, Routing
 from harness.state_machine import Decision, StateMachine
@@ -36,21 +36,38 @@ class ToolCallResult:
     error: dict[str, Any] | None = None  # {"type": "INVALID_TOOL_CALL"|"HARNESS_ERROR", "code", "message", ...}
 
 
+_FROM_SETTINGS: Any = object()  # "varsayılan analiz tarihini settings/ortam değişkeninden oku" işareti
+
+
 class HarnessSession:
-    def __init__(self, as_of: date, *, runner: Runner | None = None, log: EventLog | None = None,
-                 routing: Routing = DEFAULT_ROUTING) -> None:
+    def __init__(self, as_of: date, *, as_of_source: str = "explicit", runner: Runner | None = None,
+                 log: EventLog | None = None, routing: Routing = DEFAULT_ROUTING) -> None:
         self.as_of = as_of
+        self.as_of_source = as_of_source
+        self.warnings: list[str] = []  # harness düzeyi uyarılar ("KOD: açıklama"); araç zarfına GİRMEZ
         self._runner: Runner = runner or run_tool
         self.log = log if log is not None else EventLog(settings.EVENT_LOG_PATH)
         self.machine = StateMachine(self.log, routing)
         self.tool_envelopes: list[dict[str, Any]] = []  # modele iletilen, doğrulanmış zarflar (sıralı)
-        self.log.append("SESSION_START", as_of=as_of.isoformat())
+        self.log.append("SESSION_START", as_of=as_of.isoformat(), as_of_source=as_of_source)
+        if as_of_source == "default":
+            msg = f"soruda analiz tarihi işareti yok; varsayılan {as_of.isoformat()} kullanıldı"
+            self.warnings.append(f"AS_OF_ASSUMED: {msg}")
+            self.log.append("AS_OF_ASSUMED", as_of=as_of.isoformat(), message=msg)
         self.machine.begin()
 
     @classmethod
-    def from_question(cls, question: str, **kwargs: Any) -> "HarnessSession":
-        """Oturum as_of'u sorunun ön metnindeki 'Analiz tarihi' işaretinden gelir (model belirlemez)."""
-        return cls(extract_as_of(question), **kwargs)
+    def from_question(cls, question: str, *, explicit_as_of: date | None = None,
+                      default_as_of: date | None = _FROM_SETTINGS, **kwargs: Any) -> "HarnessSession":
+        """Oturum as_of'u MODEL tarafından değil harness tarafından belirlenir.
+
+        Öncelik: sorudaki işaret > explicit_as_of (eval seti) > varsayılan (settings/ortam/CLI) > hata.
+        Yalnızca varsayılana düşülürse AS_OF_ASSUMED uyarısı üretilir.
+        """
+        if default_as_of is _FROM_SETTINGS:
+            default_as_of = settings.default_as_of()
+        resolved = resolve_as_of(question, explicit=explicit_as_of, default=default_as_of)
+        return cls(resolved.date, as_of_source=resolved.source, **kwargs)
 
     # ---- LLM'in kullandığı tek giriş ----------------------------------------------------
     def call_tool(self, name: str, params: dict[str, Any]) -> ToolCallResult:
@@ -104,7 +121,8 @@ class HarnessSession:
 
     def get_state(self) -> dict[str, Any]:
         """Salt-okunur kopya; MCP üzerinden AÇILMAZ."""
-        return {**self.machine.snapshot(), "as_of": self.as_of.isoformat()}
+        return {**self.machine.snapshot(), "as_of": self.as_of.isoformat(), "as_of_source": self.as_of_source,
+                "warnings": list(self.warnings)}
 
     @property
     def events(self) -> list[dict[str, Any]]:

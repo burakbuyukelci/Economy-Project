@@ -219,3 +219,43 @@ def test_get_state_is_a_read_only_copy():
     st["completed"].append("X")
     assert s.get_state()["state"] == "LOAD_MARKET_DATA" and "X" not in s.get_state()["completed"]
     assert s.get_state()["as_of"] == "2026-09-10"
+
+
+# --- as_of kaynağı ve AS_OF_ASSUMED -------------------------------------------------------
+NO_MARKER = "THYAO'da 01.01.2024 – 10.09.2026 döneminde örüntü var mı?"
+
+
+def test_marker_in_question_has_no_assumption_warning():
+    s = new()
+    assert s.as_of_source == "question" and s.warnings == []
+    assert not [e for e in s.events if e["kind"] == "AS_OF_ASSUMED"]
+
+
+def test_default_as_of_is_used_with_a_harness_level_warning_and_event():
+    s = HarnessSession.from_question(NO_MARKER, default_as_of=date(2026, 9, 10))
+    assert s.as_of == date(2026, 9, 10) and s.as_of_source == "default"
+    assert len(s.warnings) == 1 and s.warnings[0].startswith("AS_OF_ASSUMED: ") and "2026-09-10" in s.warnings[0]
+    ev = [e for e in s.events if e["kind"] == "AS_OF_ASSUMED"]
+    assert len(ev) == 1 and ev[0]["as_of"] == "2026-09-10"
+    assert s.get_state()["warnings"] == s.warnings
+
+
+def test_explicit_as_of_from_eval_set_is_not_an_assumption():
+    s = HarnessSession.from_question(NO_MARKER, explicit_as_of=date(2026, 9, 10))
+    assert s.as_of_source == "explicit" and s.warnings == []
+
+
+def test_settings_default_is_read_from_environment(monkeypatch):
+    from harness import settings
+
+    monkeypatch.setenv(settings.DEFAULT_AS_OF_ENV, "2026-09-10")
+    s = HarnessSession.from_question(NO_MARKER)
+    assert s.as_of_source == "default" and s.as_of == date(2026, 9, 10)
+
+
+def test_no_marker_and_no_default_still_errors(monkeypatch):
+    from harness import settings
+
+    monkeypatch.delenv(settings.DEFAULT_AS_OF_ENV, raising=False)
+    with pytest.raises(AsOfError):
+        HarnessSession.from_question(NO_MARKER)

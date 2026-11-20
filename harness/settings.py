@@ -7,9 +7,11 @@ yazmak yeterlidir; diğer 14 araç mock kalır.
 """
 from __future__ import annotations
 
+import os
 from datetime import date
 from pathlib import Path
 
+from harness.as_of import AsOfError, parse_date
 from schemas.enums import ToolName
 
 # --- Araç arka ucu: "mock" | "real" -----------------------------------------
@@ -40,3 +42,20 @@ MOCK_AS_OF_ERROR_CODE = "MOCK_FIXTURE_AFTER_AS_OF"  # ToolError.code serbest met
 # --- Oturum / log -----------------------------------------------------------
 # None ise olaylar yalnızca bellekte tutulur; yol verilirse her olay JSONL satırı olarak eklenir.
 EVENT_LOG_PATH: Path | None = None
+
+# --- Analiz tarihi yedeği ---------------------------------------------------
+# Soruda "Analiz tarihi" işareti ve açık as_of yoksa kullanılacak tarih. Varsayılan YOK (None): sessizce
+# tarih uydurmayız. Ortam değişkeni (HARNESS_DEFAULT_AS_OF) ya da komut satırı (--default-as-of) ile verilir.
+# Yedek kullanılırsa oturum "AS_OF_ASSUMED" uyarısı üretir (yalnızca harness düzeyinde; zarfa girmez).
+DEFAULT_AS_OF: date | None = None
+DEFAULT_AS_OF_ENV = "HARNESS_DEFAULT_AS_OF"
+
+
+def default_as_of() -> date | None:
+    raw = os.environ.get(DEFAULT_AS_OF_ENV, "").strip()
+    if raw:
+        try:
+            return parse_date(raw)
+        except AsOfError as exc:
+            raise AsOfError(f"{DEFAULT_AS_OF_ENV}={raw!r}: {exc}") from exc
+    return DEFAULT_AS_OF

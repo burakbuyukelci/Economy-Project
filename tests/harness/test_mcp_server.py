@@ -106,3 +106,30 @@ def test_stdio_process_starts_and_lists_tools():
 
     n, is_error = run(go())
     assert n == 15 and not is_error
+
+
+# --- komut satırı: as_of seçenekleri --------------------------------------------------------
+from datetime import date  # noqa: E402
+
+from harness.as_of import AsOfError  # noqa: E402
+from harness.mcp_server import session_from_args  # noqa: E402
+
+NO_MARKER = "THYAO'da örüntü var mı?"
+
+
+def test_cli_explicit_as_of():
+    s = session_from_args(["--question", NO_MARKER, "--as-of", "2026-09-10"])
+    assert s.as_of == date(2026, 9, 10) and s.as_of_source == "explicit"
+
+
+def test_cli_default_as_of_marks_assumption():
+    s = session_from_args(["--question", NO_MARKER, "--default-as-of", "10.09.2026"])
+    assert s.as_of_source == "default" and s.warnings[0].startswith("AS_OF_ASSUMED")
+
+
+def test_cli_without_any_date_fails(monkeypatch):
+    from harness import settings
+
+    monkeypatch.delenv(settings.DEFAULT_AS_OF_ENV, raising=False)
+    with pytest.raises(AsOfError):
+        session_from_args(["--question", NO_MARKER])

@@ -10,6 +10,8 @@ LLM'e yalnızca 15 ALAN aracı açılır. Durum geçişi (advance_state) ve get_
 
 Çalıştırma (stdio):
     python -m harness.mcp_server --question "Analiz tarihi: 10.09.2026 ... soru metni"
+    python -m harness.mcp_server --question "..." --as-of 2026-09-10          # eval seti açıkça verir
+    python -m harness.mcp_server --question "..." --default-as-of 2026-09-10  # yedek (AS_OF_ASSUMED uyarısı)
 """
 from __future__ import annotations
 
@@ -22,6 +24,8 @@ import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.stdio import stdio_server
 
+from harness import settings
+from harness.as_of import parse_date
 from harness.session import HarnessSession
 from schemas.enums import ToolName
 from schemas.registry import TOOL_REGISTRY
@@ -87,12 +91,23 @@ async def serve_stdio(session: HarnessSession) -> None:
         await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
-def main(argv: list[str] | None = None) -> None:
+def session_from_args(argv: list[str] | None = None) -> HarnessSession:
     parser = argparse.ArgumentParser(description="BIST harness MCP sunucusu (stdio)")
-    parser.add_argument("--question", required=True, help="Analiz tarihi ön metni dahil soru metni")
+    parser.add_argument("--question", required=True, help="Soru metni (ön metinde 'Analiz tarihi: GG.AA.YYYY' olmalı)")
+    parser.add_argument("--as-of", help="Açık analiz tarihi (eval seti verir); sorudaki tarihle çelişemez")
+    parser.add_argument("--default-as-of",
+                        help=f"Soruda işaret yoksa yedek tarih (ya da {settings.DEFAULT_AS_OF_ENV} ortam değişkeni); AS_OF_ASSUMED uyarısı üretir")
     args = parser.parse_args(argv)
-    session = HarnessSession.from_question(args.question)
-    anyio.run(serve_stdio, session)
+    kwargs: dict[str, Any] = {}
+    if args.as_of:
+        kwargs["explicit_as_of"] = parse_date(args.as_of)
+    if args.default_as_of:
+        kwargs["default_as_of"] = parse_date(args.default_as_of)
+    return HarnessSession.from_question(args.question, **kwargs)
+
+
+def main(argv: list[str] | None = None) -> None:
+    anyio.run(serve_stdio, session_from_args(argv))
 
 
 if __name__ == "__main__":
