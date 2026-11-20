@@ -1,0 +1,9 @@
+# Doğrudan bağımlılıklar. Tam sürümler requirements.lock içinde sabitlenir.
+# Python: 3.12 ile geliştirildi; kod 3.11 uyumlu yazılır.
+pandas
+numpy
+pyarrow
+yfinance
+pydantic>=2
+pytest
+python-dotenv
