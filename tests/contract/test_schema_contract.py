@@ -203,6 +203,45 @@ def test_horizon_stats_counts_consistent():
         validate_envelope(env)
 
 
+# --- validate_envelope: OK zarflarında tipli doğrulama SIKI; gevşetme yalnızca INVALID_PARAMS hatası ---
+@pytest.mark.parametrize("tool", ALL_TOOLS)
+def test_ok_envelope_params_validation_stays_strict(tool):
+    # (a) params'tan as_of silinirse reddedilir
+    env = example_envelope(tool)
+    env["params"].pop("as_of")
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+    # (b) şemada olmayan params alanı reddedilir
+    env = example_envelope(tool)
+    env["params"]["bogus_field"] = 1
+    with pytest.raises(ValidationError):
+        validate_envelope(env)
+
+
+def test_ok_envelope_rejects_malformed_param_value_even_if_error_code_would_be_invalid_params():
+    env = example_envelope(ToolName.GET_STOCK_HISTORY)
+    env["params"]["ticker"] = "thy"  # desen ihlali
+    with pytest.raises(ValidationError):
+        validate_envelope(env)  # status=OK: gevşetme YOK
+
+
+def test_error_envelope_params_relaxation_only_for_invalid_params():
+    # INVALID_PARAMS: ham/bozuk params kabul edilir
+    bad = example_error_envelope(ToolName.GET_STOCK_HISTORY, code="INVALID_PARAMS", message="x")
+    bad["params"] = {"ticker": "thy", "as_of": EXAMPLE_AS_OF, "start": "x"}
+    validate_envelope(bad)
+    # ...ama zarfın as_of'u geçerli bir tarih olmak zorunda
+    bad2 = copy.deepcopy(bad)
+    bad2["as_of"] = "10/09/2026"
+    with pytest.raises(ValidationError):
+        validate_envelope(bad2)
+    # Başka hata kodunda bozuk params KABUL EDİLMEZ
+    other = example_error_envelope(ToolName.GET_STOCK_HISTORY, code="UNKNOWN_TICKER", message="x")
+    other["params"] = {"ticker": "thy", "as_of": EXAMPLE_AS_OF, "start": "x"}
+    with pytest.raises(ValidationError):
+        validate_envelope(other)
+
+
 # --- Ufku dolmamış pencereler: false-positive olmamalı, sızıntı yakalanmalı --------------------
 def _fund_reaction(env):
     return env["results"]["quarters"][0]["reactions"][0]
