@@ -331,3 +331,23 @@ Aday etiketlerde `CANDIDATE_CAVEAT` notunun metinde bulunması bu aşamada zorla
 Karma oturumda **gerçek kapı mock zarfı `DATA_VERSION_MISMATCH` ile işaretler**: ilk kapı (yalnızca gerçek veri) `PASS_WITH_WARNINGS`, son kapı `INVESTIGATE` olur; paket mock damgası taşır ve eğitime girmez.
 Q1'de etiket yine `REJECT_SIGNAL` (G3 yalnızca aday etiketleri düşürür). Karma oturumda aday etiket üretilemez; aday yolu mock-only birim testlerinde (`test_label_policy.py`) sınanır.
 
+### 13.1 Eğitimden ÖNCE dondurulacak biçimler (`SYSTEM_PROMPT_VERSION = "1"`, henüz DONDURULMADI)
+Fine-tune kayıtları çıkarımdaki istemle birebir aynı olmak zorundadır. Aşağıdaki biçimler **eğitim verisi üretilmeden önce dondurulacaktır**; dondurulana kadar değişebilir ve her değişiklikte
+`SYSTEM_PROMPT_VERSION` artırılır (eğitim kaydı hangi sürümle üretildiğini taşır). Kaynak: `agent_loop.py` (`build_system_prompt`, `FINAL_INSTRUCTION`, `TOOLS_CLOSED`), `final_check.py` (`render_policy_block`, `build_feedback`).
+
+| Aşama | Mesaj dizisi (rol: içerik) |
+|---|---|
+| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç şemaları ayrı `tools` alanında (13 araç; D/E'de kapı ve kanıt paketi yok). |
+| **Geçiş** | Model araç çağırmadan metin yazar (D/E'de `HAZIR`). Harness `request_explanation` der; reddedilirse `user`: `Açıklama aşamasına geçilemedi (<kod>): <mesaj>. Eksik adımları araç çağrılarıyla tamamlayın.` |
+| **2. Nihai aşama (D/E)** | `user`: `POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):` + `EYLEM: <ETİKET>` + `Kural:` + `Kalite kapısı:` + `Gerekçeler:` (`- KOD: mesaj`) + boş satır + `FINAL_INSTRUCTION` → `assistant`: nihai metin (araç yok, `tools` alanı boş). Son satır `EYLEM: <ETİKET>`. |
+| **2. Nihai aşama (A–C, D′)** | Blok ve ek istem yok: araç çağrısız ilk `assistant` metni nihai metindir. |
+| **Yeniden deneme** | `assistant`: başarısız metin → `user`: `build_feedback` çıktısı (`Nihai cevabınız kurallara uymadı (deneme n/N)…`, ihlal başına bir satır, son satır `Son satır tam olarak şu olmalı: EYLEM: <ETİKET>`). Nihai aşamada araç çağrısı `TOOLS_CLOSED` ile reddedilir (deneme harcanmaz). |
+
+Eğitim kayıtları için kural (karar): **`training/RULES.md` madde 5 aynen geçerlidir.** Eğitim veri üreticisi açıklamalarda **yalnızca kilitli committed kanıttaki sayıları** kullanır
+(`UNEVIDENCED` sayı yok); `warnings` metnindeki ya da kanıta girmeyen sayılar alıntılanmaz. Politika bloğundaki eşik sayıları (`ALLOWLISTED_POLICY`) yalnızca D/E çıkarımında tolere edilir, eğitim açıklamasında kullanılmaz.
+
+### 13.2 Sıradaki iş: araç tanımlarını kısaltma (bağlam hedefi ≤ 8192)
+`LLM_NUM_CTX = 16384` **geçici** varsayılandır; hedef ≤ 8192. Plan: modele görünen `description` metinlerini ve `input_schema`'ları sadeleştirmek, gelişmiş parametreleri (`config`, `indicator_config`,
+maliyet/slipaj, `n_tests_declared` vb.) modele göstermemek (harness sabit varsayılan koyar), ölçümü Ollama'nın `prompt_eval_count` değeriyle yapmak (karakter/token yaklaşığı yerine).
+Araç tanımları istemin parçası olduğundan bu iş bittiğinde `SYSTEM_PROMPT_VERSION` artırılır ve biçim ancak ondan sonra dondurulur.
+
