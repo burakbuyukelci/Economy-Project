@@ -11,6 +11,7 @@ import os
 from datetime import date
 from pathlib import Path
 
+from config.settings import RANDOM_SEED
 from harness.as_of import AsOfError, parse_date
 from schemas.enums import ToolName
 
@@ -103,6 +104,55 @@ def final_max_retries() -> int:
     if n < 0:
         raise ValueError(f"{FINAL_RETRIES_ENV}={raw!r} negatif olamaz")
     return n
+
+# --- Yerel model (harness/llm_backend.py) -----------------------------------------------------------------------------
+# Final sistemde bulut AI API'si YOK (CLAUDE.md kural 4): yalnızca yerel Ollama, yalnızca loopback adres.
+# `config/` ortak bölge olduğundan model ayarları burada durur; ortam değişkenleriyle ezilir.
+# NOT: model adı YER TUTUCUDUR (temel model kararı ekibindir; fine-tune sonrası kendi model adı yazılır).
+LLM_MODEL = "qwen2.5:7b-instruct"
+LLM_MODEL_ENV = "HARNESS_MODEL"
+LLM_TEMPERATURE = 0.0              # determinizm (CLAUDE.md kural 8)
+LLM_TEMPERATURE_ENV = "HARNESS_TEMPERATURE"
+LLM_NUM_CTX = 8192                 # bağlam sınırı (token); aşılırsa Ollama sessizce kırpar: istemci bunu hata sayar
+LLM_NUM_CTX_ENV = "HARNESS_NUM_CTX"
+LLM_SEED = RANDOM_SEED             # config.settings.RANDOM_SEED (ortak, 42)
+OLLAMA_HOST = "http://127.0.0.1:11434"
+OLLAMA_HOST_ENV = "HARNESS_OLLAMA_HOST"
+LLM_TIMEOUT_S = 300.0
+
+
+def llm_model() -> str:
+    return os.environ.get(LLM_MODEL_ENV, "").strip() or LLM_MODEL
+
+
+def llm_temperature() -> float:
+    raw = os.environ.get(LLM_TEMPERATURE_ENV, "").strip()
+    if not raw:
+        return LLM_TEMPERATURE
+    try:
+        t = float(raw)
+    except ValueError:
+        raise ValueError(f"{LLM_TEMPERATURE_ENV}={raw!r} sayı olmalı") from None
+    if t < 0:
+        raise ValueError(f"{LLM_TEMPERATURE_ENV}={raw!r} negatif olamaz")
+    return t
+
+
+def llm_num_ctx() -> int:
+    raw = os.environ.get(LLM_NUM_CTX_ENV, "").strip()
+    if not raw:
+        return LLM_NUM_CTX
+    try:
+        n = int(raw)
+    except ValueError:
+        raise ValueError(f"{LLM_NUM_CTX_ENV}={raw!r} tam sayı olmalı") from None
+    if n <= 0:
+        raise ValueError(f"{LLM_NUM_CTX_ENV}={raw!r} pozitif olmalı")
+    return n
+
+
+def ollama_host() -> str:
+    return os.environ.get(OLLAMA_HOST_ENV, "").strip() or OLLAMA_HOST
 
 # --- Etiket politikası eşikleri (harness/label_policy.py; docs/harness_design.md bölüm 11) ----------------------------
 # Eşikler getiriye bakılmadan seçildi (retail örneği +0,12 pp'de bile her marjda aynı sonucu verir) ve sonradan sonuçlara
