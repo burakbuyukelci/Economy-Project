@@ -309,3 +309,25 @@ metinde çözümlenebilir etiket yoksa makineyi kapatmak için `INVESTIGATE` yaz
 **Bilinen sınırlar.** `UNEVIDENCED` yalnızca not (ihlal değil). Politika bloğu kanıt eşiklerini (`+5 pp` marjı vb.) göstermez; model bunları alıntılarsa `HALLUCINATION` sayılır (gerekçe metinlerinde geçmiyorsa).
 Aday etiketlerde `CANDIDATE_CAVEAT` notunun metinde bulunması bu aşamada zorlanmaz (eğitim verisi kuralı 7, `training/RULES.md`).
 
+## 13. Model arayüzü (`llm_backend.py`) ve orkestratör (`agent_loop.py`)
+**`LLMBackend.chat(messages, tools) -> ModelReply`** (metin ve/veya araç çağrıları). `ScriptedBackend` testler için betikli sahte modeldir (adım: metin, `ModelReply` ya da
+`(mesajlar, araçlar) -> yanıt` fonksiyonu; betik bitince `ScriptExhausted`). `OllamaBackend` yerel Ollama'ya `/api/chat` ile konuşur (akış yok, `urllib`).
+* **Yalnızca localhost:** adres `localhost`, `127.0.0.1`, `::1` ya da loopback IP olmalı (kimlik bilgisi, yol, dış ana makine, `localhost.evil.com`, `127.0.0.1@evil.com` reddedilir);
+  yönlendirme izlenmez, `HTTP_PROXY` gibi ortam proxy'leri yok sayılır. `urllib` yalnızca bu dosyada geçer, hiçbir yerde bulut AI SDK'sı yok (ikisi de testli; CLAUDE.md kural 3-4).
+* **Ayarlar** `harness/settings.py` (`config/` ortak olduğu için): model adı (`HARNESS_MODEL`; adı YER TUTUCUDUR, temel model kararı ekibindir), sıcaklık 0 (`HARNESS_TEMPERATURE`),
+  bağlam sınırı (`HARNESS_NUM_CTX`), seed = `config.settings.RANDOM_SEED`, adres (`HARNESS_OLLAMA_HOST`).
+* **Bağlam sınırı sessizce kırpılmaz:** Ollama sınırı aşan istemi kırpar (sistem istemi kaybolabilir). `prompt_eval_count >= num_ctx` ise `ContextLimitExceeded` fırlatılır.
+  **Ölçüm:** 13 araç şeması ~23 bin karakter, Q1/Q3 oturumunun mesajları 10-12 bin karakter => ~11-12 bin token (3 karakter/token yaklaşığı, gerçek tokenizer değil); varsayılan bu yüzden 16384.
+
+**Orkestratör protokolü** (`run_session`; `session.py` model bilmez): model araç çağırır; araç çağrısız metin "hazırım" sayılır. `request_explanation` reddedilirse eksik adım modele bildirilir ve döngü sürer.
+* **D/E:** harness politika bloğunu + nihai biçim istemini verir; model nihai metni (araçsız) yazar. İlk metin taslaktır ve kullanılmaz.
+* **A–C ve D′:** araç çağrısız ilk metin doğrudan nihai metindir (blok yok).
+* `submit_final` RETRY ise geri besleme modele gider; ACCEPTED/FALLBACK/RECORDED ise oturum kapanır (insan incelemesi `PENDING_HUMAN_REVIEW` kalır).
+* **Durdurma:** tur sınırı (`AGENT_MAX_TURNS = 40`) ya da model hatası => `LOOP_ABORTED`; zorlama açık profilde ve açıklama aşaması mümkünse (yan etkisiz `peek_explanation` ile bakılır, geçersiz çağrı sayacı şişmez)
+  güvenli geri çekilme teslim edilir; mümkün değilse (zorunlu adım eksik) ya da A–C'de teslim edilen metin yoktur.
+* İstem biçimi `SYSTEM_PROMPT_VERSION` ile sürümlenir: **fine-tune eğitim kayıtları çıkarımdaki istemle (sistem istemi, `HAZIR` sinyali, politika bloğu, nihai biçim istemi) aynı biçimde olmak zorundadır.**
+
+**Uçtan uca testler** (`tests/harness/test_e2e_sessions.py`): 5 örnek soru, gerçek v2 araçlar (`get_stock_history`, `get_index_history`, `calculate_indicators`, `rank_sector_relative_strength`, `check_data_quality`) + mock'lar.
+Karma oturumda **gerçek kapı mock zarfı `DATA_VERSION_MISMATCH` ile işaretler**: ilk kapı (yalnızca gerçek veri) `PASS_WITH_WARNINGS`, son kapı `INVESTIGATE` olur; paket mock damgası taşır ve eğitime girmez.
+Q1'de etiket yine `REJECT_SIGNAL` (G3 yalnızca aday etiketleri düşürür). Karma oturumda aday etiket üretilemez; aday yolu mock-only birim testlerinde (`test_label_policy.py`) sınanır.
+

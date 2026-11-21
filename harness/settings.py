@@ -113,7 +113,9 @@ LLM_MODEL = "qwen2.5:7b-instruct"
 LLM_MODEL_ENV = "HARNESS_MODEL"
 LLM_TEMPERATURE = 0.0              # determinizm (CLAUDE.md kural 8)
 LLM_TEMPERATURE_ENV = "HARNESS_TEMPERATURE"
-LLM_NUM_CTX = 8192                 # bağlam sınırı (token); aşılırsa Ollama sessizce kırpar: istemci bunu hata sayar
+LLM_NUM_CTX = 16384                # bağlam sınırı (token); aşılırsa Ollama sessizce kırpar: istemci bunu hata sayar.
+                                   # ÖLÇÜM (Q1/Q3, 3 karakter/token yaklaşığı): 13 araç şeması ~23 bin karakter + bir oturumun mesajları 10-12 bin karakter
+                                   # => ~11-12 bin token; 8192 yetmez. Gerçek tokenizer ile doğrulanmadı; VRAM'e göre env ile ezilir.
 LLM_NUM_CTX_ENV = "HARNESS_NUM_CTX"
 LLM_SEED = RANDOM_SEED             # config.settings.RANDOM_SEED (ortak, 42)
 OLLAMA_HOST = "http://127.0.0.1:11434"
