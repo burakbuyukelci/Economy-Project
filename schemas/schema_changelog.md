@@ -62,4 +62,4 @@ Eklemelidir (1.1.0 zarfları geçerli kalır; `tests/contract/fixtures/envelopes
   (trade_log kısaltılsa bile en geç çıkış) araç yazılırken eklenecek (`docs/schema_wishlist.md` §7).
 - **`input_hash` etkisi:** `calculate_indicators` için TÜM hash'ler değişir (iki yeni param + `last_n_rows` varsayılanı); `check_data_quality` için yalnızca boş olmayan `analysis_bundle` (öğeler iki `null` alan kazanır).
   Hash tanımı değişmedi; `schema_version` hash'e girmez.
-- `schemas/examples.py`: rank örneği 3 satırlı sıralama + `per_ticker` (havuzla toplamı tutar); indicators varsayılan örneği hafif, kolon meta'lı varyant `example_envelope_indicators_full()`; kapı örneğinde `issue_counts`.
+- `schemas/examples.py`: `example_rank_with_per_ticker(results, subject, ...)` yardımcısı (sentetik rank zarfı kuranlar için: aynalar ranking'ten, özne havuz bloklarını taşır, diğerleri n=0, toplamlar tutarlı); rank örneği 3 satırlı sıralama + `per_ticker` (havuzla toplamı tutar); indicators varsayılan örneği hafif, kolon meta'lı varyant `example_envelope_indicators_full()`; kapı örneğinde `issue_counts`.

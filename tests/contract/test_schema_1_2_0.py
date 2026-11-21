@@ -327,3 +327,110 @@ def test_max_result_date_is_pure_and_deterministic():
     before = copy.deepcopy(res)
     assert REG.max_result_date(res) == REG.max_result_date(res) == date(2026, 9, 10)
     assert res == before
+
+
+# --- ortak yardımcı: example_rank_with_per_ticker (harness sentetik zarfları için) -----------------------------------
+def _helper(results, subject, **kw):
+    from schemas import examples
+    return examples.example_rank_with_per_ticker(results, subject, **kw)
+
+
+def _rank_results_with_blocks(horizons=(5, 10, 20), n=40):
+    """Harness policy_builders'a benzer: örnek zarf, ranking + özel havuz blokları (ufuk başına aynı n), per_ticker'sız."""
+    res = copy.deepcopy(example_envelope(RANK)["results"])
+    base = res["historical_catch_up"][0]["block"]
+    blocks = []
+    for h in horizons:
+        full = {**base["full"], "n_events_complete": n - 1, "n_excluded_incomplete_horizon": 1,
+                "n_success": 20, "n_false_positive": n - 1 - 20}
+        blocks.append({"block": {**copy.deepcopy(base), "horizon": h, "full": full}, "median_catch_up_size_pp": 2.0})
+    res["historical_catch_up"] = blocks
+    res["ranking"][2]["ticker"] = "PETKM"
+    res["benchmark_definition"]["members"] = ["BIMAS", "MGROS", "PETKM"]
+    for k in ("per_ticker", "n_raw_laggard_observations", "cooldown_days", "outcome_benchmark_definition"):
+        res.pop(k)
+    return res
+
+
+def _as_envelope(res):
+    env = _env(RANK)
+    env["results"] = res
+    return env
+
+
+@pytest.mark.parametrize("subject", ["BIMAS", "MGROS", "PETKM"])
+def test_helper_builds_valid_per_ticker_for_custom_pooled_blocks(subject):
+    res = _helper(_rank_results_with_blocks(), subject)
+    validate_envelope(_as_envelope(res))  # 1.2.0 damgalı: tüm şema kuralları + sürüm koşullu zorunluluk
+    assert [t["ticker"] for t in res["per_ticker"]] == ["BIMAS", "MGROS", "PETKM"]
+    me = next(t for t in res["per_ticker"] if t["ticker"] == subject)
+    assert me["n_independent_events"] == 40 and me["n_excluded_incomplete_horizon"] == 1 and me["n_raw_laggard_observations"] == 40
+    for t in res["per_ticker"]:
+        if t["ticker"] != subject:
+            assert (t["n_raw_laggard_observations"], t["n_independent_events"], t["n_excluded_incomplete_horizon"]) == (0, 0, 0)
+            assert all(r["block"]["full"]["n_events_complete"] == 0 and r["block"]["full"].get("hit_rate_pct") is None
+                       for r in t["per_horizon"])
+    assert res["n_raw_laggard_observations"] == 40 and res["cooldown_days"] == 20
+
+
+def test_helper_subject_carries_pooled_blocks_without_in_out_of_sample():
+    src = _rank_results_with_blocks()
+    res = _helper(src, "PETKM")
+    me = next(t for t in res["per_ticker"] if t["ticker"] == "PETKM")
+    for mine, pooled in zip(me["per_horizon"], src["historical_catch_up"]):
+        assert mine["block"]["full"] == pooled["block"]["full"] and mine["block"]["baseline"] == pooled["block"]["baseline"]
+        assert mine["block"]["in_sample"] is None and mine["block"]["out_of_sample"] is None
+        assert mine["median_catch_up_size_pp"] == pooled["median_catch_up_size_pp"]
+
+
+def test_helper_mirrors_come_from_ranking_and_outcome_definition_excludes_subject():
+    src = _rank_results_with_blocks()
+    res = _helper(src, "PETKM", cooldown_days=10, n_raw_subject=120)
+    rank = {r["ticker"]: r for r in res["ranking"]}
+    for t in res["per_ticker"]:
+        assert (t["is_laggard"], t["lag_score_pp"]) == (rank[t["ticker"]]["is_laggard"], rank[t["ticker"]]["lag_score_pp"])
+    assert res["cooldown_days"] == 10 and res["n_raw_laggard_observations"] == 120
+    o = res["outcome_benchmark_definition"]
+    assert o["includes_subject_stock"] is False and o["members"] == res["benchmark_definition"]["members"]
+    assert res["benchmark_definition"]["includes_subject_stock"] is True
+    validate_envelope(_as_envelope(res))
+
+
+def test_helper_does_not_mutate_input_and_is_deterministic():
+    src = _rank_results_with_blocks()
+    before = copy.deepcopy(src)
+    a, b = _helper(src, "PETKM"), _helper(src, "PETKM")
+    assert src == before and a == b
+
+
+def test_helper_works_on_the_default_example_too():
+    res = _helper(example_envelope(RANK)["results"], "MAVI")
+    validate_envelope(_as_envelope(res))
+    assert next(t for t in res["per_ticker"] if t["ticker"] == "MAVI")["is_laggard"] is True
+
+
+def test_helper_insufficient_group_gets_none_and_empty_and_validates():
+    src = _rank_results_with_blocks()
+    src.update(peer_group_size=1, insufficient_peers=True, historical_catch_up=[], sector_strength=None,
+               sector_median_return_pct=None, sector_median_vs_xu100_pp=None)
+    src["ranking"] = src["ranking"][:1]
+    res = _helper(src, "BIMAS")
+    assert (res["per_ticker"], res["n_raw_laggard_observations"], res["cooldown_days"], res["outcome_benchmark_definition"]) == (
+        [], None, None, None)
+    validate_envelope(_as_envelope(res))
+
+
+def test_helper_rejects_unknown_subject_inconsistent_totals_and_small_raw():
+    src = _rank_results_with_blocks()
+    with pytest.raises(ValueError, match="ranking"):
+        _helper(src, "THYAO")
+    bad = copy.deepcopy(src)
+    bad["historical_catch_up"][1]["block"]["full"]["n_excluded_incomplete_horizon"] = 3
+    with pytest.raises(ValueError, match="ufuklar arasında"):
+        _helper(bad, "PETKM")
+    with pytest.raises(ValueError, match="n_raw_subject"):
+        _helper(src, "PETKM", n_raw_subject=10)
+    empty = copy.deepcopy(src)
+    empty["historical_catch_up"] = []
+    with pytest.raises(ValueError, match="boş"):
+        _helper(empty, "PETKM")

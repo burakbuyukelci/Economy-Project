@@ -293,6 +293,59 @@ def example_envelope_indicators_full() -> dict[str, Any]:
     return env
 
 
+def example_rank_with_per_ticker(
+    results: dict[str, Any], subject: str, *, cooldown_days: int = 20, n_raw_subject: int | None = None,
+) -> dict[str, Any]:
+    """Bir rank `results` sözlüğü için 1.2.0 alanlarını (per_ticker, n_raw_laggard_observations, cooldown_days,
+    outcome_benchmark_definition) TUTARLI üretir; girdiyi DEĞİŞTİRMEZ (kopya döner). Sentetik zarf kuran testler/harness içindir.
+
+    Kurallar: `per_ticker` ticker sıralı; aynalar (`is_laggard`, `lag_score_pp`) `ranking`'ten; ÖZNE havuzlu blokları taşır
+    (IS/OOS ve `oos_degradation_flag` None; hisse bazlı blokta IS/OOS yok), DİĞERLERİ n=0 (baz n_obs=0). Böylece her ufukta
+    Σ hisse = havuz. `n_raw_subject` verilmezse öznenin ham sayısı = bağımsız olay sayısı; diğerlerinde 0.
+    `insufficient_peers` ise yeni alanlar None / [] döner (tek hisseli grup muafiyeti).
+    Havuzlu bloklarda `n_events_complete + n_excluded_incomplete_horizon` ufuktan bağımsız sabit olmalı (şema kuralı), değilse ValueError.
+    """
+    res = copy.deepcopy(results)
+    if res.get("insufficient_peers"):
+        res.update(per_ticker=[], n_raw_laggard_observations=None, cooldown_days=None, outcome_benchmark_definition=None)
+        return res
+    rows = {r["ticker"]: r for r in res["ranking"]}
+    if subject not in rows:
+        raise ValueError(f"özne {subject!r} ranking içinde yok: {sorted(rows)}")
+    pooled = res["historical_catch_up"]
+    if not pooled:
+        raise ValueError("historical_catch_up boş: hisse bazlı kırılım kurulamaz")
+    totals = {r["block"]["full"]["n_events_complete"] + r["block"]["full"]["n_excluded_incomplete_horizon"] for r in pooled}
+    if len(totals) != 1:
+        raise ValueError(f"havuz blokları ufuklar arasında farklı bağımsız olay sayısı taşıyor: {sorted(totals)}")
+    n_independent = totals.pop()
+    longest = max(pooled, key=lambda r: r["block"]["horizon"])["block"]["full"]["n_excluded_incomplete_horizon"]
+    raw_subject = n_independent if n_raw_subject is None else n_raw_subject
+    if raw_subject < n_independent:
+        raise ValueError("n_raw_subject bağımsız olay sayısından küçük olamaz")
+    empty_full = {"n_events_complete": 0, "n_excluded_incomplete_horizon": 0, "n_success": 0, "n_false_positive": 0}
+    per_ticker = []
+    for t in sorted(rows):
+        mine = t == subject
+        per_horizon = []
+        for r in pooled:
+            b = r["block"]
+            if mine:
+                block = {**copy.deepcopy(b), "in_sample": None, "out_of_sample": None, "oos_degradation_flag": None}
+                per_horizon.append({"block": block, "median_catch_up_size_pp": r.get("median_catch_up_size_pp")})
+            else:
+                per_horizon.append({"block": {"horizon": b["horizon"], "full": dict(empty_full), "in_sample": None,
+                                              "out_of_sample": None, "baseline": {"n_obs": 0}}, "median_catch_up_size_pp": None})
+        per_ticker.append({
+            "ticker": t, "is_laggard": rows[t]["is_laggard"], "lag_score_pp": rows[t]["lag_score_pp"],
+            "n_raw_laggard_observations": raw_subject if mine else 0,
+            "n_independent_events": n_independent if mine else 0,
+            "n_excluded_incomplete_horizon": longest if mine else 0, "per_horizon": per_horizon})
+    res.update(per_ticker=per_ticker, n_raw_laggard_observations=raw_subject, cooldown_days=cooldown_days,
+               outcome_benchmark_definition={**copy.deepcopy(res["benchmark_definition"]), "includes_subject_stock": False})
+    return res
+
+
 def example_error_envelope(tool: ToolName | str, code: str = "UNKNOWN_TICKER", message: str = "Bilinmeyen ticker") -> dict[str, Any]:
     env = example_envelope(tool)
     env.update({"results": None, "status": "ERROR", "error": {"code": code, "message": message}, "n_events": None})
