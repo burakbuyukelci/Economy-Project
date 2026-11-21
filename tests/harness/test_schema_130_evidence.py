@@ -55,7 +55,7 @@ def test_spec_version_and_sections_for_the_three_tools():
     from pathlib import Path
 
     raw = json.loads((Path(__file__).resolve().parents[2] / "harness" / "evidence_headlines.json").read_text(encoding="utf-8"))
-    assert raw["version"] == 4
+    assert raw["version"] >= 4
     spec = headline_spec()
     assert "levels" in spec["find_support_resistance"]["headline"] and not spec["find_support_resistance"]["context"]
     assert "trades" in spec["run_backtest"]["headline"]

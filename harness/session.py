@@ -62,13 +62,17 @@ class FinalResult:
 class HarnessSession:
     def __init__(self, as_of: date, *, as_of_source: str = "explicit", question: str = "",
                  profile: StageProfile | str | None = None, order_mode: str | None = None,
-                 runner: Runner | None = None, log: EventLog | None = None, routing: Routing | None = None) -> None:
+                 runner: Runner | None = None, log: EventLog | None = None, routing: Routing | None = None,
+                 exposed_tools: Any = _FROM_SETTINGS) -> None:
         self.as_of = as_of
         self.as_of_source = as_of_source
         self.question = question
         self.warnings: list[str] = []  # harness düzeyi uyarılar ("KOD: açıklama"); araç zarfına GİRMEZ
         self.profile = get_profile(profile) if isinstance(profile, str) else (profile or get_profile(settings.experiment_stage()))
         self.visible_tools: list[T] = visible_tools(self.profile)
+        exposed = settings.EXPOSED_TOOLS if exposed_tools is _FROM_SETTINGS else exposed_tools
+        if exposed is not None:  # modele açık küme (örn. yalnızca gerçek araçlar); profilin görünürlüğünü yalnızca DARALTIR
+            self.visible_tools = [t for t in self.visible_tools if t in set(exposed)]
         self._harness_only = harness_only_tools(self.profile)
         self._runner: Runner = runner or run_tool
         self.log = log if log is not None else EventLog(settings.EVENT_LOG_PATH)

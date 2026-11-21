@@ -100,10 +100,15 @@ def test_every_number_in_evidence_comes_from_the_source_tool_output(tool):
             assert float(raw) in source_numbers, (tool.value, item["evidence_id"], raw, item["statement"])
 
 
-def test_loader_tools_and_gate_produce_no_evidence_items_but_are_accepted_as_sources():
-    store, h = make_store(T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CHECK_DATA_QUALITY)
+def test_gate_produces_no_evidence_items_but_is_accepted_as_a_source_and_history_tools_give_one_range_item_each():
+    store, h = make_store(T.CHECK_DATA_QUALITY)
     env = EvidenceBundle(AID, store).build(bparams(*h.values()))
     assert env["results"]["full_evidence_set"] == [] and env["status"] == "OK"
+    store, h = make_store(T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY)                 # şema 1.3.0 sonrası: dönem özeti kanıtı (harness_design 13.5)
+    env = EvidenceBundle(AID, store).build(bparams(*h.values()))
+    assert [i["source_tool"] for i in env["results"]["full_evidence_set"]] == ["get_stock_history", "get_index_history"]
+    store, h = make_store(T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CHECK_DATA_QUALITY)
+    env = EvidenceBundle(AID, store).build(bparams(*h.values()))
     assert env["results"]["gate_status"] == "PASS_WITH_WARNINGS"  # son check_data_quality'den
 
 

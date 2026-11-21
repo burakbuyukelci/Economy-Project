@@ -168,6 +168,11 @@ def llm_num_ctx() -> int:
 def ollama_host() -> str:
     return os.environ.get(OLLAMA_HOST_ENV, "").strip() or OLLAMA_HOST
 
+# --- Modele açık araç kümesi ---------------------------------------------------------------------------------------------
+# None = profilin tüm araçları. Küme verilirse yalnızca bunlar modele görünür (harness-içi kapı/paket araçları yine hariç). v1 eğitim verisi ve canlı sistem
+# yalnızca GERÇEK araçları gösterir; yeni araç (bilanço, makro, haber) gerçek olunca buraya eklenir ve veri yeniden üretilir.
+EXPOSED_TOOLS: frozenset[ToolName] | None = None
+
 # --- Orkestratör (harness/agent_loop.py) ---------------------------------------------------------------------------------
 AGENT_MAX_TURNS = 40               # bir oturumdaki en çok model turu (araç döngüsü + nihai deneme); aşılırsa LOOP_ABORTED
 

@@ -420,6 +420,29 @@ def _backtest(res: dict[str, Any]) -> list[Candidate]:
     return out
 
 
+def _history_range(res: dict[str, Any], name: str) -> list[Candidate]:
+    """Fiyat/endeks geçmişi dönem özeti: araç çıktısındaki satırlardan SEÇİLEN (ilk, son, en yüksek, en düşük kapanış); harness sayı türetmez."""
+    rows = res.get("rows") or []
+    if not rows:
+        return []
+    first, last = rows[0], rows[-1]
+    hi, lo = max(rows, key=lambda r: r["close"]), min(rows, key=lambda r: r["close"])
+    return [Candidate(
+        f"{name} {_fmt(res.get('first_date'))} – {_fmt(res.get('last_date'))} ({_fmt(res.get('n_rows'))} işlem günü): ilk kapanış {_fmt(first['close'])}, "
+        f"son kapanış {_fmt(last['close'])}, en yüksek kapanış {_fmt(hi['close'])} ({hi['date']}), en düşük kapanış {_fmt(lo['close'])} ({lo['date']})",
+        _vals(_v("n_rows", res.get("n_rows")), _v("first_date", res.get("first_date")), _v("last_date", res.get("last_date")),
+              _v("first_close", first["close"]), _v("last_close", last["close"]), _v("high_close", hi["close"]), _v("low_close", lo["close"])),
+        "range")]
+
+
+def _stock_history(res: dict[str, Any]) -> list[Candidate]:
+    return _history_range(res, str(res.get("ticker")))
+
+
+def _index_history(res: dict[str, Any]) -> list[Candidate]:
+    return _history_range(res, str(res.get("index")))
+
+
 EXTRACTORS: dict[T, Callable[[dict[str, Any]], list[Candidate]]] = {
     T.RANK_SECTOR_RELATIVE_STRENGTH: _rank_sector,
     T.DETECT_REVERSAL_EVENTS: _reversal,
@@ -432,7 +455,9 @@ EXTRACTORS: dict[T, Callable[[dict[str, Any]], list[Candidate]]] = {
     T.CALCULATE_INDICATORS: _indicators,
     T.FIND_SUPPORT_RESISTANCE: _support_resistance,
     T.RUN_BACKTEST: _backtest,
-    # get_stock_history / get_index_history (ham veri), check_data_quality (kapı) kanıt cümlesi üretmez.
+    T.GET_STOCK_HISTORY: _stock_history,
+    T.GET_INDEX_HISTORY: _index_history,
+    # check_data_quality (kapı) kanıt cümlesi üretmez.
 }
 
 
