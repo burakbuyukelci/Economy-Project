@@ -1,0 +1,50 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "76a1a9977c695775730348f2a1418e9da4179c6e0ea29485b5b9486d15b92efe",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "analysis_id": "demo-001",
+  "as_of": "2026-09-10",
+  "source_input_hashes": [
+   "0000000000000000000000000000000000000000000000000000000000000000"
+  ]
+ },
+ "results": {
+  "analysis_id": "demo-001",
+  "committed_evidence_set": [
+   {
+    "evidence_id": "E1",
+    "source_input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "source_tool": "rank_sector_relative_strength",
+    "statement": "Örnek",
+    "values": []
+   }
+  ],
+  "full_evidence_set": [
+   {
+    "evidence_id": "E1",
+    "source_input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "source_tool": "rank_sector_relative_strength",
+    "statement": "Örnek",
+    "values": [
+     {
+      "name": "lag_score_pp",
+      "unit": "pp",
+      "value": -8.5
+     }
+    ]
+   }
+  ],
+  "gate_status": "PASS_WITH_WARNINGS",
+  "proposed_action": "WATCH"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "build_evidence_bundle",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

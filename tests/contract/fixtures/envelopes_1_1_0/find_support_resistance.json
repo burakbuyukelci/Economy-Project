@@ -1,0 +1,41 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "a8e7839be480287aba3d022c3e637f5a613e9f7c581077388eaf9bed8b6593cb",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "end": "2026-09-10",
+  "min_touches": 2,
+  "pivot_window": 5,
+  "start": "2024-01-01",
+  "ticker": "THYAO",
+  "tolerance_pct": 1.0
+ },
+ "results": {
+  "last_close": 300.0,
+  "last_date": "2026-09-10",
+  "levels": [
+   {
+    "last_touch_date": "2026-08-20",
+    "price": 290.0,
+    "strength": 0.7,
+    "touch_count": 3,
+    "type": "SUPPORT",
+    "zone_high": 292.0,
+    "zone_low": 288.0
+   }
+  ],
+  "nearest_resistance": 320.0,
+  "nearest_support": 290.0,
+  "ticker": "THYAO"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "find_support_resistance",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

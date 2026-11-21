@@ -1,0 +1,129 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "b57023269922a3d77b8ebd9bcbb721ffa2ecf7a05ce3cbee4a693d01470bfffc",
+ "n_events": 10,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "analysis_start": "2024-01-01",
+  "as_of": "2026-09-10",
+  "forward_horizons": [
+   5,
+   10,
+   20
+  ],
+  "horizon": 20,
+  "lag_threshold_pp": 3.0,
+  "sector": "retail",
+  "split_date": null
+ },
+ "results": {
+  "benchmark_definition": {
+   "includes_subject_stock": true,
+   "members": [
+    "BIMAS",
+    "MAVI",
+    "MGROS"
+   ],
+   "peer_group": "retail",
+   "price_field": "adj_close",
+   "return_type": "simple",
+   "type": "peer_median"
+  },
+  "cost_model": {
+   "round_trip_cost_pct": 0.5,
+   "slippage_bps_per_side": 5.0,
+   "transaction_cost_bps_per_side": 20.0
+  },
+  "historical_catch_up": [
+   {
+    "block": {
+     "baseline": {
+      "hit_rate_pct": 51.0,
+      "mean_return_pct": 0.2,
+      "median_return_pct": 0.1,
+      "n_obs": 400
+     },
+     "full": {
+      "cost_adjusted_mean_return_pct": 0.5,
+      "false_positive_rate_pct": 40.0,
+      "hit_rate_pct": 60.0,
+      "mean_return_pct": 1.2,
+      "mean_reversal_strength_pct": 2.0,
+      "median_return_pct": 0.9,
+      "median_reversal_strength_pct": 1.8,
+      "n_events_complete": 10,
+      "n_excluded_incomplete_horizon": 1,
+      "n_false_positive": 4,
+      "n_success": 6
+     },
+     "horizon": 5,
+     "in_sample": {
+      "cost_adjusted_mean_return_pct": 0.5,
+      "false_positive_rate_pct": 40.0,
+      "hit_rate_pct": 60.0,
+      "mean_return_pct": 1.2,
+      "mean_reversal_strength_pct": 2.0,
+      "median_return_pct": 0.9,
+      "median_reversal_strength_pct": 1.8,
+      "n_events_complete": 10,
+      "n_excluded_incomplete_horizon": 1,
+      "n_false_positive": 4,
+      "n_success": 6
+     },
+     "mean_diff_vs_baseline_pct": 1.0,
+     "median_diff_vs_baseline_pct": 0.8,
+     "oos_degradation_flag": false,
+     "out_of_sample": {
+      "cost_adjusted_mean_return_pct": 0.5,
+      "false_positive_rate_pct": 40.0,
+      "hit_rate_pct": 60.0,
+      "mean_return_pct": 1.2,
+      "mean_reversal_strength_pct": 2.0,
+      "median_return_pct": 0.9,
+      "median_reversal_strength_pct": 1.8,
+      "n_events_complete": 10,
+      "n_excluded_incomplete_horizon": 1,
+      "n_false_positive": 4,
+      "n_success": 6
+     }
+    },
+    "median_catch_up_size_pp": 2.1
+   }
+  ],
+  "horizon": 20,
+  "insufficient_peers": false,
+  "lag_threshold_pp": 3.0,
+  "peer_group_size": 3,
+  "ranking": [
+   {
+    "is_laggard": false,
+    "is_leader": true,
+    "lag_score_pp": 3.0,
+    "rank": 1,
+    "return_pct": 15.0,
+    "return_vs_xu100_pp": 11.0,
+    "ticker": "BIMAS"
+   }
+  ],
+  "sector": "retail",
+  "sector_median_return_pct": 12.0,
+  "sector_median_vs_xu100_pp": 8.0,
+  "sector_strength": "STRONG",
+  "strength_thresholds": {
+   "strong_min_vs_xu100_pp": 2.0,
+   "weak_max_vs_xu100_pp": -2.0
+  },
+  "structural_vs_temporary": null,
+  "window_end": "2026-09-10",
+  "window_start": "2026-08-12",
+  "xu100_return_pct": 4.0
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "rank_sector_relative_strength",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

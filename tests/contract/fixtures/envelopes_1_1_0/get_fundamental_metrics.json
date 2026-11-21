@@ -1,0 +1,34 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "413752c539b578868891f3f6a04749cb292f87a9816dd135e68428e8b3822c31",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "period": null,
+  "ticker": "TUPRS"
+ },
+ "results": {
+  "disclosure_date": "2026-08-12",
+  "fiscal_period": "2026Q2",
+  "metric_set": "INDUSTRIAL",
+  "metrics": [
+   {
+    "name": "EBITDA_MARGIN",
+    "unit": "PCT",
+    "value": 8.5
+   }
+  ],
+  "period_end_date": "2026-06-30",
+  "ticker": "TUPRS",
+  "tms29_comparable": true
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "get_fundamental_metrics",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

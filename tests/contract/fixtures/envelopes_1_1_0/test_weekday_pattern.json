@@ -1,0 +1,137 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "6b3d4b52e0d6efe7ca0c3f32ce85cd8ba8221c711a862faff6fa226838bdf5d1",
+ "n_events": 4,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "alpha": 0.05,
+  "as_of": "2026-09-10",
+  "conditioning": "NONE",
+  "in_sample_end": "2025-12-31",
+  "in_sample_start": "2024-01-01",
+  "n_tests_declared": 1,
+  "out_of_sample_end": "2026-09-10",
+  "out_of_sample_start": "2026-01-01",
+  "pattern": [
+   {
+    "direction": "DOWN",
+    "role": "TRIGGER",
+    "weekday": "MON"
+   },
+   {
+    "direction": "UP",
+    "role": "OUTCOME",
+    "weekday": "THU"
+   }
+  ],
+  "slippage_bps": 5.0,
+  "ticker": "THYAO",
+  "transaction_cost_bps": 20.0
+ },
+ "results": {
+  "conditioning": "NONE",
+  "cost_model": {
+   "round_trip_cost_pct": 0.5,
+   "slippage_bps_per_side": 5.0,
+   "transaction_cost_bps_per_side": 20.0
+  },
+  "in_sample": {
+   "cost_adjusted_outcome_mean_return_pct": 0.1,
+   "expected_occurrences_if_independent": 0.3,
+   "hit_rate_pct": 66.7,
+   "n_excluded_holiday_weeks": 1,
+   "n_excluded_incomplete_horizon": 0,
+   "n_false_positive": 1,
+   "n_occurrences": 2,
+   "n_trigger_weeks": 3,
+   "n_weeks_complete": 9,
+   "n_weeks_total": 10,
+   "occurrence_rate_pct": 22.2,
+   "outcome_mean_diff_vs_unconditional_pct": 0.6,
+   "outcome_mean_return_pct": 0.8,
+   "outcome_median_return_pct": 0.7,
+   "p_value_adjusted": 0.3,
+   "p_value_raw": 0.3,
+   "per_day": [
+    {
+     "direction_match_rate_pct": 55.0,
+     "expected_direction": "UP",
+     "mean_return_pct": 0.3,
+     "median_return_pct": 0.2,
+     "n_obs": 9,
+     "role": "OUTCOME",
+     "unconditional_mean_return_pct": 0.1,
+     "unconditional_median_return_pct": 0.1,
+     "weekday": "THU"
+    }
+   ],
+   "t_stat": 1.1,
+   "unconditional_outcome_mean_return_pct": 0.2,
+   "unconditional_outcome_median_return_pct": 0.1,
+   "window": {
+    "end": "2025-12-31",
+    "start": "2024-01-01"
+   }
+  },
+  "multiple_testing": {
+   "adjusted_alpha": 0.05,
+   "alpha": 0.05,
+   "method": "bonferroni",
+   "n_tests_declared": 1,
+   "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."
+  },
+  "out_of_sample": {
+   "cost_adjusted_outcome_mean_return_pct": 0.1,
+   "expected_occurrences_if_independent": 0.3,
+   "hit_rate_pct": 66.7,
+   "n_excluded_holiday_weeks": 1,
+   "n_excluded_incomplete_horizon": 0,
+   "n_false_positive": 1,
+   "n_occurrences": 2,
+   "n_trigger_weeks": 3,
+   "n_weeks_complete": 9,
+   "n_weeks_total": 10,
+   "occurrence_rate_pct": 22.2,
+   "outcome_mean_diff_vs_unconditional_pct": 0.6,
+   "outcome_mean_return_pct": 0.8,
+   "outcome_median_return_pct": 0.7,
+   "p_value_adjusted": 0.3,
+   "p_value_raw": 0.3,
+   "per_day": [
+    {
+     "direction_match_rate_pct": 55.0,
+     "expected_direction": "UP",
+     "mean_return_pct": 0.3,
+     "median_return_pct": 0.2,
+     "n_obs": 9,
+     "role": "OUTCOME",
+     "unconditional_mean_return_pct": 0.1,
+     "unconditional_median_return_pct": 0.1,
+     "weekday": "THU"
+    }
+   ],
+   "t_stat": 1.1,
+   "unconditional_outcome_mean_return_pct": 0.2,
+   "unconditional_outcome_median_return_pct": 0.1,
+   "window": {
+    "end": "2026-09-10",
+    "start": "2026-01-01"
+   }
+  },
+  "pattern_label": "MON-DOWN | THU-UP",
+  "stability_verdict": "INSUFFICIENT_DATA",
+  "ticker": "THYAO",
+  "verdict_codes": [
+   "IS_TOO_FEW"
+  ],
+  "verdict_reason": "IS_TOO_FEW: n_trigger_weeks=3 < 10"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "test_weekday_pattern",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

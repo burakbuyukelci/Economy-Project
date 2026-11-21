@@ -1,0 +1,90 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "aa9f58e1f97b53966e4708a7d8b231e373ab2de2b3569baebda20f5dd779c461",
+ "n_events": 6,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "improvement_basis": "YOY",
+  "improvement_metric": "EBITDA_MARGIN",
+  "metrics": null,
+  "periods": null,
+  "reaction_horizons": [
+   1,
+   5,
+   20
+  ],
+  "ticker": "TUPRS"
+ },
+ "results": {
+  "benchmark_definition": {
+   "includes_subject_stock": true,
+   "members": [
+    "PETKM",
+    "TUPRS"
+   ],
+   "peer_group": "energy_petrochem",
+   "price_field": "adj_close",
+   "return_type": "simple",
+   "type": "peer_median"
+  },
+  "improvement_basis": "YOY",
+  "improvement_metric": "EBITDA_MARGIN",
+  "metric_set": "INDUSTRIAL",
+  "n_quarters_disclosed_by_as_of": 6,
+  "n_quarters_excluded_not_yet_disclosed": 0,
+  "quarters": [
+   {
+    "disclosure_date": "2026-08-12",
+    "fiscal_period": "2026Q2",
+    "metrics": [
+     {
+      "change_unit": "PP",
+      "name": "EBITDA_MARGIN",
+      "qoq_change": 0.4,
+      "qoq_direction": "IMPROVED",
+      "value": 8.5,
+      "yoy_change": 1.2,
+      "yoy_direction": "IMPROVED"
+     }
+    ],
+    "period_end_date": "2026-06-30",
+    "reactions": [
+     {
+      "abnormal_vs_sector_pct": null,
+      "abnormal_vs_xu100_pct": null,
+      "complete": false,
+      "horizon": 20,
+      "sector_return_pct": null,
+      "stock_return_pct": null,
+      "window_end_date": null,
+      "xu100_return_pct": null
+     }
+    ],
+    "tms29_comparable": true
+   }
+  ],
+  "reaction_summary": [
+   {
+    "group": "IMPROVED",
+    "hit_rate_vs_xu100_pct": 66.7,
+    "horizon": 5,
+    "mean_abnormal_vs_sector_pct": 0.4,
+    "mean_abnormal_vs_xu100_pct": 0.8,
+    "median_abnormal_vs_sector_pct": 0.3,
+    "median_abnormal_vs_xu100_pct": 0.6,
+    "n": 3,
+    "n_excluded_incomplete_horizon": 0
+   }
+  ],
+  "ticker": "TUPRS"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "calculate_fundamental_change",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

@@ -1,0 +1,87 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "14a8b495411d2e42db775a1d3f80d7a51eee02623a0cce586602cb666be3adad",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "config": {
+   "atr_period": 14,
+   "bollinger_std": 2.0,
+   "bollinger_window": 20,
+   "ema_windows": [
+    12,
+    26
+   ],
+   "ichimoku_kijun": 26,
+   "ichimoku_senkou_b": 52,
+   "ichimoku_tenkan": 9,
+   "kama_er_window": 10,
+   "kama_fast": 2,
+   "kama_slow": 30,
+   "macd_fast": 12,
+   "macd_signal": 9,
+   "macd_slow": 26,
+   "rsi_period": 14,
+   "sma_windows": [
+    20,
+    50,
+    200
+   ],
+   "supertrend_atr_period": 10,
+   "supertrend_multiplier": 3.0,
+   "volume_zscore_window": 20
+  },
+  "end": "2026-09-10",
+  "indicators": [
+   "RSI"
+  ],
+  "last_n_rows": 5,
+  "price_adjustment": "adjusted",
+  "start": "2024-01-01",
+  "ticker": "THYAO"
+ },
+ "results": {
+  "columns": [
+   {
+    "first_valid_date": "2023-01-23",
+    "indicator": "RSI",
+    "name": "RSI_14",
+    "valid_at_as_of": true,
+    "warmup_bars": 14
+   }
+  ],
+  "first_valid_date": "2023-01-23",
+  "history_first_date": "2023-01-02",
+  "latest": {
+   "close": 299.25,
+   "date": "2026-09-10",
+   "states": {},
+   "values": {
+    "RSI_14": 41.2
+   }
+  },
+  "n_bars_used": 900,
+  "price_adjustment": "adjusted",
+  "recent_rows": [
+   {
+    "close": 301.0,
+    "date": "2026-09-09",
+    "states": {},
+    "values": {
+     "RSI_14": 44.0
+    }
+   }
+  ],
+  "state_date": "2026-09-10",
+  "ticker": "THYAO"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "calculate_indicators",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

@@ -1,4 +1,6 @@
-"""calculate_indicators sonuç/params sözleşmesi (schema_version 1.1.0): kompakt, sayı/kategori ayrık, ısınma açık."""
+"""calculate_indicators sonuç/params sözleşmesi (1.1.0 kuralları, 1.2.0'da korunur): kompakt, sayı/kategori ayrık, ısınma açık.
+
+Kolon meta kuralları `columns_meta_included=True` (tam varyant) üzerinde sınanır; hafif varsayılanlar test_schema_1_2_0.py'de."""
 from __future__ import annotations
 
 import copy
@@ -8,15 +10,21 @@ from pydantic import ValidationError
 
 from schemas import SCHEMA_VERSION, ToolName, validate_envelope
 from schemas.enums import IchimokuState, KamaSlope, PriceAdjustment, SupertrendState, VolumeRegime
-from schemas.examples import example_envelope, example_params
+from schemas import examples
+from schemas.examples import example_params
 from schemas.params import CalculateIndicatorsParams
 from schemas.results import CalculateIndicatorsResult, IndicatorRow, IndicatorStates
 
 TOOL = ToolName.CALCULATE_INDICATORS
 
 
+def _full() -> dict:
+    """Kolon meta'lı (1.1.0 biçimli) örnek zarf."""
+    return copy.deepcopy(examples.example_envelope_indicators_full())
+
+
 def _res() -> dict:
-    return copy.deepcopy(example_envelope(TOOL)["results"])
+    return copy.deepcopy(_full()["results"])
 
 
 def _validate(res: dict) -> CalculateIndicatorsResult:
@@ -29,10 +37,10 @@ def test_schema_version_is_at_least_1_1_0():
 
 
 # --- params -------------------------------------------------------------------------------------
-def test_params_defaults_price_adjustment_and_last_n_rows():
+def test_params_defaults_price_adjustment_and_last_n_rows():  # 1.2.0: last_n_rows varsayılanı 0
     p = CalculateIndicatorsParams.model_validate(example_params(TOOL))
     assert p.price_adjustment == PriceAdjustment.ADJUSTED
-    assert p.last_n_rows == 5
+    assert p.last_n_rows == 0
 
 
 @pytest.mark.parametrize("n", [-1, 31])
@@ -52,7 +60,7 @@ def test_params_last_n_rows_accepts_edges(n):
 
 # --- örnek zarf ----------------------------------------------------------------------------------
 def test_example_envelope_is_strict_ok():
-    env = validate_envelope(example_envelope(TOOL))
+    env = validate_envelope(_full())
     res = _validate(env.results)  # type: ignore[arg-type]
     assert res.latest is not None and res.latest.date == res.state_date
     assert set(res.latest.values) == {c.name for c in res.columns}
@@ -171,7 +179,7 @@ def test_row_model_is_strict():
 
 # --- look-ahead (zarf düzeyi) --------------------------------------------------------------------
 def test_state_date_after_as_of_is_caught_as_lookahead():
-    env = example_envelope(TOOL)
+    env = _full()
     env["results"]["state_date"] = "2026-09-11"
     env["results"]["latest"]["date"] = "2026-09-11"
     with pytest.raises(ValueError):
@@ -179,14 +187,14 @@ def test_state_date_after_as_of_is_caught_as_lookahead():
 
 
 def test_column_first_valid_date_after_as_of_is_caught():
-    env = example_envelope(TOOL)
+    env = _full()
     env["results"]["columns"][0]["first_valid_date"] = "2026-09-11"
     with pytest.raises(ValueError):
         validate_envelope(env)
 
 
 def test_latest_row_date_after_as_of_is_caught():
-    env = example_envelope(TOOL)
+    env = _full()
     env["results"]["recent_rows"] = []
     env["results"]["latest"]["date"] = "2026-09-12"
     env["results"]["state_date"] = "2026-09-12"
