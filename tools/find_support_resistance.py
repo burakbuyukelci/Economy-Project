@@ -116,10 +116,14 @@ def _handler(p: FindSupportResistanceParams, snap: Snapshot) -> ToolOutput:
                                      f"(toplam {len(supports)} destek, {len(resistances)} direnç)"))
     warnings.append(make_warning(WarningCode.HISTORICAL_ONLY, "Seviyeler geçmiş pivotlardır; gelecekte tutacağı garanti değildir. "
                                  "Fiyatlar adjusted ölçeklidir (son kapanışla aynı ölçek; ham işlem fiyatı olmayabilir)."))
+    lc = _r(last_close)
+    ns = supports[0].price if supports else None
+    nr = resistances[0].price if resistances else None
     res = FindSupportResistanceResult(
-        ticker=p.ticker, last_close=_r(last_close), last_date=last_date,
-        nearest_support=supports[0].price if supports else None,
-        nearest_resistance=resistances[0].price if resistances else None, levels=out_levels)
+        ticker=p.ticker, last_close=lc, last_date=last_date, nearest_support=ns, nearest_resistance=nr, levels=out_levels,
+        # şema 1.3.0: yuvarlanmış last_close ve seviyeden türetilir (zarf içi tutarlılık)
+        nearest_support_distance_pct=_r((lc - ns) / lc * 100) if ns is not None else None,
+        nearest_resistance_distance_pct=_r((nr - lc) / lc * 100) if nr is not None else None)
     return ToolOutput(results=res, n_events=None, warnings=warnings)
 
 

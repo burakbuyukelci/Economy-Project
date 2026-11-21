@@ -67,6 +67,8 @@ def validate_envelope(data: dict[str, Any]) -> ToolEnvelope:
         _assert_no_dates_after(res.model_dump(mode="json"), env.as_of)
         if _version(env.schema_version) >= (1, 2, 0):
             _require_since_1_2_0(env.tool, res)
+        if _version(env.schema_version) >= (1, 3, 0):
+            _require_since_1_3_0(env.tool, res)
     return env
 
 
@@ -96,6 +98,26 @@ def _require_since_1_2_0(tool: ToolName, res: BaseModel) -> None:
         need("issue_counts")
 
 
+def _require_since_1_3_0(tool: ToolName, res: BaseModel) -> None:
+    """Sürüm koşullu zorunluluk (şema 1.3.0): alanlar modelde Optional'dır (1.2.0 zarfları geçerli kalsın) ama `schema_version >= 1.3.0`
+    damgalı, status=OK zarfta araç bunları DOLDURMAK zorundadır.
+      * find_support_resistance: seviye varsa ilgili mesafe dolu (seviye yoksa None kalır).
+      * run_backtest: işlem varsa (kazanan + kaybeden > 0) `last_exit_date` dolu.
+      * detect_reversal_events: her grupta `n_raw_event_days` ve `n_overlapping_forward_windows` dolu."""
+    if tool == ToolName.FIND_SUPPORT_RESISTANCE:
+        for lvl, dist in (("nearest_support", "nearest_support_distance_pct"), ("nearest_resistance", "nearest_resistance_distance_pct")):
+            if getattr(res, lvl) is not None and getattr(res, dist) is None:
+                raise ValueError(f"schema_version >= 1.3.0: find_support_resistance sonucunda {lvl} varken {dist} None olamaz")
+    elif tool == ToolName.RUN_BACKTEST:
+        if res.n_winning_trades + res.n_losing_trades > 0 and res.last_exit_date is None:  # type: ignore[attr-defined]
+            raise ValueError("schema_version >= 1.3.0: run_backtest sonucunda işlem varken last_exit_date None olamaz")
+    elif tool == ToolName.DETECT_REVERSAL_EVENTS:
+        for g in res.groups:  # type: ignore[attr-defined]
+            for f in ("n_raw_event_days", "n_overlapping_forward_windows"):
+                if getattr(g, f) is None:
+                    raise ValueError(f"schema_version >= 1.3.0: detect_reversal_events grup '{g.label}' için {f} None olamaz")
+
+
 # as_of sonrası olamayacak tarih alanları (anahtar adına göre). Gelecek tarih içerebilen alanlar
 # (ör. requested_end, end) bilinçli olarak dahil DEĞİL.
 _PAST_ONLY_KEYS = {
@@ -103,6 +125,7 @@ _PAST_ONLY_KEYS = {
     "publication_date", "observation_date", "published_date", "signal_date", "entry_date", "exit_date",
     "last_publication_date", "last_touch_date", "window_end_date", "max_abs_daily_return_date",
     "state_date", "history_first_date", "first_valid_date",  # calculate_indicators (1.1.0)
+    "last_exit_date",  # run_backtest (1.3.0): en geç çıkış; trade_log kısaltılsa bile max_result_date'i besler
 }
 
 
@@ -132,7 +155,6 @@ def max_result_date(results: Any) -> date | None:
     """Bir aracın `results`'ındaki EN GEÇ geçmiş-only tarih (yoksa None). Kalite kapısı `BundleItem.max_result_date` için kullanır
     (harness `bundle_items` bunu çağırır). Saf ve belirlenimcidir; tarama `_assert_no_dates_after` ile aynı anahtar tablosunu paylaşır.
 
-    run_backtest için `trade_log` kısaltılsa bile en geç çıkışı korumak üzere `last_exit_date` alanı eklenecek (docs/schema_wishlist.md §7);
-    anahtar tabloya girince bu fonksiyon onu otomatik kapsar.
+    run_backtest için `last_exit_date` (1.3.0) `trade_log` kısaltılsa bile en geç çıkışı taşır; anahtar tabloda olduğundan bu fonksiyon onu kapsar.
     """
     return max((d for _, d in _past_only_dates(results)), default=None)

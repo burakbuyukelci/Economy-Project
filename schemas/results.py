@@ -256,6 +256,14 @@ class ReversalGroup(Strict):
     regime_breakdown: list[RegimeBreakdown] = Field(default_factory=list)
     events: list[ReversalEventRecord] = Field(default_factory=list, description="Üst sınırlı (en son 100)")
     events_truncated: bool = False
+    n_raw_event_days: int | None = Field(
+        default=None, ge=0,
+        description="1.3.0: ham olay günü sayısı (ör. Bollinger'da temas günü; ardışık seri teklenmeden ÖNCE). Gruptaki olayların "
+                    "ait olduğu serilerin toplam gün sayısı; olay = ardışık serinin ilk günü, bu yüzden >= n_events_detected")
+    n_overlapping_forward_windows: int | None = Field(
+        default=None, ge=0,
+        description="1.3.0: ileri penceresi (en uzun ufuk) bir sonraki olayla çakışan olay sayısı: olay t, grubun bir sonraki olayı "
+                    "t'den en fazla max(forward_horizons) işlem günü sonraysa sayılır; en fazla n_events_detected - 1")
 
 
 class DetectReversalEventsResult(Strict):
@@ -583,6 +591,23 @@ class FindSupportResistanceResult(Strict):
     nearest_support: float | None
     nearest_resistance: float | None
     levels: list[SRLevel]
+    nearest_support_distance_pct: float | None = Field(
+        default=None, description="1.3.0: (last_close - nearest_support) / last_close x 100 (pozitif); nearest_support yoksa None")
+    nearest_resistance_distance_pct: float | None = Field(
+        default=None, description="1.3.0: (nearest_resistance - last_close) / last_close x 100 (pozitif); nearest_resistance yoksa None")
+
+    @model_validator(mode="after")
+    def _distances(self):
+        for lvl, dist, name, sign in ((self.nearest_support, self.nearest_support_distance_pct, "nearest_support", 1),
+                                      (self.nearest_resistance, self.nearest_resistance_distance_pct, "nearest_resistance", -1)):
+            if dist is None:
+                continue
+            if lvl is None or not self.last_close:
+                raise ValueError(f"{name}_distance_pct dolu ama {name}/last_close yok")
+            expected = sign * (self.last_close - lvl) / self.last_close * 100
+            if abs(expected - dist) > 1e-3:
+                raise ValueError(f"{name}_distance_pct {dist} != beklenen {expected:.4f}")
+        return self
 
 
 # ======================================================================
@@ -727,6 +752,15 @@ class RunBacktestResult(Strict):
     low_signal_flag: bool = Field(description="n_signals < MIN_EVENTS")
     trade_log: list[Trade]
     trade_log_truncated: bool = False
+    last_exit_date: date | None = Field(
+        default=None, description="1.3.0: TÜM işlemlerin en geç exit_date'i (trade_log kısaltılsa bile); işlem yoksa None. as_of'u aşamaz")
+
+    @model_validator(mode="after")
+    def _last_exit(self):
+        if self.last_exit_date is not None and self.trade_log:
+            if self.last_exit_date < max(t.exit_date for t in self.trade_log):
+                raise ValueError("last_exit_date trade_log'daki en geç exit_date'ten önce olamaz")
+        return self
 
 
 # ======================================================================

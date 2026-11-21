@@ -63,3 +63,18 @@ Eklemelidir (1.1.0 zarfları geçerli kalır; `tests/contract/fixtures/envelopes
 - **`input_hash` etkisi:** `calculate_indicators` için TÜM hash'ler değişir (iki yeni param + `last_n_rows` varsayılanı); `check_data_quality` için yalnızca boş olmayan `analysis_bundle` (öğeler iki `null` alan kazanır).
   Hash tanımı değişmedi; `schema_version` hash'e girmez.
 - `schemas/examples.py`: `example_rank_with_per_ticker(results, subject, ...)` yardımcısı (sentetik rank zarfı kuranlar için: aynalar ranking'ten, özne havuz bloklarını taşır, diğerleri n=0, toplamlar tutarlı); rank örneği 3 satırlı sıralama + `per_ticker` (havuzla toplamı tutar); indicators varsayılan örneği hafif, kolon meta'lı varyant `example_envelope_indicators_full()`; kapı örneğinde `issue_counts`.
+
+## 1.3.0 — 2026-11-21 (insan onayı: 2026-11-21; tek paket, tek sürüm artışı; `docs/schema_wishlist.md` §7, §9, §10)
+Eklemelidir (1.2.0 zarfları geçerli kalır; `tests/contract/fixtures/envelopes_1_2_0/` bunu dondurulmuş zarflarla sınar). Etkilenen araçlar: `find_support_resistance`, `run_backtest`, `detect_reversal_events`.
+- **`FindSupportResistanceResult`**: `nearest_support_distance_pct`, `nearest_resistance_distance_pct` (`float | None = None`). Tanım: `(last_close − nearest_support) / last_close × 100` ve `(nearest_resistance − last_close) / last_close × 100`
+  (pozitif, yüzde). Model doğrulayıcısı: mesafe dolu ise ilgili seviye ve `last_close` olmalı, formülle ±1e-3 uyuşmalı.
+- **`RunBacktestResult.last_exit_date`**: `date | None = None`; TÜM işlemlerin en geç `exit_date`'i (`trade_log` kısaltılsa bile); işlem yoksa `None`. Doğrulayıcı: `trade_log`'daki en geç çıkıştan önce olamaz.
+  `registry._PAST_ONLY_KEYS`'e eklendi → `as_of`'u aşarsa look-ahead reddi ve `schemas.registry.max_result_date` otomatik kapsar (kapı `BACKTEST_FUTURE_INFO`).
+- **`ReversalGroup`** (her grup, koşulsuz ve birleşik): `n_raw_event_days: int | None = None` (ham olay günü; Bollinger'da temas günü; olay = ardışık serinin ilk günü, grubun olaylarının ait olduğu serilerin toplam gün sayısı) ve
+  `n_overlapping_forward_windows: int | None = None` (grubun olayı `t`, bir sonraki olayı `t`'den en fazla `max(forward_horizons)` işlem günü sonraysa sayılır; en fazla `n_events_detected − 1`).
+  **Çapraz doğrulayıcı YOK** (bilinçli): harness test kurucuları örnek grubu kopyalayıp `n_events_detected`'ı değiştirdiği için şema düzeyinde `raw ≥ n_events` / `overlap ≤ n − 1` denetimi onları kırardı; kurallar araç testlerinde
+  sınanır. Harness uyarlanınca şemaya eklenebilir.
+- **`registry.validate_envelope` — sürüm koşullu zorunluluk (`schema_version >= 1.3.0`, status=OK):** SR'de seviye varsa ilgili mesafe dolu; `run_backtest`'te işlem varsa (`n_winning_trades + n_losing_trades > 0`) `last_exit_date` dolu;
+  reversal'da her grupta iki yeni alan dolu. 1.2.0 damgalı zarflarda Optional kalır.
+- **`input_hash` etkisi:** yok (params değişmedi). `schema_version` hash'e girmez.
+- `schemas/examples.py` üç aracın örneğini yeni alanlarla günceller.

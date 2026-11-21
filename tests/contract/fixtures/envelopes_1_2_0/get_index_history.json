@@ -1,0 +1,41 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "da9f4855bd68006502a10c550d62322aa7ec338428617744e8d7dca351427dc4",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "end": "2026-09-10",
+  "index": "XU100",
+  "start": "2026-09-08"
+ },
+ "results": {
+  "effective_end": "2026-09-10",
+  "first_date": "2026-09-10",
+  "index": "XU100",
+  "last_date": "2026-09-10",
+  "n_rows": 1,
+  "requested_end": "2026-09-10",
+  "requested_start": "2026-09-08",
+  "rows": [
+   {
+    "adj_close": 10.4,
+    "close": 10.5,
+    "date": "2026-09-10",
+    "high": 11.0,
+    "low": 9.5,
+    "open": 10.0,
+    "volume": 1000.0
+   }
+  ],
+  "yahoo_symbol": "XU100.IS"
+ },
+ "schema_version": "1.2.0",
+ "status": "OK",
+ "tool": "get_index_history",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

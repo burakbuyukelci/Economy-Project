@@ -109,6 +109,8 @@ def test_hand_computed_levels(root):
     r = res(env)
     assert (r.last_close, r.last_date) == (100.0, DATES[-1].date())
     assert (r.nearest_support, r.nearest_resistance) == (90.2, 110.1)
+    assert r.nearest_support_distance_pct == 9.8  # (100 - 90,2) / 100 x 100
+    assert r.nearest_resistance_distance_pct == 10.1  # (110,1 - 100) / 100 x 100
     res_lv, sup_lv = r.levels[0], r.levels[1]
     assert (res_lv.type.value, res_lv.price, res_lv.zone_low, res_lv.zone_high, res_lv.touch_count) == ("RESISTANCE", 110.1, 109.8, 110.5, 3)
     assert res_lv.last_touch_date == DATES[50].date()
@@ -229,6 +231,7 @@ def test_no_pivots_gives_empty_levels_and_none(tmp_path):
     c = np.full(N, 100.0)
     r = res(call(make_root(tmp_path, c, c + 1, c - 1)))
     assert (r.levels, r.nearest_support, r.nearest_resistance) == ([], None, None)
+    assert (r.nearest_support_distance_pct, r.nearest_resistance_distance_pct) == (None, None)
     assert r.last_close == 100.0
 
 
@@ -261,4 +264,5 @@ def test_real_thyao_levels_are_consistent():
     assert real() == real()
     # gerçek değer çapaları (v2, as_of 2026-09-10; adjusted ölçek)
     assert (r.last_close, r.nearest_support, r.nearest_resistance) == (299.25, 297.1765, 302.012)
+    assert (r.nearest_support_distance_pct, r.nearest_resistance_distance_pct) == (0.6929, 0.923)
     assert (r.levels[0].touch_count, r.levels[0].last_touch_date) == (5, date(2026, 6, 3))

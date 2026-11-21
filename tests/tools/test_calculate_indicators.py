@@ -15,7 +15,7 @@ import pytest
 
 from config.settings import SNAPSHOT_DIR
 from config.universe import load_universe
-from schemas import validate_envelope
+from schemas import SCHEMA_VERSION, validate_envelope
 from schemas.enums import IndicatorName
 from schemas.params import IndicatorConfig
 from schemas.results import CalculateIndicatorsResult
@@ -424,7 +424,7 @@ def test_default_call_is_light_no_columns_no_recent_rows(roots):
     env = call_default(roots["normal"])
     validate_envelope(env)
     r = res(env)
-    assert env["schema_version"] == "1.2.0"
+    assert env["schema_version"] == SCHEMA_VERSION
     assert env["params"]["last_n_rows"] == 0 and env["params"]["include_columns_meta"] is False
     assert env["params"]["value_columns"] is None
     assert (r.columns_meta_included, r.columns, r.recent_rows) == (False, [], [])

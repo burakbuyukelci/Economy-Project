@@ -1,0 +1,42 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "7516b6bc7b45dc91dee4eddea574d8d93a5ef071a9950572dbdc1940cb2af55a",
+ "n_events": 1,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "end": "2026-09-10",
+  "start": "2026-09-01",
+  "ticker": "EREGL",
+  "topic": null
+ },
+ "results": {
+  "events": [
+   {
+    "category": "EARNINGS",
+    "event_id": "kap-0001",
+    "headline": "Örnek KAP açıklaması",
+    "published_date": "2026-09-05",
+    "published_time": "18:30",
+    "source": "KAP",
+    "stance": null,
+    "tickers": [
+     "EREGL"
+    ],
+    "topics": [
+     "earnings"
+    ],
+    "url": null
+   }
+  ],
+  "n_events_returned": 1
+ },
+ "schema_version": "1.2.0",
+ "status": "OK",
+ "tool": "get_news_events",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

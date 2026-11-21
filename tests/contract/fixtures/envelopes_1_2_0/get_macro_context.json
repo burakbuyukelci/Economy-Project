@@ -1,0 +1,49 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "4d56e52f14c21ce89788ed23e9ed76c1decff0e71bc081da82b584616899986b",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "end": "2026-09-10",
+  "series": [
+   "USDTRY",
+   "EURTRY",
+   "TCMB_POLICY_RATE",
+   "FED_FUNDS_UPPER",
+   "FED_FUNDS_LOWER",
+   "CPI_MONTHLY",
+   "CPI_ANNUAL"
+  ],
+  "start": "2026-01-01"
+ },
+ "results": {
+  "end": "2026-09-10",
+  "series": [
+   {
+    "frequency": "daily",
+    "gaps": [],
+    "last_publication_date": "2026-09-10",
+    "n_points": 1,
+    "points": [
+     {
+      "observation_date": "2026-09-10",
+      "publication_date": "2026-09-10",
+      "value": 41.0
+     }
+    ],
+    "series": "USDTRY",
+    "source": "TCMB/EVDS"
+   }
+  ],
+  "start": "2026-01-01"
+ },
+ "schema_version": "1.2.0",
+ "status": "OK",
+ "tool": "get_macro_context",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

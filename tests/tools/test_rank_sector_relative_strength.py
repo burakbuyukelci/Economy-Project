@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from config.settings import SNAPSHOT_DIR
-from schemas import validate_envelope
+from schemas import SCHEMA_VERSION, validate_envelope
 from schemas.results import RankSectorRelativeStrengthResult
 from scripts.download_prices import CANONICAL_COLUMNS
 from tests.conftest import make_snapshot
@@ -522,7 +522,7 @@ def test_per_ticker_counts_step_scenario_only_mavi_has_events(roots):
     env = call(roots["step"], d(70), forward_horizons=[5, 10, 20])
     validate_envelope(env)
     r = res(env)
-    assert env["schema_version"] == "1.2.0"
+    assert env["schema_version"] == SCHEMA_VERSION
     assert (r.cooldown_days, r.n_raw_laggard_observations) == (20, 20)
     assert [t.ticker for t in r.per_ticker] == ["BIMAS", "MAVI", "MGROS"]  # ticker sıralı
     assert [(t.n_raw_laggard_observations, t.n_independent_events, t.n_excluded_incomplete_horizon) for t in r.per_ticker] == [

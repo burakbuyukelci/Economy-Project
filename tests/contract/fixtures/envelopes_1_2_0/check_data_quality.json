@@ -1,0 +1,61 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "94dcea5a0bf2588cc3dccfb0626212cb0daf9a05b0789121615c28c06edd1fd4",
+ "n_events": null,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "analysis_bundle": [],
+  "as_of": "2026-09-10",
+  "checks": null,
+  "end": "2026-09-10",
+  "include_index": true,
+  "price_jump_limit_pct": 10.0,
+  "start": "2024-01-01",
+  "tickers": [
+   "THYAO"
+  ]
+ },
+ "results": {
+  "checks_run": [
+   "PRICE_JUMPS"
+  ],
+  "gate_reason": "1 yumuşak uyarı",
+  "gate_status": "PASS_WITH_WARNINGS",
+  "hard_blocks": [],
+  "issue_counts": {
+   "PRICE_JUMP_OVER_LIMIT": 1
+  },
+  "price_jump_limit_pct": 10.0,
+  "soft_warnings": [
+   {
+    "code": "PRICE_JUMP_OVER_LIMIT",
+    "date": "2025-06-01",
+    "message": "Olası düzeltilmemiş bedelsiz",
+    "severity": "SOFT",
+    "ticker": "THYAO",
+    "value": 25.0
+   }
+  ],
+  "ticker_reports": [
+   {
+    "first_date": "2024-01-02",
+    "last_data_age_days": 0,
+    "last_date": "2026-09-10",
+    "max_abs_daily_return_date": "2025-06-01",
+    "max_abs_daily_return_pct": 25.0,
+    "n_missing_trading_days": 0,
+    "n_price_jumps_over_limit": 1,
+    "n_rows": 400,
+    "ticker": "THYAO"
+   }
+  ]
+ },
+ "schema_version": "1.2.0",
+ "status": "OK",
+ "tool": "check_data_quality",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

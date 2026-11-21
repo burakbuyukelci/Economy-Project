@@ -122,11 +122,12 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
                                                      "reversal_success": True, "reversal_strength_pct": 1.0},
                                                     {"horizon": 10, "complete": False, "return_pct": None,
                                                      "reversal_success": None, "reversal_strength_pct": None}]}],
-                    "events_truncated": False}],
+                    "events_truncated": False, "n_raw_event_days": 14, "n_overlapping_forward_windows": 2}],
         "multiple_testing": _MT},
     ToolName.FIND_SUPPORT_RESISTANCE: {
         "ticker": "THYAO", "last_close": 300.0, "last_date": "2026-09-10", "nearest_support": 290.0,
         "nearest_resistance": 320.0,
+        "nearest_support_distance_pct": 3.3333, "nearest_resistance_distance_pct": 6.6667,
         "levels": [{"type": "SUPPORT", "price": 290.0, "zone_low": 288.0, "zone_high": 292.0, "touch_count": 3,
                     "last_touch_date": "2026-08-20", "strength": 0.7}]},
     ToolName.RANK_SECTOR_RELATIVE_STRENGTH: {
@@ -215,7 +216,7 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
         "oos_degradation_flag": False, "low_signal_flag": False,
         "trade_log": [{"ticker": "MAVI", "signal_date": "2026-03-02", "entry_date": "2026-03-03",
                        "exit_date": "2026-03-10", "gross_return_pct": 2.0, "net_return_pct": 1.4}],
-        "trade_log_truncated": False},
+        "trade_log_truncated": False, "last_exit_date": "2026-09-04"},
     ToolName.CHECK_DATA_QUALITY: {
         "gate_status": "PASS_WITH_WARNINGS", "gate_reason": "1 yumuşak uyarı",
         "hard_blocks": [],

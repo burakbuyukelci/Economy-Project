@@ -9,7 +9,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from schemas import validate_envelope
+from schemas import SCHEMA_VERSION, validate_envelope
 from tests.conftest import AS_OF, DATES, make_frame, make_snapshot
 from tools import check_data_quality as cdq
 
@@ -264,7 +264,7 @@ def test_soft_issue_order_is_deterministic(tmp_path):
 def test_issue_counts_is_empty_dict_not_none_when_no_issues(clean):
     env = call(clean)
     validate_envelope(env)
-    assert env["schema_version"] == "1.2.0" and env["results"]["issue_counts"] == {}
+    assert env["schema_version"] == SCHEMA_VERSION and env["results"]["issue_counts"] == {}
 
 
 def test_issue_counts_matches_hard_and_soft_lists_and_is_sorted_by_code(tmp_path):

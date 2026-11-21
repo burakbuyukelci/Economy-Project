@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from config.settings import SLIPPAGE_BPS_PER_SIDE, TRANSACTION_COST_BPS_PER_SIDE
 
-SCHEMA_VERSION = "1.2.0"
+SCHEMA_VERSION = "1.3.0"
 
 # Ticker burada enum DEĞİL: bilinmeyen ticker -> araç status=ERROR döner (şema hatası değil).
 Ticker = Annotated[str, StringConstraints(pattern=r"^[A-Z0-9]{3,6}$")]

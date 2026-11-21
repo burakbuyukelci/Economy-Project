@@ -145,3 +145,19 @@ Sayılar yalnızca araç çıktısından gelebilir (kural 6); model/harness `las
 - `nearest_resistance_distance_pct: float | None = None`: `(nearest_resistance − last_close) / last_close × 100` (pozitif).
 Tanım: `last_close` ile aynı (adjusted) ölçekte olduğundan oran ölçekten bağımsızdır (§11.3). Araç alanları doldurmaya hazırdır (yalnızca iki satır); şema eklenince `tools/find_support_resistance.py` doldurur. Etki (Bilgisayar 2): `harness/evidence.py` başlık sayıları,
 `evidence_headlines.json`, sayı havuzu. Ayrıca **`n_events`**: araç `None` döner (zarf düzeyinde olay sayısı anlamsız).
+
+## 10. Durum (2026-11-21): §7 ve §9 şema 1.3.0 ile uygulandı
+- §7 `run_backtest.last_exit_date`: UYGULANDI (şema 1.3.0; araç `run_backtest` yazılırken doldurur).
+- §9 `find_support_resistance` mesafe alanları: UYGULANDI (şema 1.3.0; `tools/find_support_resistance.py` dolduruyor).
+- `detect_reversal_events` grup alanları `n_raw_event_days` ve `n_overlapping_forward_windows`: UYGULANDI (şema 1.3.0).
+- **Bilgisayar 2 etki listesi:** (1) `harness/evidence.py` SR çıkarıcısı: iki mesafe alanını başlık sayısı olarak taşı; reversal çıkarıcısı: grup başına `n_raw_event_days`, `n_overlapping_forward_windows`;
+  backtest çıkarıcısı: `last_exit_date`. (2) `harness/gate_params.py bundle_items`: `max_result_date` artık `last_exit_date`'i de görür (otomatik; kod değişikliği gerekmez). (3) `harness/evidence_headlines.json`
+  ve `policy_values` testleri yeni alanlar için güncellenebilir (zorunlu değil). (4) `training/RULES.md`: kayıtlar 1.3.0 ile üretilmeli. (5) `tests/harness` kurucuları örnek reversal grubunu kopyalayıp `n_events_detected`'ı değiştiriyor;
+  `n_raw_event_days >= n_events_detected` ve `n_overlapping_forward_windows <= n_events_detected - 1` tutarlılığı için kurucular alanları da ayarlarsa şemaya çapraz doğrulayıcı eklenebilir.
+- **Gelecek öneri: `detect_reversal_events.event_direction`** (karışık yönlü aileler için param): bkz. §11.
+
+## 11. `detect_reversal_events`: karışık yönlü aileler için `event_direction` parametresi (ÖNERİ; schemas/ onayı bekler)
+Bugün araç yalnızca tek yönlü dört aileyi destekler (`BB_LOWER_TOUCH`, `BB_UPPER_TOUCH`, `RSI_LOCAL_TROUGH`, `RSI_LOCAL_PEAK`); `BB_MID_TEST`, `SUPERTREND_FLIP`, `KAMA_SLOPE_CHANGE`, `KAMA_PRICE_CROSS`, `ICHIMOKU_*`, `SR_TOUCH`
+(olaylar hem yukarı hem aşağı yönlü olabilir) `UNSUPPORTED_EVENT_FAMILY` döner. Öneri: `DetectReversalEventsParams.event_direction: Direction | None = None` (varsayılan None = aile tek yönlüyse otomatik, karışıksa zorunlu).
+`event_direction=UP` yalnızca yukarı yönlü olayları (ör. Supertrend BEARISH→BULLISH, kapanışın KAMA'yı yukarı kesmesi, bulutu yukarı kırma, destek teması), `DOWN` aşağı yönlü olanları tespit eder; sonuçtaki `expected_direction` bu değeri taşır
+ve başarı/MFE tanımı (§4) yönle simetriktir. `event_direction` `input_hash`'i yalnızca bu aileler için değiştirir. Tek yönlü ailelerde verilirse aile yönüyle çelişiyorsa `INVALID_PARAMS`.

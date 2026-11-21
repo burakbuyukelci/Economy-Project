@@ -36,8 +36,8 @@ def _indicators_full() -> dict:
 
 
 # --- sürüm ----------------------------------------------------------------------------------------
-def test_schema_version_is_1_2_0():
-    assert SCHEMA_VERSION == "1.2.0"
+def test_schema_version_is_at_least_1_2_0():
+    assert tuple(int(x) for x in SCHEMA_VERSION.split(".")) >= (1, 2, 0)
 
 
 # --- 1.1.0 zarfları geçerli kalır (dondurulmuş fixture'lar) ----------------------------------------
@@ -313,7 +313,7 @@ def test_issue_counts_empty_dict_is_valid_when_no_issues():
 # --- D5: max_result_date yardımcısı ---------------------------------------------------------------
 def test_max_result_date_scans_dated_result_keys():
     env = example_envelope(ToolName.RUN_BACKTEST)
-    assert REG.max_result_date(env["results"]) == date(2026, 3, 10)  # trade_log.exit_date
+    assert REG.max_result_date(env["results"]) == date(2026, 9, 4)  # last_exit_date (1.3.0; trade_log.exit_date 2026-03-10'dan geç)
     assert REG.max_result_date(example_envelope(ToolName.GET_STOCK_HISTORY)["results"]) == date(2026, 9, 10)
 
 
