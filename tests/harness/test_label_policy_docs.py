@@ -19,7 +19,7 @@ def section_11() -> str:
 
 
 def test_every_rule_id_in_the_code_is_documented_and_vice_versa():
-    documented = set(re.findall(r"`([GCWTF]\d_[A-Z0-9_]+)`", section_11()))
+    documented = set(re.findall(r"`([GCWTF]\d[A-Z]?_[A-Z0-9_]+)`", section_11()))
     assert documented == set(RULE_IDS), (documented ^ set(RULE_IDS))
 
 
