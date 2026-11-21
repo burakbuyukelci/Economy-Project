@@ -25,7 +25,7 @@ Notlandırma = fine-tune edilmiş yerel LLM'in canlı testi. Ölçülenler: say�
 9. **Veri dokümantasyonu:** Her veri seti için kaynak, tarih aralığı, uygulanan düzeltme (adjusted/unadjusted), eksik veri yönetimi `docs/data_dictionary.md` içine yazılır.
 10. **Dürüstlük:** Az olay (`n_events` < `MIN_EVENTS`, config'te, varsayılan 20 — ekip değiştirebilir), tek hisseli sektör, eksik makro veri, örneklem dışı bozulma → `warnings` alanında açıkça yazılır. "Kesin yükselir/iyi bilanço = fiyat artar" gibi nedensellik iddiası üretilmez.
 11. Çoklu test riski, örneklem içi/dışı ayrımı ve işlem maliyeti her örüntü testinde raporlanır.
-12. **Eğitim verisi yalnızca v2 snapshot'tan üretilir.** Eğitim kayıtlarındaki `data_version` v2 olmalıdır (`snap_2026-11-20_v2`); v1'den üretilen çıktı geçersizdir ve eğitim setine alınmaz.
+12. **Eğitim verisi yalnızca v2 snapshot'tan üretilir.** Eğitim kayıtlarındaki `data_version` v2 olmalıdır (`snap_2026-11-20_v2`); v1'den üretilen çıktı geçersizdir ve eğitim setine alınmaz. Eğitim verisinin harness'e özgü diğer kuralları (OOS `split_date` kuralı, etiketin `label_policy`'den gelmesi, doğrulama) için `training/RULES.md`'ye bak.
 13. **Her oturum `git pull --rebase` ve `pytest` ile başlar.** Testler geçmeden yeni işe başlanmaz.
 14. **Force push yasaktır.**
 
