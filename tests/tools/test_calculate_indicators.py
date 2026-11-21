@@ -72,7 +72,18 @@ def roots(tmp_path_factory):
             "adj1": _snap(base / "adj1", adj_factor=1.0)}
 
 
+FULL = {"include_columns_meta": True, "last_n_rows": 5}  # 1.1.0 davranışı (1.2.0 varsayılanı hafiftir: False / 0)
+
+
 def call(root, **over):
+    """Eski testler için: kolon meta'lı, 5 satırlı (açık). Varsayılan davranış için `call_default` kullanılır."""
+    params = {"ticker": "THYAO", "indicators": ALL, "as_of": AS_OF.isoformat(), "end": AS_OF.isoformat(),
+              "start": "2023-01-02", **FULL, **over}
+    return tool.run_on(params, snapshot_root=root, data_version=VERSION)
+
+
+def call_default(root, **over):
+    """include_columns_meta / last_n_rows / value_columns VERİLMEDEN (1.2.0 varsayılanları)."""
     params = {"ticker": "THYAO", "indicators": ALL, "as_of": AS_OF.isoformat(), "end": AS_OF.isoformat(),
               "start": "2023-01-02", **over}
     return tool.run_on(params, snapshot_root=root, data_version=VERSION)
@@ -276,7 +287,7 @@ def test_as_of_before_first_bar_returns_empty_result_with_warning(roots):
 # (B) gerçek snapshot
 # =====================================================================================================
 def real(ticker, as_of, **over):
-    params = {"ticker": ticker, "indicators": ALL, "as_of": as_of, "end": as_of, **over}
+    params = {"ticker": ticker, "indicators": ALL, "as_of": as_of, "end": as_of, **FULL, **over}
     return tool.run_on(params, snapshot_root=SNAPSHOT_DIR, data_version=VERSION)
 
 
@@ -314,11 +325,12 @@ def test_real_data_leakage_truncated_snapshot_gives_identical_results(tmp_path):
     make_snapshot(tmp_path, full.stocks[full.stocks["date"] <= cut].reset_index(drop=True),
                   full.index[full.index["date"] <= cut].reset_index(drop=True), version=VERSION)
     for t in ("THYAO", "CCOLA", "ASELS"):
-        a = real(t, as_of)
-        b = tool.run_on({"ticker": t, "indicators": ALL, "as_of": as_of, "end": as_of},
-                        snapshot_root=tmp_path, data_version=VERSION)
-        assert a["results"] == b["results"], t
-        assert a["input_hash"] == b["input_hash"]
+        base = {"ticker": t, "indicators": ALL, "as_of": as_of, "end": as_of}
+        for extra in (FULL, {}):  # tam (kolon meta'lı, 5 satır) ve 1.2.0 hafif varsayılan
+            a = real(t, as_of, **({} if extra else {"include_columns_meta": False, "last_n_rows": 0}))
+            b = tool.run_on({**base, **extra}, snapshot_root=tmp_path, data_version=VERSION)
+            assert a["results"] == b["results"], (t, bool(extra))
+            assert a["input_hash"] == b["input_hash"]
 
 
 @needs_snapshot
@@ -403,3 +415,95 @@ def test_real_determinism_and_schema_validity():
     assert a == b
     validate_envelope(a)
     assert a["data_version"] == VERSION
+
+
+# =====================================================================================================
+# (C) şema 1.2.0: hafif varsayılanlar, kolon meta isteğe bağlı, value_columns (docs/schema_1_2_0_plan.md)
+# =====================================================================================================
+def test_default_call_is_light_no_columns_no_recent_rows(roots):
+    env = call_default(roots["normal"])
+    validate_envelope(env)
+    r = res(env)
+    assert env["schema_version"] == "1.2.0"
+    assert env["params"]["last_n_rows"] == 0 and env["params"]["include_columns_meta"] is False
+    assert env["params"]["value_columns"] is None
+    assert (r.columns_meta_included, r.columns, r.recent_rows) == (False, [], [])
+    assert r.invalid_columns_at_as_of == []  # as_of'ta (bar 501) tüm kolonlar geçerli
+    assert set(r.latest.values) == set(EXPECTED_WARMUP)
+
+
+def test_light_and_full_agree_on_numbers_and_flag_the_same_warmup_columns(roots):
+    """Hafif zarf, tam zarfın bilgisini kaybetmez: latest, first_valid_date, n_bars_used aynı; ısınmadaki kolonlar adıyla listelenir."""
+    d = DATES[29].date().isoformat()  # 30 bar: uzun pencereli kolonlar ısınmada
+    light, full = res(call_default(roots["normal"], as_of=d, end=d)), res(call(roots["normal"], as_of=d, end=d))
+    assert light.latest == full.latest and light.first_valid_date == full.first_valid_date
+    assert light.n_bars_used == full.n_bars_used == 30
+    assert light.invalid_columns_at_as_of == sorted(c.name for c in full.columns if not c.valid_at_as_of)
+    assert "SMA_200" in light.invalid_columns_at_as_of and "SMA_20" not in light.invalid_columns_at_as_of
+    assert full.invalid_columns_at_as_of == light.invalid_columns_at_as_of and full.columns_meta_included is True
+
+
+def test_light_envelope_is_much_smaller_than_the_1_1_0_default(roots):
+    light, old = json.dumps(call_default(roots["normal"])), json.dumps(call(roots["normal"]))
+    assert len(light) < 0.5 * len(old)
+    assert len(light) < 3500  # tüm göstergeler, sentetik veri; gerçek veri testi aşağıda (bağlam bütçesi)
+
+
+def test_value_columns_restricts_values_and_first_valid_date(roots):
+    env = call_default(roots["normal"], value_columns=["SMA_50", "RSI_14", "SMA_50"], include_columns_meta=True)
+    validate_envelope(env)
+    r = res(env)
+    assert env["params"]["value_columns"] == ["RSI_14", "SMA_50"]  # sıralı-tekil
+    assert set(r.latest.values) == {"RSI_14", "SMA_50"} and [c.name for c in r.columns] == ["RSI_14", "SMA_50"]
+    assert r.first_valid_date == DATES[50 - 1].date()  # seçilen kolonların ilk ortak geçerli günü (SMA_50)
+    assert r.latest.states.supertrend is not None  # durumlar istenen göstergelerden gelir, value_columns'tan bağımsız
+
+
+def test_value_columns_only_affects_insufficient_history_for_selected_columns(roots):
+    d = DATES[29].date().isoformat()
+    ok = call_default(roots["normal"], as_of=d, end=d, value_columns=["SMA_20"])
+    assert not any(w.startswith("INSUFFICIENT_HISTORY") for w in ok["warnings"]) and res(ok).invalid_columns_at_as_of == []
+    bad = call_default(roots["normal"], as_of=d, end=d, value_columns=["SMA_200", "SMA_20"])
+    assert any(w.startswith("INSUFFICIENT_HISTORY") and "SMA_200" in w for w in bad["warnings"])
+    assert res(bad).invalid_columns_at_as_of == ["SMA_200"]
+
+
+def test_unknown_value_column_is_invalid_params_listing_valid_names(roots):
+    # (1) hiç olmayan kolon; (2) geçerli ad ama bu çağrıda hesaplanmayan gösterge (yalnız RSI istendi)
+    for cols, indicators, bad, listed in ((["RSI_99"], ALL, "RSI_99", "SMA_20"), (["SMA_20"], ["RSI"], "SMA_20", "RSI_14")):
+        env = call_default(roots["normal"], value_columns=cols, indicators=indicators)
+        assert env["status"] == "ERROR" and env["error"]["code"] == "INVALID_PARAMS" and env["results"] is None
+        assert bad in env["error"]["message"] and listed in env["error"]["message"]
+        validate_envelope(env)
+
+
+def test_value_columns_changes_hash_but_order_does_not(roots):
+    a = call_default(roots["normal"], value_columns=["RSI_14", "SMA_50"])
+    b = call_default(roots["normal"], value_columns=["SMA_50", "RSI_14"])
+    c = call_default(roots["normal"])
+    assert a["input_hash"] == b["input_hash"] != c["input_hash"]
+
+
+def test_light_determinism_and_future_shock(roots):
+    assert call_default(roots["normal"]) == call_default(roots["normal"])
+    a, b = call_default(roots["normal"]), call_default(roots["shock"])
+    assert a["results"] == b["results"] and a["input_hash"] == b["input_hash"]
+
+
+def test_empty_result_before_first_bar_is_consistent_in_light_mode(roots):
+    env = call_default(roots["normal"], as_of="2022-12-30", end="2022-12-30", start="2022-12-01")
+    validate_envelope(env)
+    r = res(env)
+    assert r.latest is None and r.columns == [] and r.invalid_columns_at_as_of == []
+
+
+@needs_snapshot
+def test_real_light_default_fits_small_context_budget():
+    params = {"ticker": "THYAO", "indicators": ALL, "as_of": "2026-09-10", "end": "2026-09-10"}
+    light = tool.run_on(params, snapshot_root=SNAPSHOT_DIR, data_version=VERSION)
+    validate_envelope(light)
+    full = tool.run_on({**params, **FULL}, snapshot_root=SNAPSHOT_DIR, data_version=VERSION)
+    assert len(json.dumps(light)) < 0.5 * len(json.dumps(full))
+    assert len(json.dumps(light)) < 2600  # ölçüm (THYAO, 2026-09-10, 23 kolon): 2226 karakter; 1.1.0 varsayılanı 9124
+    r = res(light)
+    assert r.invalid_columns_at_as_of == [] and r.latest.values == res(full).latest.values
