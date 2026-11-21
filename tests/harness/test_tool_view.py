@@ -46,7 +46,7 @@ def walk_paths(schema, defs=None, prefix=""):
 def test_tool_definitions_fit_the_character_budget():
     total = sum(len(json.dumps(s, ensure_ascii=False)) for s in specs().values())
     assert total <= TOOL_SPEC_CHAR_BUDGET, total
-    assert estimate_tokens(chars=total) <= 2800                              # 13 araç: ~2,7 bin token (önceden ~7,9 bin)
+    assert estimate_tokens(chars=total) <= 2900                              # 13 araç: ~2,7 bin token (önceden ~7,9 bin)
     assert len(specs(C_TOOLS)) == 14 and sum(len(json.dumps(s, ensure_ascii=False)) for s in specs(C_TOOLS).values()) <= TOOL_SPEC_CHAR_BUDGET * 1.1
 
 
@@ -103,7 +103,8 @@ def test_essential_parameters_stay_visible():
     assert {"pattern", "in_sample_start", "in_sample_end", "out_of_sample_start", "out_of_sample_end", "n_tests_declared"} \
         <= set(s["test_weekday_pattern"]["parameters"]["properties"])
     strat = s["run_backtest"]["parameters"]["properties"]["strategy"]["properties"]
-    assert {"variant", "signal_type", "holding_days", "train_end"} <= set(strat) and "transaction_cost_bps" not in strat
+    assert {"variant", "signal_type", "holding_days", "train_end", "signal_params"} <= set(strat) and "transaction_cost_bps" not in strat
+    assert "event_family" in strat["signal_params"]["description"]            # REVERSAL ailesi (RSI/BB) backtest'e buradan iletilir
     for hidden in ("config", "price_adjustment", "include_columns_meta"):
         assert hidden not in s["calculate_indicators"]["parameters"]["properties"]
 

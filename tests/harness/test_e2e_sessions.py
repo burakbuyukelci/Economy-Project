@@ -308,7 +308,7 @@ _OVER = "AÇIK: tepe tur ölçüldü > CONTEXT_TARGET_TOKENS (karakter/3). Eğit
 
 
 @pytest.mark.parametrize("q", [
-    pytest.param("Q1", marks=pytest.mark.xfail(strict=True, reason=_OVER + " Q1 ~7,4 bin (rank zarfı görünümü kırpılmış halde bile)")),
+    "Q1",
     pytest.param("Q2", marks=pytest.mark.xfail(strict=True, reason=_OVER + " Q2 ~6,3 bin (weekday zarfı ~5 bin karakter)")),
     "Q3", "Q4", "Q5"])
 def test_each_sample_question_stays_within_the_context_budget(q):

@@ -12,8 +12,10 @@ from datetime import date, timedelta
 from typing import Any, Callable
 
 from training import spec
+from training.signal_dates import signal_dates
 from training.splits import is_test_only_template, pick_trading_date, tickers_for
 
+ANCHOR_SHARE = 0.5          # teknik dönüş sorularında sinyal gününe kurulanların payı
 DAY_TR = {"MON": "Pazartesi", "TUE": "Salı", "WED": "Çarşamba", "THU": "Perşembe", "FRI": "Cuma"}
 DAYS = list(DAY_TR)
 DIR_TR = {"DOWN": "düşüş", "UP": "yükseliş"}
@@ -112,8 +114,8 @@ _COND = {
 }
 
 
-def _q_reversal(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple[str, int, dict[str, Any]]:
-    family = rng.choice(list(_FAMILY_TEXT))
+def _q_reversal(split: str, rng: random.Random, as_of: date, ticker: str, family: str | None = None) -> tuple[str, int, dict[str, Any]]:
+    family = family or rng.choice(list(_FAMILY_TEXT))
     with_backtest = rng.random() < 0.7
     conditions = [_COND[family][1]] if rng.random() < 0.3 else []
     extra = ""
@@ -278,7 +280,7 @@ def _q_stale(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple[
     return _STALE[idx].format(T=ticker, D=fd(as_of)), idx, {"indicators": ["RSI", "BOLLINGER"]}
 
 
-BUILDERS: dict[str, Callable[[str, random.Random, date, str], tuple[str, int, dict[str, Any]]]] = {
+BUILDERS: dict[str, Callable[..., tuple[str, int, dict[str, Any]]]] = {
     "weekday": _q_weekday, "reversal": _q_reversal, "catch_up": _q_catch_up, "indicators": _q_indicators,
     "support_resistance": _q_sr, "history": _q_history, "advice": _q_advice, "unsupported": _q_unsupported, "stale": _q_stale,
 }
@@ -300,7 +302,13 @@ def build_questions(split: str, seed: int, allocation: dict[str, int]) -> list[Q
                 rng = _rng(seed, split, qtype, i, attempt)
                 as_of = pick_trading_date(split, rng, stale=(qtype == "stale"))
                 ticker = rng.choice(pool)
-                body, idx, plan = builder(split, rng, as_of, ticker)
+                hints: dict[str, Any] = {}
+                if qtype == "reversal":   # sorunun ~%50'si hissede GERÇEKTEN taze sinyal olan günlere kurulur (signal_dates.py)
+                    hints["family"] = rng.choice(list(_FAMILY_TEXT))
+                    anchored = signal_dates(ticker, hints["family"], split)
+                    if anchored and rng.random() < ANCHOR_SHARE:
+                        as_of = rng.choice(anchored)
+                body, idx, plan = builder(split, rng, as_of, ticker, **hints)
                 text = _head(as_of) + body
                 if text not in seen:
                     seen.add(text)

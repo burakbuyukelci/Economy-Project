@@ -82,11 +82,22 @@ def test_subject_defaults_to_the_most_lagging_stock_when_none_is_given():
     assert "per_horizon" in rows["MAVI"] and all("per_horizon" not in rows[t] for t in rows if t != "MAVI")
 
 
-def test_pooled_historical_blocks_and_policy_critical_fields_are_not_trimmed():
+def test_pooled_blocks_keep_the_committed_numbers_and_drop_only_the_fields_evidence_never_quotes():
     env = rank_env(subject="MAVI")
     v = model_view(env, subject="MAVI")
-    for key in ("historical_catch_up", "n_raw_laggard_observations", "cooldown_days", "outcome_benchmark_definition", "sector_strength"):
+    for key in ("n_raw_laggard_observations", "cooldown_days", "outcome_benchmark_definition", "sector_strength"):
         assert v["results"][key] == _strip(env["results"][key]), key
+    keep = ("n_events_complete", "n_excluded_incomplete_horizon", "n_success", "n_false_positive", "hit_rate_pct", "mean_return_pct", "cost_adjusted_mean_return_pct")
+    for shown, full in zip(v["results"]["historical_catch_up"], env["results"]["historical_catch_up"]):
+        sb, fb = shown["block"], full["block"]
+        assert sb["horizon"] == fb["horizon"] and sb["oos_degradation_flag"] == fb["oos_degradation_flag"]      # politika-kritik bayrak kalır
+        assert sb["baseline"] == {"hit_rate_pct": fb["baseline"]["hit_rate_pct"]}
+        for part, kk in (("full", keep), ("in_sample", ("n_events_complete", "hit_rate_pct", "cost_adjusted_mean_return_pct")),
+                         ("out_of_sample", ("n_events_complete", "hit_rate_pct", "cost_adjusted_mean_return_pct"))):
+            assert sb[part] == {k: fb[part][k] for k in kk if fb[part].get(k) is not None}, part
+            assert "median_return_pct" not in sb[part] and "false_positive_rate_pct" not in sb[part]
+        assert "mean_diff_vs_baseline_pct" not in sb
+    assert "block_stats" in v["view_trimmed"]
 
 
 def _strip(x):
@@ -134,3 +145,49 @@ def test_the_tool_message_shows_the_view_while_the_session_store_keeps_the_full_
     assert len(shown["results"]["per_ticker"]) == len(full["results"]["per_ticker"])
     assert size(shown) < size(full)
     assert any(r.envelope is full for r in res.session.store.records) or full in [r.envelope for r in res.session.store.records]
+
+
+# =============================== kanıta girmeyen uzun listeler ===============================
+def test_reversal_events_and_backtest_trade_log_are_cut_to_the_last_records_and_marked():
+    from harness.model_view import LIST_KEEP
+
+    ev = [{"date": f"2026-01-{d:02d}", "close": 1.0 + d} for d in range(1, 21)]
+    rv = {"tool": "detect_reversal_events", "status": "OK", "results": {"groups": [{"label": "single_indicator", "n_events_detected": 20, "events": ev},
+                                                                                  {"label": "c", "n_events_detected": 1, "events": ev[:1]}]}}
+    v = model_view(rv, subject=None)
+    assert v["results"]["groups"][0]["events"] == ev[-LIST_KEEP:] and v["results"]["groups"][1]["events"] == ev[:1]
+    assert v["results"]["groups"][0]["n_events_detected"] == 20 and v["view_trimmed"] == ["groups[].events"]
+    assert len(rv["results"]["groups"][0]["events"]) == 20                                      # girdi değişmez
+    bt = {"tool": "run_backtest", "status": "OK", "results": {"trade_log": [{"n": i} for i in range(10)], "n_signals": 10}}
+    v = model_view(bt, subject=None)
+    assert v["results"]["trade_log"] == [{"n": i} for i in range(10 - LIST_KEEP, 10)] and v["view_trimmed"] == ["trade_log"] and v["results"]["n_signals"] == 10
+    short = {"tool": "run_backtest", "status": "OK", "results": {"trade_log": [{"n": 1}]}}
+    assert "view_trimmed" not in model_view(short, subject=None)
+
+
+def test_backtest_view_keeps_the_numbers_the_evidence_quotes_and_drops_the_rest():
+    res = {"strategy": {"transaction_cost_bps": 20.0, "variant": "B", "signal_type": "REVERSAL", "holding_days": 5, "signal_params": {"event_family": "X"}, "train_end": "2025-12-31"},
+           "strategy_gross": {"cumulative_return_pct": 9.0}, "cost_model": {"x": 1}, "sharpe_definition": "d",
+           "strategy_net": {"cumulative_return_pct": 1.5, "sharpe_ratio": 0.7, "max_drawdown_pct": -3.0, "win_rate_pct": 55.0, "n_trades": 9, "avg_trade_return_pct": 0.2, "exposure_pct": 4.0},
+           "benchmarks": [{"name": "XU100", "metrics": {"cumulative_return_pct": 7.0}, "cumulative_return_diff_pct": -5.5, "sharpe_diff": 0.1}],
+           "splits": [{"name": "TEST", "window": {"start": "a", "end": "b"}, "n_signals": 4, "net_metrics": {"cumulative_return_pct": 2.0, "annualized_return_pct": 3.0}, "benchmark_diff_pct": 1.0}],
+           "n_signals": 9, "last_exit_date": "2026-09-04", "trade_log": [{"n": 1}, {"n": 2}]}
+    v = model_view({"tool": "run_backtest", "status": "OK", "results": res,
+                    "warnings": ["COST_ASSUMPTIONS: x", "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir.", "HISTORICAL_ONLY: 34 sinyal alınmadı", "LOW_SIGNAL_COUNT: n=9"]}, subject=None)
+    r = v["results"]
+    assert r["strategy_net"] == {"cumulative_return_pct": 1.5, "sharpe_ratio": 0.7, "max_drawdown_pct": -3.0, "win_rate_pct": 55.0, "n_trades": 9}
+    assert r["benchmarks"] == [{"name": "XU100", "cumulative_return_diff_pct": -5.5, "sharpe_diff": 0.1}]
+    assert r["splits"][0]["net_metrics"] == {"cumulative_return_pct": 2.0} and r["splits"][0]["benchmark_diff_pct"] == 1.0 and r["splits"][0]["n_signals"] == 4
+    assert r["strategy"] == {"variant": "B", "signal_type": "REVERSAL", "holding_days": 5, "train_end": "2025-12-31", "signal_params": {"event_family": "X"}}
+    assert "strategy_gross" not in r and "cost_model" not in r and r["last_exit_date"] == "2026-09-04" and r["trade_log"] == [{"n": 2}]
+    assert v["warnings"] == ["HISTORICAL_ONLY: 34 sinyal alınmadı", "LOW_SIGNAL_COUNT: n=9"]            # sabit notlar atıldı, sayılı ve diğer uyarılar kaldı
+    assert {"backtest_slim", "trade_log"} <= set(v["view_trimmed"])
+
+
+def test_history_rows_keep_only_the_first_two_and_last_three():
+    rows = [{"date": f"2026-09-{d:02d}", "close": float(d)} for d in range(1, 21)]
+    v = model_view({"tool": "get_stock_history", "status": "OK", "results": {"ticker": "X", "n_rows": 20, "rows": rows}}, subject=None)
+    assert [r["date"] for r in v["results"]["rows"]] == ["2026-09-01", "2026-09-02", "2026-09-18", "2026-09-19", "2026-09-20"]
+    assert v["results"]["n_rows"] == 20 and v["view_trimmed"] == ["rows"]
+    short = {"tool": "get_stock_history", "status": "OK", "results": {"rows": rows[:4]}}
+    assert "view_trimmed" not in model_view(short, subject=None)

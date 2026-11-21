@@ -43,26 +43,25 @@ class RunResult:
 def build_system_prompt(session: HarnessSession) -> str:
     labels = ", ".join(a.value for a in AllowedAction)
     parts = [
-        "Sen BIST 100 hisseleri için finansal analiz yorumcususun. Hesaplamayı Python araçları yapar; sen yalnızca elindeki bilgiye dayanarak yorumlar ve açıklarsın.",
+        "Sen BIST 100 hisseleri için finansal analiz yorumcususun; hesaplamayı araçlar yapar, sen araç çıktılarını yorumlarsın.",
         "KURALLAR:\n"
-        "1. Sayılar yalnızca araç çıktısından gelir; elinde olmayan sayıyı yazma, kendin hesaplama (oran, fark, yüzde türetme) yapma.\n"
-        "2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasaktır. Doğrulanmamış bir iddiayı tırnak içinde "
+        "1. Sayılar yalnızca araç çıktısından gelir; kendin sayı türetme ya da hesaplama (oran, fark, yüzde) yapma.\n"
+        "2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasak; doğrulanmamış iddiayı tırnak içinde "
         "alıntılayıp doğrulanmadığını söyle.\n"
         "3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n"
-        "4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini açıkça belirt; nedensellik iddiası kurma.\n"
-        "5. Araç çıktısında bulunmayan alan boş (null) demektir. `view_trimmed` varsa o bölümler bağlam için kısaltılmıştır; kısaltılan sayıları yazma.",
-        f"NİHAİ ÇIKTI: açıklamanın son satırı tam olarak `EYLEM: <ETİKET>` olmalı. İzinli etiketler: {labels}.",
+        "4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini belirt; nedensellik kurma. Sonuçlar geçmiş gözlemdir (gelecek getiri garantisi yok); "
+        "backtest işlem maliyeti ve kayma varsayımını içerir.\n"
+        "5. Çıktıda bulunmayan alan boştur (null). `view_trimmed` bölümleri kısaltılmıştır; kısaltılan sayıları yazma.",
+        f"NİHAİ ÇIKTI: son satır tam olarak `EYLEM: <ETİKET>`. Etiketler: {labels}.",
     ]
     if session.visible_tools:
-        tools = ("ARAÇ KULLANIMI: gerekli araçları doğru parametrelerle çağır; her çağrıda as_of = sorudaki analiz tarihi "
-                 f"({session.as_of.isoformat()}). Belirtmediğin parametreler varsayılanlarla çalışır. Örneklem dışı doğrulama için split_date / "
-                 "out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi): "
-                 "verilmezse analiz INVESTIGATE kalır.")
+        tools = (f"ARAÇ KULLANIMI: gerekli araçları çağır; as_of = {session.as_of.isoformat()} (soruda belirtilen analiz tarihi). Belirtmediğin parametreler "
+                 "varsayılanla çalışır. Örneklem dışı doğrulama için split_date / out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; "
+                 "run_backtest'te strategy.train_end bir gün öncesi); verilmezse analiz INVESTIGATE kalır.")
         if session.profile.show_policy_label:
-            tools += (" Araçlarla işin bitince araç çağırmadan `HAZIR` yaz; ardından harness sana politika kararını ve gerekçelerini "
-                      "verip nihai açıklamayı isteyecek.")
+            tools += " İşin bitince araç çağırmadan `HAZIR` yaz; harness politika kararını verip nihai açıklamayı isteyecek."
         else:
-            tools += " Araçlarla işin bitince araç çağırmadan nihai açıklamayı yaz."
+            tools += " İşin bitince araç çağırmadan nihai açıklamayı yaz."
         parts.insert(2, tools)
     return "\n\n".join(parts)
 
