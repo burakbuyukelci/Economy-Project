@@ -2,7 +2,9 @@
 .env
 
 # Ham/indirilmiş geçici veri (snapshots/ commit edilir)
-data/raw/
+data/raw/*
+# bilanço şablonu ve elle toplanan KAP CSV'si commit edilir (arkadaşla paylaşım)
+!data/raw/fundamentals_kap*.csv
 
 # Python
 __pycache__/

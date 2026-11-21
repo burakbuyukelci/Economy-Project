@@ -161,3 +161,10 @@ Bugün araç yalnızca tek yönlü dört aileyi destekler (`BB_LOWER_TOUCH`, `BB
 (olaylar hem yukarı hem aşağı yönlü olabilir) `UNSUPPORTED_EVENT_FAMILY` döner. Öneri: `DetectReversalEventsParams.event_direction: Direction | None = None` (varsayılan None = aile tek yönlüyse otomatik, karışıksa zorunlu).
 `event_direction=UP` yalnızca yukarı yönlü olayları (ör. Supertrend BEARISH→BULLISH, kapanışın KAMA'yı yukarı kesmesi, bulutu yukarı kırma, destek teması), `DOWN` aşağı yönlü olanları tespit eder; sonuçtaki `expected_direction` bu değeri taşır
 ve başarı/MFE tanımı (§4) yönle simetriktir. `event_direction` `input_hash`'i yalnızca bu aileler için değiştirir. Tek yönlü ailelerde verilirse aile yönüyle çelişiyorsa `INVALID_PARAMS`.
+
+## 12. Bilanço araçları: şema eksikleri (şimdilik geçici çözümlerle; schemas/ DEĞİŞMEDİ, onay bekler)
+1. **İkincil veri sürümü:** zarfta yalnızca `data_version` (`snap_YYYY-MM-DD_vN`) var; bilanço (`fundamentals_..._vN`) ve makro (`macro_..._vN`) veri setlerinin sürümü `input_hash`'e GİRMİYOR. Geçici: sürüm `HISTORICAL_ONLY` uyarı metninde. Öneri: zarfa `aux_data_versions: dict[str, str]` (hash'e dahil) ve eğitim uygunluk denetimi için bu alan.
+2. **Uyarı kodları:** `YAHOO_APPROX_DISCLOSURE_DATE` (yaklaşık açıklama tarihi), `FUNDAMENTALS_COVERAGE_LOW` yok; geçici: `INSUFFICIENT_HISTORY` mesajında "YAHOO_APPROX:" etiketi.
+3. **`FundamentalMetricName.EQUITY` yok:** banka kümesi için istenen NET_INTEREST_INCOME, NET_PROFIT, EQUITY'den EQUITY yerine ROE (net kâr / özkaynak, çeyreklik) verildi. Öneri: `EQUITY` ekle.
+4. **`QuarterReaction.window_end_date` açıklaması:** "disclosure_date + h işlem günü" yerine "baz kapanış + h işlem günü" (baz: açıklama saati belirsizse bir önceki işlem günü) olmalı.
+5. **Bilanço olay kaynağı (`disclosure_source`, `disclosure_time`)** sonuçta görünmüyor; `QuarterRow`'a `disclosure_source: str | None` eklenebilir.

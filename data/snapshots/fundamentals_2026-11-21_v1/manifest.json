@@ -1,0 +1,25 @@
+{
+  "data_version": "fundamentals_2026-11-21_v1",
+  "n_rows": 25,
+  "tickers": [
+    "AKBNK",
+    "ASELS",
+    "BIMAS",
+    "CCOLA",
+    "EKGYO",
+    "ENKAI",
+    "EREGL",
+    "TCELL",
+    "TUPRS"
+  ],
+  "sources": {
+    "YAHOO": 25
+  },
+  "unit": "TRY_mn",
+  "first_period_end": "2025-06-30",
+  "created": "2026-11-21",
+  "yahoo_used": true,
+  "manual_csv": "fundamentals_kap.csv",
+  "notes": [],
+  "disclosure_rule": "YAHOO_APPROX: Yahoo earnings_dates ABD->Istanbul, saat belirsiz; KAP_MANUAL: resmi KAP"
+}

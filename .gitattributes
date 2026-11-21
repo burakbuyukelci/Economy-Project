@@ -6,3 +6,4 @@
 config/price_corrections.csv text eol=lf
 data/snapshots/LATEST text eol=lf
 data/snapshots/**/manifest.json text eol=lf
+data/snapshots/LATEST_FUNDAMENTALS text eol=lf

@@ -1,0 +1,312 @@
+"""get_fundamental_metrics ve calculate_fundamental_change: sentetik (ağsız) veri + gerçek TUPRS (varsa)."""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from config.settings import SNAPSHOT_DIR
+from schemas import validate_envelope
+from scripts.download_fundamentals import write_fundamentals_snapshot
+from tests.conftest import make_frame, make_snapshot
+from tools import calculate_fundamental_change as CH
+from tools import get_fundamental_metrics as GM
+from tools._fundamentals import COLUMNS, fp_period_end, fp_shift
+
+DATES = pd.bdate_range("2025-01-01", "2026-12-31")
+FV = "fundamentals_2026-11-21_v1"
+AS_OF = "2026-09-10"
+FPS = ["2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1", "2026Q2", "2026Q3"]
+DISC = ["2025-05-06", "2025-08-05", "2025-11-04", "2026-02-10", "2026-05-12", "2026-08-11", "2026-11-10"]
+REV = [1000, 1100, 1200, 1300, 1400, 1500, 1600]
+EBITDA = [100, 110, 150, 130, 168, 150, 200]  # marj: 10, 10, 12.5, 10, 12, 10, 12.5
+
+
+def _row(ticker, fp, disc, mset="INDUSTRIAL", time=None, source="KAP_MANUAL", **kw):
+    r = dict.fromkeys(COLUMNS, np.nan)
+    r.update(ticker=ticker, fiscal_period=fp, period_end_date=pd.Timestamp(fp_period_end(fp)), disclosure_date=pd.Timestamp(disc),
+             disclosure_time=time, disclosure_source="KAP_MANUAL" if source == "KAP_MANUAL" else "YAHOO_APPROX",
+             data_source=source, report_basis="STANDALONE", tms29_restated=None, metric_set=mset)
+    r.update(kw)
+    return r
+
+
+def _table(times=None, source="KAP_MANUAL"):
+    times = times or {}
+    rows = []
+    for i, fp in enumerate(FPS):
+        rows.append(_row("TUPRS", fp, DISC[i], time=times.get(fp), source=source, revenue=REV[i], ebitda=EBITDA[i],
+                         net_profit=50 + 10 * i, total_financial_debt=500, cash_and_equivalents=100, equity=1000))
+        rows.append(_row("AKBNK", fp, DISC[i], mset="BANK", source=source, net_interest_income=200 + 10 * i,
+                         net_profit=100 + 5 * i, equity=2000))
+    return pd.DataFrame(rows, columns=COLUMNS)
+
+
+def _prices(root, scale_after=None):
+    def frame(t, base):
+        f = make_frame(t, base, DATES, adj_factor=1.0)
+        if scale_after is not None:  # as_of sonrası fiyatları bozar (sızıntı testi)
+            f.loc[f["date"] > pd.Timestamp(AS_OF), ["adj_close", "close"]] *= scale_after
+        return f
+    stocks = pd.concat([frame("TUPRS", 100), frame("PETKM", 200), frame("AKBNK", 50)], ignore_index=True)
+    index = frame("XU100", 10000).drop(columns=["ticker"])
+    make_snapshot(root, stocks, index, version="snap_2026-11-20_v2")
+
+
+@pytest.fixture()
+def env(tmp_path):
+    _prices(tmp_path)
+    write_fundamentals_snapshot(_table(), tmp_path, FV, {})
+    return tmp_path
+
+
+def _gm(env, **p):
+    out = GM.run_on({"ticker": "TUPRS", "as_of": AS_OF, **p}, snapshot_root=env, data_version="snap_2026-11-20_v2", fundamentals_version=FV)
+    return out
+
+
+def _ch(env, **p):
+    return CH.run_on({"ticker": "TUPRS", "as_of": AS_OF, **p}, snapshot_root=env, data_version="snap_2026-11-20_v2", fundamentals_version=FV)
+
+
+def _m(env_, name):
+    return {m["name"]: m["value"] for m in env_["results"]["metrics"]}[name]
+
+
+# --- get_fundamental_metrics --------------------------------------------------------------------------
+def test_latest_disclosed_period_and_values(env):
+    e = _gm(env)
+    validate_envelope(e)
+    r = e["results"]
+    assert (r["fiscal_period"], r["disclosure_date"], r["tms29_comparable"]) == ("2026Q2", "2026-08-11", True)
+    assert _m(e, "EBITDA_MARGIN") == 10.0  # 150/1500*100
+    assert _m(e, "REVENUE") == 1500.0
+
+
+def test_as_of_equal_to_disclosure_date_is_included_and_day_before_is_not(env):
+    assert _gm(env, as_of="2026-08-11")["results"]["fiscal_period"] == "2026Q2"
+    before = _gm(env, as_of="2026-08-10")
+    assert before["results"]["fiscal_period"] == "2026Q1"
+    assert _m(before, "EBITDA_MARGIN") == 12.0
+
+
+def test_alignment_by_disclosure_not_period_end(env):
+    # 2026Q2 dönem sonu 30 Haz geçmiş ama KAP açıklaması 11 Ağu: 15 Tem'de Q2 GÖRÜNMEZ
+    e = _gm(env, as_of="2026-07-15")
+    assert e["results"]["fiscal_period"] == "2026Q1"
+    w = [x for x in e["warnings"] if x.startswith("NOT_YET_DISCLOSED_EXCLUDED")]
+    assert len(w) == 1 and "1 dönem" in w[0]
+    assert "2026-08-11" not in "".join(e["warnings"])  # gelecek açıklama tarihi sızmaz
+
+
+def test_unfinished_period_is_not_counted_as_pending(env):
+    # as_of 2026-09-10: 2026Q3 henüz bitmemiş (30 Eyl) -> ne görünür ne 'bekleyen' sayılır
+    e = _gm(env)
+    assert not any(w.startswith("NOT_YET_DISCLOSED_EXCLUDED") for w in e["warnings"])
+    assert e["results"]["fiscal_period"] != "2026Q3"
+
+
+def test_requested_period_not_disclosed_is_error(env):
+    e = _gm(env, period="2026Q3")
+    assert e["status"] == "ERROR" and e["error"]["code"] == "NOT_YET_DISCLOSED"
+
+
+def test_net_debt_ebitda_ltm_vs_annualised(env):
+    ltm = _gm(env, period="2025Q4")  # 2025Q1..Q4 mevcut: LTM = 100+110+150+130 = 490; net borç 400
+    assert _m(ltm, "NET_DEBT_EBITDA") == round(400 / 490, 4)
+    assert not any("yıllıklandırılmış" in w for w in ltm["warnings"])
+    ann = _gm(env, period="2025Q3")  # yalnız 3 çeyrek: 150 x 4 = 600
+    assert _m(ann, "NET_DEBT_EBITDA") == round(400 / 600, 4)
+    assert any("yıllıklandırılmış" in w for w in ann["warnings"])
+
+
+def test_ltm_uses_only_disclosed_quarters(env):
+    # as_of 2026-05-11: 2026Q1 henüz açıklanmadı; 2025Q4 için LTM 4 çeyrek (hepsi açıklanmış) olsa da Q1'26 kullanılamaz
+    e = _gm(env, as_of="2026-05-11")
+    assert e["results"]["fiscal_period"] == "2025Q4"
+
+
+def test_bank_uses_bank_metric_set_only(env):
+    e = _gm(env, ticker="AKBNK")
+    validate_envelope(e)
+    names = [m["name"] for m in e["results"]["metrics"]]
+    assert e["results"]["metric_set"] == "BANK" and names == ["NET_INTEREST_INCOME", "NET_PROFIT", "ROE"]
+    assert not {"EBITDA", "EBITDA_MARGIN", "NET_DEBT_EBITDA", "DEBT_EQUITY"} & set(names)
+    assert any(w.startswith("BANK_METRIC_SET") for w in e["warnings"])
+    assert _m(e, "ROE") == round(125 / 2000 * 100, 4)  # 2026Q2: net kâr 100+5*5=125
+
+
+def test_errors_unknown_ticker_and_no_data(env):
+    assert _gm(env, ticker="XXXXX")["error"]["code"] in ("UNKNOWN_TICKER", "INVALID_PARAMS")
+    assert _gm(env, ticker="THYAO")["error"]["code"] == "NO_DATA"
+
+
+def test_provenance_warning_carries_dataset_version_and_yahoo_flag(tmp_path):
+    _prices(tmp_path)
+    write_fundamentals_snapshot(_table(source="YAHOO"), tmp_path, FV, {})
+    e = _gm(tmp_path)
+    assert any(w.startswith("HISTORICAL_ONLY") and FV in w for w in e["warnings"])
+    assert any("YAHOO_APPROX" in w for w in e["warnings"])
+
+
+def test_no_leak_from_future_fundamentals_or_prices(env, tmp_path_factory):
+    base = _gm(env)
+    other = tmp_path_factory.mktemp("o")
+    _prices(other)
+    t = _table()
+    t.loc[pd.to_datetime(t["disclosure_date"]) > pd.Timestamp(AS_OF), ["revenue", "ebitda"]] = 9e9
+    write_fundamentals_snapshot(t, other, FV, {})
+    assert _gm(other)["results"] == base["results"]
+    assert _gm(other)["warnings"] == base["warnings"]
+
+
+# --- calculate_fundamental_change ---------------------------------------------------------------------
+def _q(e, fp):
+    return next(q for q in e["results"]["quarters"] if q["fiscal_period"] == fp)
+
+
+def _mc(q, name):
+    return next(m for m in q["metrics"] if m["name"] == name)
+
+
+def test_change_values_directions_and_units(env):
+    e = _ch(env)
+    validate_envelope(e)
+    q = _q(e, "2026Q1")  # marj 12.0; 2025Q4 10.0; 2025Q1 10.0
+    m = _mc(q, "EBITDA_MARGIN")
+    assert (m["value"], m["qoq_change"], m["yoy_change"], m["change_unit"]) == (12.0, 2.0, 2.0, "PP")
+    assert (m["qoq_direction"], m["yoy_direction"]) == ("IMPROVED", "IMPROVED")
+    rev = _mc(q, "REVENUE")
+    assert rev["qoq_change"] == round((1400 / 1300 - 1) * 100, 4) and rev["change_unit"] == "PCT"
+    nd = _mc(q, "NET_DEBT_EBITDA")  # düşük iyi: 400/558=0.7168 vs 2025Q4 400/490=0.8163 -> düştü -> IMPROVED
+    assert nd["change_unit"] == "ABS" and nd["qoq_direction"] == "IMPROVED"
+
+
+def test_pre_tms29_yoy_and_first_quarter_qoq_are_none_with_warning(env):
+    e = _ch(env)
+    q1 = _q(e, "2025Q1")
+    m = _mc(q1, "EBITDA_MARGIN")
+    assert m["qoq_change"] is None and m["yoy_change"] is None and m["yoy_direction"] is None
+    assert _mc(_q(e, "2025Q3"), "EBITDA_MARGIN")["yoy_change"] is None  # 2024Q3 TMS 29 öncesi
+    assert _mc(_q(e, "2025Q3"), "EBITDA_MARGIN")["qoq_change"] == 2.5
+    assert any(w.startswith("PRE_TMS29_NOT_COMPARABLE") for w in e["warnings"])
+
+
+def test_only_disclosed_quarters_by_as_of_and_pending_count(env):
+    e = _ch(env, as_of="2026-07-15")
+    assert [q["fiscal_period"] for q in e["results"]["quarters"]] == FPS[:5]
+    assert e["results"]["n_quarters_disclosed_by_as_of"] == 5
+    assert e["results"]["n_quarters_excluded_not_yet_disclosed"] == 1
+    e2 = _ch(env)  # 2026Q3 hiç bitmemiş -> dışlanır ama 'bekleyen' sayılmaz
+    assert [q["fiscal_period"] for q in e2["results"]["quarters"]][-1] == "2026Q2"
+    assert e2["results"]["n_quarters_excluded_not_yet_disclosed"] == 0
+
+
+def _expected_reaction(fp_disc, h, base_shift=-1):
+    """Bağımsız hesap: TUPRS kapanışı = 100 + i, PETKM = 200 + i, XU100 = 10000 + i (i = DATES konumu)."""
+    pos = int(DATES.searchsorted(pd.Timestamp(fp_disc))) + base_shift
+    ret = lambda b: (b + pos + h) / (b + pos) * 100 - 100  # noqa: E731
+    stock, peer, xu = ret(100), ret(200), ret(10000)
+    return round(stock, 4), round(xu, 4), round(float(np.median([stock, peer])), 4)
+
+
+def test_reaction_base_is_day_before_when_time_unknown(env):
+    r = {x["horizon"]: x for x in _q(_ch(env), "2026Q1")["reactions"]}  # 12 May 2026 (Salı)
+    stock, xu, sec = _expected_reaction("2026-05-12", 1)
+    assert (r[1]["stock_return_pct"], r[1]["xu100_return_pct"], r[1]["sector_return_pct"]) == (stock, xu, sec)
+    assert r[1]["window_end_date"] == "2026-05-12"  # 1 günlük tepki = açıklama günü
+    assert r[1]["abnormal_vs_xu100_pct"] == round(stock - xu, 4)
+    assert r[1]["abnormal_vs_sector_pct"] == round(stock - sec, 4)
+    assert r[5]["window_end_date"] == "2026-05-18"
+
+
+def test_reaction_base_is_disclosure_day_when_after_close(tmp_path):
+    _prices(tmp_path)
+    write_fundamentals_snapshot(_table(times={"2026Q1": "19:30"}), tmp_path, FV, {})
+    r = {x["horizon"]: x for x in _q(_ch(tmp_path), "2026Q1")["reactions"]}
+    stock, xu, sec = _expected_reaction("2026-05-12", 1, base_shift=0)
+    assert (r[1]["stock_return_pct"], r[1]["window_end_date"]) == (stock, "2026-05-13")
+    # saat 14:00 (seans içi) -> bir önceki gün baz (muhafazakâr)
+    d2 = tmp_path / "sub"
+    d2.mkdir()
+    _prices(d2)
+    write_fundamentals_snapshot(_table(times={"2026Q1": "14:00"}), d2, FV, {})
+    r2 = {x["horizon"]: x for x in _q(_ch(d2), "2026Q1")["reactions"]}
+    assert r2[1]["window_end_date"] == "2026-05-12"
+
+
+def test_incomplete_horizon_is_excluded_and_reported(env):
+    e = _ch(env, as_of="2026-08-14")  # Q2 açıklaması 11 Ağu; 20 günlük pencere as_of'u aşar, 1 günlük aşmaz
+    q = _q(e, "2026Q2")
+    r = {x["horizon"]: x for x in q["reactions"]}
+    assert r[1]["complete"] is True and r[1]["window_end_date"] == "2026-08-11"
+    assert r[20]["complete"] is False and r[20]["window_end_date"] is None and r[20]["stock_return_pct"] is None
+    assert e["n_excluded_incomplete_horizon"] >= 1
+    assert any(w.startswith("INCOMPLETE_HORIZON_EXCLUDED") for w in e["warnings"])
+    s20 = [s for s in e["results"]["reaction_summary"] if s["horizon"] == 20 and s["group"] == "ALL"][0]
+    assert s20["n_excluded_incomplete_horizon"] >= 1
+    n_total = e["results"]["n_quarters_disclosed_by_as_of"]
+    assert s20["n"] + s20["n_excluded_incomplete_horizon"] == n_total
+
+
+def test_reaction_never_uses_prices_after_as_of(env, tmp_path_factory):
+    base = _ch(env, as_of="2026-08-14")
+    other = tmp_path_factory.mktemp("p")
+    _prices(other, scale_after=10.0)
+    write_fundamentals_snapshot(_table(), other, FV, {})
+    assert _ch(other, as_of="2026-08-14")["results"] == base["results"]
+
+
+def test_summary_groups_and_counts(env):
+    e = _ch(env, improvement_metric="EBITDA_MARGIN", improvement_basis="QOQ")
+    summ = {(s["horizon"], s["group"]): s for s in e["results"]["reaction_summary"]}
+    imp = [q for q in e["results"]["quarters"] if _mc(q, "EBITDA_MARGIN")["qoq_direction"] == "IMPROVED"]
+    assert summ[(5, "IMPROVED")]["n"] + summ[(5, "IMPROVED")]["n_excluded_incomplete_horizon"] == len(imp)
+    a, i, n = summ[(5, "ALL")], summ[(5, "IMPROVED")], summ[(5, "NOT_IMPROVED")]
+    assert a["n"] >= i["n"] + n["n"]  # QoQ'su None olan ilk çeyrek yalnız ALL'da
+    assert 0 <= a["hit_rate_vs_xu100_pct"] <= 100
+    assert any(w.startswith("FEW_EVENTS") for w in e["warnings"])
+    assert any(w.startswith("ASSOCIATION_NOT_CAUSATION") for w in e["warnings"])
+
+
+def test_bank_change_set_and_improvement_fallback(env):
+    e = _ch(env, ticker="AKBNK")
+    validate_envelope(e)
+    assert e["results"]["metric_set"] == "BANK" and e["results"]["improvement_metric"] == "NET_PROFIT"
+    assert {m["name"] for m in e["results"]["quarters"][0]["metrics"]} == {"NET_INTEREST_INCOME", "NET_PROFIT", "ROE"}
+    assert any(w.startswith("SOLO_PEER_GROUP") for w in e["warnings"])
+    assert all(r["sector_return_pct"] is None and r["abnormal_vs_sector_pct"] is None
+               for q in e["results"]["quarters"] for r in q["reactions"] if r["complete"])
+    bad = _ch(env, ticker="AKBNK", metrics=["EBITDA"])
+    assert bad["status"] == "ERROR" and bad["error"]["code"] == "METRIC_NOT_APPLICABLE"
+
+
+def test_requested_periods_subset(env):
+    e = _ch(env, periods=["2026Q1", "2026Q2"])
+    assert [q["fiscal_period"] for q in e["results"]["quarters"]] == ["2026Q1", "2026Q2"]
+    assert _mc(_q(e, "2026Q1"), "EBITDA_MARGIN")["yoy_change"] == 2.0  # önceki dönem satırları gizlenmez, yalnız çıktı daralır
+
+
+def test_determinism_and_hash(env):
+    a, b = _ch(env), _ch(env)
+    assert a == b and len(a["input_hash"]) == 64
+    assert _ch(env, as_of="2026-08-14")["input_hash"] != a["input_hash"]
+
+
+def test_helpers_period_arithmetic():
+    assert fp_shift("2026Q1", -1) == "2025Q4" and fp_shift("2026Q1", -4) == "2025Q1" and fp_shift("2025Q4", 1) == "2026Q1"
+
+
+# --- gerçek veri (varsa) ----------------------------------------------------------------------------
+@pytest.mark.skipif(not (SNAPSHOT_DIR / "LATEST_FUNDAMENTALS").exists() or not (SNAPSHOT_DIR / "LATEST").exists(),
+                    reason="gerçek bilanço snapshot'ı yok")
+def test_real_tuprs_soru4_shape():
+    e = CH.run({"ticker": "TUPRS", "as_of": AS_OF})
+    validate_envelope(e)
+    r = e["results"]
+    assert e["status"] == "OK" and r["metric_set"] == "INDUSTRIAL"
+    assert all(q["disclosure_date"] <= AS_OF for q in r["quarters"])  # sızıntı yok
+    assert "2026Q3" not in [q["fiscal_period"] for q in r["quarters"]]  # Kasım'da açıklanır
+    g = GM.run({"ticker": "TUPRS", "as_of": AS_OF})
+    validate_envelope(g)
+    assert g["results"]["disclosure_date"] <= AS_OF
