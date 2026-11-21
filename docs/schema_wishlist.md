@@ -91,6 +91,21 @@ yalnızca `tool, as_of, data_version, input_hash, n_events, n_excluded_incomplet
 `harness/gate_params.py::bundle_items` (Bilgisayar 2) yeni alanları zarftan/`results`'tan kopyalayacak şekilde güncellenmelidir.
 `input_hash`'i etkilemez (`analysis_bundle` params içinde olduğundan çağrıların hash'i değişir; yalnızca yeni çağrılar etkilenir).
 
+## 5. `TickerQuality`: alan açıklamaları araçla uyumsuz (yalnızca açıklama düzeltmesi; alan/tip değişmez)
+`tools/check_data_quality.py` iki alanı şema açıklamasından **farklı** doldurur. Davranış `docs/data_dictionary.md` §15.6'da belgelidir ve testlidir; şema metni güncellenmelidir
+(ya da araç şemaya uyarlanmalı; **önerimiz açıklamayı düzeltmek**, çünkü araç kuralı fiyat sıçraması sınıflandırmasıyla tutarlıdır).
+
+| Alan | Şema açıklaması (bugün) | Araçta gerçek davranış | Öneri (açıklama) |
+|---|---|---|---|
+| `n_price_jumps_over_limit` | "`\|günlük getiri\| > price_jump_limit_pct` olan gün sayısı" | `\|adj_close getirisi\| > price_jump_limit_pct + PRICE_JUMP_TOLERANCE_PP` (varsayılan 10 + 0,5), pencere `[start, min(end, as_of)]`; `classify_price_jumps` ve manifest `price_jump_report` ile **aynı** kural | "`\|günlük adj_close getirisi\| > price_jump_limit_pct + tolerans` olan gün sayısı (sıçrama sınıflandırmasıyla aynı kural)". Aksi halde BIST ±%10 limit hareketleri (ör. +%10,4) bayraklanırdı |
+| `last_data_age_days` | "`as_of - last_date` (takvim günü)" | `as_of − (as_of'a kadarki SON satır)`; `last_date` ise **pencerenin** son satırı. `end < as_of` iken ikisi farklıdır (ör. `end` 2026-06-30, `as_of` 2026-09-10: `last_date` 06-30, yaş 0) | "`as_of` − (`as_of`'a kadarki son satır tarihi), takvim günü; `last_date` pencere sonudur, bu yüzden `end < as_of` iken `as_of - last_date`'e eşit olmayabilir" |
+
+Gerekçe (ikinci satır): bayatlık "snapshot `as_of`'u kapsıyor mu" sorusudur ve pencereye bağlı olmamalıdır; pencere `end` erken seçildi diye bayat veri "taze" görünmemeli.
+
+**İsteğe bağlı (5.3): kodlu sayaçlar.** `hard_blocks`/`soft_warnings` "kodlu ve sayılı" isteniyor ama `CheckDataQualityResult`'ta sayaç alanı yok; sayılar yalnızca `gate_reason` metninde
+("hard 1 (WRONG_TICKER_OR_BROKEN_HISTORY×1), soft 2 (…)"). Sayı doğrulayıcı bunları metinden ayrıştırmak zorunda. Öneri: `issue_counts: dict[str, int] = {}` (kod → adet, hard ve soft birlikte;
+`DQCode` anahtarlı). Varsayılanlı ve geriye uyumlu; yalnızca harness/doğrulayıcı kolaylığıdır.
+
 ## Uygulama notu (onay sonrası)
 1. `schemas/` değişikliği tek commit, `SCHEMA_VERSION` → `1.2.0`, `schema_changelog.md` girişi, `schemas/examples.py` ve `tests/contract/` güncellemesi.
 2. Bilgisayar 2 (harness mock araçları, sayı doğrulayıcı, eğitim verisi) yeni alanlara uyum sağlar; `data_version` v2 kuralı (kural 12) değişmez.
