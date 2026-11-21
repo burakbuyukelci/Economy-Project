@@ -71,9 +71,18 @@
     {"lang": "en", "pattern": "\\b(?:no\\s+guarantee\\w*|not\\s+guaranteed|cannot\\s+be\\s+guaranteed|can't\\s+be\\s+guaranteed)\\b"}
   ],
   "refutation_markers": [
-    {"lang": "tr", "pattern": "(?<!\\w)(?:doğrulanmam\\w*|doğrulanamad\\w*|doğrulanamaz\\w*|doğrulanmıyor\\w*|kanıtlanmam\\w*|kanıtlanamad\\w*|kanıtlanamaz\\w*|desteklenmi\\w*|desteklenme\\w*|desteklemi\\w*|desteklemez\\w*|asılsız\\w*|dayanaksız\\w*|temelsiz\\w*)"},
-    {"lang": "tr", "pattern": "(?<!\\w)kanıt\\w*\\s+yok\\w*"},
-    {"lang": "en", "pattern": "\\b(?:unverified|unproven|unsupported|unfounded|not\\s+verified|not\\s+supported|not\\s+proven|no\\s+evidence|cannot\\s+be\\s+(?:verified|confirmed)|can't\\s+be\\s+(?:verified|confirmed))\\b"}
+    {"lang": "tr", "pattern": "(?<!\\w)(?:doğrulanmam\\w*|doğrulanmad\\w*|doğrulanamam\\w*|doğrulanamad\\w*|doğrulanamaz\\w*|doğrulanmıyor\\w*)",
+     "examples": ["doğrulanmamıştır", "doğrulanmamaktadır", "doğrulanmadı", "doğrulanamamıştır", "doğrulanamadı", "doğrulanamaz", "doğrulanmıyor"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:kanıtlanmam\\w*|kanıtlanmad\\w*|kanıtlanamam\\w*|kanıtlanamad\\w*|kanıtlanamaz\\w*)",
+     "examples": ["kanıtlanmamıştır", "kanıtlanmamaktadır", "kanıtlanmadı", "kanıtlanamamıştır", "kanıtlanamadı", "kanıtlanamaz"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:desteklenmi\\w*|desteklenme\\w*|desteklemi\\w*|desteklemez\\w*)",
+     "examples": ["desteklenmemektedir", "desteklenmiyor", "desteklenmemiştir", "desteklemiyor", "desteklemez"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:asılsız\\w*|dayanaksız\\w*|temelsiz\\w*)",
+     "examples": ["asılsızdır", "dayanaksızdır", "temelsizdir"]},
+    {"lang": "tr", "pattern": "(?<!\\w)kanıt\\w*\\s+yok\\w*",
+     "examples": ["kanıt yoktur", "kanıtı yok"]},
+    {"lang": "en", "pattern": "\\b(?:unverified|unproven|unsupported|unfounded|not\\s+verified|not\\s+supported|not\\s+proven|no\\s+evidence|cannot\\s+be\\s+(?:verified|confirmed)|can't\\s+be\\s+(?:verified|confirmed))\\b",
+     "examples": ["unverified", "unproven", "unsupported", "not verified", "no evidence", "cannot be verified"]}
   ],
   "negation_after": [
     {"lang": "tr", "pattern": "(?<!\\w)değil\\w*"}
@@ -82,7 +91,15 @@
     {"lang": "en", "pattern": "(?:\\bnot|n't|\\bnever)\\s*$"}
   ],
   "claim_nouns": [
-    {"lang": "tr", "pattern": "(?<!\\w)(?:iddia|söylem|ifade|beklenti|varsayım)\\w*"},
-    {"lang": "en", "pattern": "\\b(?:claims?|assertions?|statements?|assumptions?)\\b"}
+    {"lang": "tr", "pattern": "(?<!\\w)iddia\\w*",
+     "examples": ["iddiası", "iddiaları", "iddiasının", "iddiasını", "iddiasına", "iddia", "iddialar"]},
+    {"lang": "tr", "pattern": "(?<!\\w)ifade\\w*",
+     "examples": ["ifadesi", "ifadesinin", "ifadesini", "ifadesine", "ifade", "ifadeler"]},
+    {"lang": "tr", "pattern": "(?<!\\w)söylem\\w*",
+     "examples": ["söylemi", "söyleminin", "söylemini", "söylemine", "söylem", "söylemler"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:beklenti|varsayım)\\w*",
+     "examples": ["beklentisi", "varsayımı"]},
+    {"lang": "en", "pattern": "\\b(?:claims?|assertions?|statements?|assumptions?)\\b",
+     "examples": ["claim", "claims", "assertion", "statement", "assumption"]}
   ]
 }

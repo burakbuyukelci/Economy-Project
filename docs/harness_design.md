@@ -144,6 +144,11 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
   cümlede olumsuzlanmamış, tırnak dışı bir çürütme/reddetme işareti var **ve** her kalıp şunlardan birini sağlıyor: tırnak içinde; ardından "iddia/ifade/söylem"; ≤4 sözcük yakınında *reddetme* işareti
   ("hedef fiyat veremem", "garanti değildir"). AL/SAT kalıpları yalnızca tırnak içindeyse muaf. Aynı cümlede tırnaksız ikinci bir tavsiye varsa cümlenin tamamı ihlaldir.
   `doğrulanmamış değil` (olumsuzlanmış çürütme), tırnak içine gizlenmiş çürütme, başka cümledeki çürütme, `Alın, doğrulanmamış iddialara bakmayın` gibi saldırılar testlidir.
+* **Çürütme sözcükleri ve iddia/ifade/söylem varyantları** da veridir (`advice_phrases.json`: `refutation_markers`, `claim_nouns`, her girişte `examples`): `doğrulanmamıştır/-maktadır/doğrulanamamıştır/doğrulanmadı`,
+  `kanıtlanmamıştır/…`, `desteklenmemektedir/desteklenmiyor`, `asılsızdır/dayanaksızdır`, `kanıt yoktur`; `iddiası/iddiaları/iddiasının`, `ifadesi/ifadesinin`, `söylemi/söyleminin` …
+  Her varyant × her sözcük için muafiyet, olumsuzlama, onaylayan sözcük, uzak sözcük, ikinci tavsiye ve başka cümle saldırıları testlidir.
+* **ASCII/büyük harf katlama:** Türkçe kalıplar ve metin aynı katlamadan geçer (`tr_fold`: küçük harf + ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u). `KESIN YUKSELIR`, `KESİN YÜKSELİR`, `IDDIASI`
+  aynı eşleşir; model ASCII/büyük harfle yazarak kalıbı atlatamaz. Bedel: `alin`/`satin` gibi ASCII yazımlar da yakalanır (masum ifadeler ASCII biçimleriyle de testlidir).
 * **Sınırlar:** çürütme sözcüğü tek başına (`kesin yükselir, doğrulanmamıştır`) muafiyet vermez; ironi/dolaylı tavsiye ("bence düşünmeye değer") yakalanmaz; nedensellik iddiası
   ("iyi bilanço = fiyat artar", kural 10) bu modülün kapsamında değildir.
 

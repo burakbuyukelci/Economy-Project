@@ -32,6 +32,16 @@ from schemas.enums import AllowedAction
 LEXICON_PATH = Path(__file__).resolve().parent / "lexicons" / "advice_phrases.json"
 ALLOWED = {a.value for a in AllowedAction}
 
+_FOLD = str.maketrans({"ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u", "â": "a", "î": "i", "û": "u"})
+
+
+def tr_fold(s: str) -> str:
+    """Türkçe küçük harf + ASCII katlama (ç->c, ğ->g, ı->i, ö->o, ş->s, ü->u), 1:1 (span'lar kaymaz).
+
+    Hem metne hem lang=tr kalıplarına uygulanır: 'KESİN YÜKSELİR', 'KESIN YUKSELIR' ve 'kesin yükselir' aynı eşleşir.
+    Neden: model ASCII/büyük harfle yazarak ('IDDIASI', 'ALIN') kalıbı atlatamamalı."""
+    return tr_lower(s).translate(_FOLD)
+
 
 # =============================== rapor tipleri ===============================
 @dataclass(frozen=True)
@@ -83,6 +93,10 @@ class Lexicon:
     claim_nouns: tuple[tuple[str, re.Pattern[str]], ...]
 
 
+def _pat(entry: dict[str, Any]) -> str:
+    return tr_fold(entry["pattern"]) if entry["lang"] == "tr" else entry["pattern"]
+
+
 def _flags(entry: dict[str, Any]) -> int:
     f = 0 if (entry.get("lang") == "tr" or entry.get("case_sensitive")) else re.IGNORECASE
     for name in entry.get("flags", []):
@@ -91,13 +105,13 @@ def _flags(entry: dict[str, Any]) -> int:
 
 
 def _compile_list(items: list[dict[str, Any]]) -> tuple[tuple[str, re.Pattern[str]], ...]:
-    return tuple((e["lang"], re.compile(e["pattern"], _flags(e))) for e in items)
+    return tuple((e["lang"], re.compile(_pat(e), _flags(e))) for e in items)
 
 
 @lru_cache(maxsize=1)
 def load_lexicon(path: Path | None = None) -> Lexicon:
     data = json.loads((path or LEXICON_PATH).read_text(encoding="utf-8"))
-    rules = tuple(Rule(r["id"], r["lang"], r["category"], re.compile(r["pattern"], _flags(r))) for r in data["rules"])
+    rules = tuple(Rule(r["id"], r["lang"], r["category"], re.compile(_pat(r), _flags(r))) for r in data["rules"])
     return Lexicon(rules, _compile_list(data["refusal_markers"]), _compile_list(data["refutation_markers"]),
                    _compile_list(data["negation_after"]), _compile_list(data["negation_before"]),
                    _compile_list(data["claim_nouns"]))
@@ -196,7 +210,7 @@ def _search(entries: tuple[tuple[str, re.Pattern[str]], ...], orig: str, low: st
 def find_advice_language(text: str) -> tuple[list[Violation], list[Violation]]:
     """(ihlaller, notlar): tavsiye / hedef fiyat / kesinlik kalıpları ve muaf tutulan alıntılanan çürütmeler."""
     lex = load_lexicon()
-    low = tr_lower(text)
+    low = tr_fold(text)
     hits: list[_Hit] = []
     for rule in lex.rules:
         for m in rule.regex.finditer(low if rule.lang == "tr" else text):

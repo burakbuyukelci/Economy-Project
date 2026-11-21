@@ -304,3 +304,100 @@ def test_new_list_item_starts_a_new_sentence():
 def test_action_line_value_does_not_swallow_next_line():
     rep = check_final_output("Metin.\nEYLEM:\nWATCH")
     assert codes(rep) == ["NO_ACTION"]
+
+
+# =============================== çürütme sözcükleri × iddia/ifade/söylem varyantları ===============================
+_LEX = json.loads(LEX_PATH.read_text(encoding="utf-8"))
+NOUNS_TR = [ex for e in _LEX["claim_nouns"] if e["lang"] == "tr" for ex in e["examples"]]
+MARKERS_TR = [ex for e in _LEX["refutation_markers"] if e["lang"] == "tr" for ex in e["examples"]]
+# "kanıt yoktur" iki sözcüklü; olumsuzlama/yakınlık testlerinde de aynen kullanılır
+PRIMARY_NOUNS = ["iddiası", "ifadesi", "söylemi"]
+
+
+def test_lexicon_examples_match_their_own_patterns():
+    from harness.action_guard import tr_fold
+    for kind in ("refutation_markers", "claim_nouns"):
+        for e in _LEX[kind]:
+            assert e["examples"], (kind, e["pattern"])
+            rx = re.compile(tr_fold(e["pattern"]) if e["lang"] == "tr" else e["pattern"], 0 if e["lang"] == "tr" else re.I)
+            for ex in e["examples"]:
+                assert rx.search(tr_fold(ex) if e["lang"] == "tr" else ex), (kind, ex)
+    assert set(PRIMARY_NOUNS) <= set(NOUNS_TR)
+
+
+@pytest.mark.parametrize("noun", NOUNS_TR)
+@pytest.mark.parametrize("marker", MARKERS_TR)
+def test_every_noun_variant_with_every_refutation_word_is_exempt(noun, marker):
+    violations, notes = find_advice_language(f"Kesin yükselir {noun} {marker}.")
+    assert not violations, (noun, marker, [(v.rule_id, v.phrase) for v in violations])
+    assert notes and all(n.code == "QUOTED_REFUTATION" for n in notes)
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+@pytest.mark.parametrize("marker", MARKERS_TR)
+def test_quoted_claim_with_noun_variant_is_exempt(noun, marker):
+    violations, notes = find_advice_language(f"“Kesin yükselir” {noun} {marker}.")
+    assert not violations and notes
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_noun_variants_work_in_uppercase_and_with_a_filler_word(noun):
+    assert not find_advice_language(f"KESİN YÜKSELİR {noun.upper()} DOĞRULANMAMIŞTIR.")[0]
+    assert not find_advice_language(f"Kesin yükselir bu {noun} doğrulanmamıştır.")[0]   # 2. sözcük hâlâ yakın
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+@pytest.mark.parametrize("marker", ["doğrulanmamış", "doğrulanamamış", "kanıtlanmamış", "desteklenmemiş", "asılsız"])
+def test_negated_refutation_is_a_violation_for_every_noun(noun, marker):
+    assert find_advice_language(f"Kesin yükselir {noun} {marker} değildir.")[0]
+    assert find_advice_language(f"“Kesin yükselir” {noun} {marker} değil.")[0]
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_noun_without_a_refutation_word_is_a_violation(noun):
+    assert find_advice_language(f"Kesin yükselir {noun} doğrulanmıştır.")[0]     # onaylıyor
+    assert find_advice_language(f"Kesin yükselir {noun} geçerlidir.")[0]
+    assert find_advice_language(f"“Kesin yükselir” {noun} güçlüdür.")[0]
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_noun_too_far_from_the_phrase_is_a_violation(noun):
+    # iddia/ifade/söylem kalıbın hemen ardından (≤2 sözcük) gelmeli; uzaktaki sözcük muafiyet vermez
+    assert find_advice_language(f"Kesin yükselir, bence bu yüzden her zaman {noun} doğrulanmamıştır.")[0]
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_noun_variant_does_not_exempt_a_second_advice_phrase_in_the_sentence(noun):
+    assert find_advice_language(f"Kesin yükselir {noun} doğrulanmamıştır, hisseyi alın.")[0]
+    assert find_advice_language(f"Kesin yükselir {noun} doğrulanmamıştır, hedef fiyat 350 TL.")[0]
+    assert find_advice_language(f"“Kesin yükselir” {noun} doğrulanmamıştır, satın alın.")[0]
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_noun_variant_does_not_exempt_an_unquoted_buy_sell_phrase(noun):
+    assert find_advice_language(f"Alın {noun} doğrulanmamıştır.")[0]      # al/sat yalnızca tırnak içindeyse muaf
+    assert not find_advice_language(f"“Alın” {noun} doğrulanmamıştır.")[0]
+
+
+@pytest.mark.parametrize("noun", PRIMARY_NOUNS)
+def test_refutation_in_another_sentence_does_not_help(noun):
+    assert find_advice_language(f"Kesin yükselir. Bu {noun} doğrulanmamıştır.")[0]
+
+
+# =============================== ASCII / büyük harf katlama ===============================
+@pytest.mark.parametrize("text", ["KESIN YUKSELIR", "Kesin yukselir", "hisseyi ALIN", "HEDEF FIYAT 350 TL", "Satin alin", "SATMALISINIZ",
+                                  "Garantili getiri"])
+def test_ascii_folded_advice_is_still_caught(text):
+    assert find_advice_language(text)[0], text
+
+
+@pytest.mark.parametrize("text", ["alt Bollinger bandi", "ALT BOLLINGER BANDI", "talep zayif", "satis gelirleri artti", "SATIS GELIRLERI",
+                                  "satin alma gucu", "alinan karar", "Garanti Bankasi", "kesin sonuc yok"])
+def test_ascii_folded_innocent_phrases_do_not_alarm(text):
+    assert not find_advice_language(text)[0], text
+
+
+@pytest.mark.parametrize("noun", ["IDDIASI", "İDDİASI", "iddiasi", "IFADESI", "SOYLEMI", "söylemi"])
+def test_ascii_and_turkish_uppercase_noun_variants_are_exempt(noun):
+    assert not find_advice_language(f"KESIN YUKSELIR {noun} DOGRULANMAMISTIR.")[0]
+    assert find_advice_language(f"KESIN YUKSELIR {noun} DOGRULANMAMIS DEGILDIR.")[0]
