@@ -3,7 +3,7 @@
 Yapı:
   * Kural fonksiyonları (saf, test edilebilir): her biri `list[DQIssue]` döndürür.
   * `decide_gate`: sorun listesinden kapı durumunu ve `gate_reason` metnini üretir.
-  * (aşağıda) araç giriş noktası: params -> snapshot -> kurallar -> kapı -> zarf.
+  * Araç giriş noktası (en altta): params -> snapshot -> kurallar -> kapı -> zarf.
 
 Kapı kararı yalnızca sorun KODUNA ve değerine bakar; uyarı sayısı kapıyı yükseltmez (retail demosunda FEW_EVENTS ve
 küçük peer grubu birlikte çıkabilir; bu ANALYSIS_UNSAFE yapılmaz). Tablo docs/data_dictionary.md bölüm 15'tedir.
@@ -13,12 +13,24 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Sequence
 
-from config.settings import MIN_EVENTS, MIN_WEEKDAY_IS_TRIGGER_WEEKS, MIN_WEEKDAY_OOS_TRIGGER_WEEKS
-from schemas.enums import DQCheck, DQCode, DQSeverity, GateStatus, ToolName
-from schemas.params import BundleItem
-from schemas.results import DQIssue
+import pandas as pd
+
+from config.settings import (
+    MIN_EVENTS,
+    MIN_WEEKDAY_IS_TRIGGER_WEEKS,
+    MIN_WEEKDAY_OOS_TRIGGER_WEEKS,
+    PRICE_JUMP_TOLERANCE_PP,
+)
+from config.universe import load_universe
+from schemas.enums import DQCheck, DQCode, DQSeverity, GateStatus, ToolName, WarningCode
+from schemas.envelope import make_warning
+from schemas.params import BundleItem, CheckDataQualityParams
+from schemas.results import CheckDataQualityResult, DQIssue, TickerQuality
+from tools.common import Snapshot, ToolOutput, enforce_as_of, run_tool, trading_calendar
+from tools.price_quality import classify_price_jumps
 
 # --- Eşikler (bu modüle özgü; config/ ortak bölge olduğundan oraya KONMADI. Varsayım olanlar işaretli.) -------------
 # Bayatlık: gün = as_of - (as_of'a kadarki son satır tarihi). <= GRACE: normal (hafta sonu/kısa tatil), uyarı yok;
@@ -252,3 +264,137 @@ def decide_gate(
         reason += (" Çalışmayan kontroller (veri/şema yok, 'geçti' sayılmaz): "
                    + ", ".join(c.value for c in checks_not_run) + ".")
     return status, reason
+
+
+# =============================================================== araç giriş noktası
+TOOL = ToolName.CHECK_DATA_QUALITY
+INDEX_LABEL = "XU100"
+_ALWAYS_RUN = (DQCheck.PRICE_JUMPS, DQCheck.MISSING_DAYS, DQCheck.STALENESS, DQCheck.AS_OF_CONSISTENCY,
+               DQCheck.TICKER_IDENTITY)
+_SYMBOL_CHECK = {DQCode.MISSING_TRADING_DAYS: DQCheck.MISSING_DAYS, DQCode.STALE_DATA: DQCheck.STALENESS}
+
+
+def _symbol_quality(
+    label: str, df: pd.DataFrame, p: CheckDataQualityParams, eff_end: date, calendar: pd.Series,
+) -> tuple[TickerQuality, list[DQIssue], bool]:
+    """Tek sembolün (hisse veya XU100) rapor satırı + eksik gün/bayatlık sorunları. df zaten as_of ile kesilmiş.
+
+    Dönüş: (rapor, sorunlar, pencerede_satır_var_mı). Pencere = [start, eff_end]; bayatlık pencereye değil as_of'a göre ölçülür
+    (end < as_of iken pencere erken bitse de veri as_of'u kapsıyor mu sorusu aynıdır).
+    """
+    df = df.sort_values("date")
+    ret = (df["adj_close"].pct_change() * 100).round(6)               # getiri önceki SATIRA göre (pencere başında da)
+    in_win = (df["date"] >= pd.Timestamp(p.start)) & (df["date"] <= pd.Timestamp(eff_end))
+    win = df[in_win]
+    wret = ret[in_win].abs().dropna()
+    thr = p.price_jump_limit_pct + PRICE_JUMP_TOLERANCE_PP            # price_quality ile AYNI kural (limit + tolerans)
+
+    missing: list[pd.Timestamp] = []
+    if len(df):
+        lo = max(pd.Timestamp(p.start), df["date"].min())             # hissenin ilk satırından önceki günler eksik sayılmaz
+        days = calendar[(calendar >= lo) & (calendar <= pd.Timestamp(eff_end))]
+        have = set(win["date"])
+        missing = [d for d in days if d not in have]
+
+    last_any = df["date"].max().date() if len(df) else None
+    report = TickerQuality(
+        ticker=label, n_rows=len(win),
+        first_date=win["date"].min().date() if len(win) else None,
+        last_date=win["date"].max().date() if len(win) else None,
+        n_missing_trading_days=len(missing),
+        last_data_age_days=(p.as_of - last_any).days if last_any else None,
+        max_abs_daily_return_pct=round(float(wret.max()), 4) if len(wret) else None,
+        max_abs_daily_return_date=df.loc[wret.idxmax(), "date"].date() if len(wret) else None,
+        n_price_jumps_over_limit=int((wret > thr).sum()),
+    )
+
+    issues: list[DQIssue] = []
+    if missing:
+        sample = ", ".join(d.date().isoformat() for d in missing[:5])
+        more = f" (+{len(missing) - 5} gün daha)" if len(missing) > 5 else ""
+        issues.append(DQIssue(code=DQCode.MISSING_TRADING_DAYS, severity=DQSeverity.SOFT, ticker=label,
+                              value=float(len(missing)),
+                              message=f"{label}: {len(missing)} işlem günü eksik (birleşik takvime göre): {sample}{more}"))
+    if last_any is not None:
+        issues += check_staleness(label, last_any, p.as_of)
+    return report, issues, bool(len(win))
+
+
+def _handler(p: CheckDataQualityParams, snap: Snapshot) -> ToolOutput:
+    as_of = p.as_of
+    eff_end = min(p.end, as_of)
+    warnings: list[str] = []
+    if p.end > as_of:
+        warnings.append(make_warning(WarningCode.AS_OF_CLAMPED,
+                                     f"end={p.end.isoformat()} as_of={as_of.isoformat()} tarihine kesildi"))
+
+    wanted = set(p.checks) if p.checks is not None else set(DQCheck)
+    stocks = enforce_as_of(snap.stocks, as_of)                        # as_of sonrası satır buradan öteye GEÇMEZ
+    index = enforce_as_of(snap.index, as_of)
+    calendar = enforce_as_of(pd.DataFrame({"date": trading_calendar(snap)}), as_of)["date"]
+    known = set(snap.stocks["ticker"].unique())                       # yalnızca "bu ticker snapshot'ta var mı" için
+
+    issues: list[DQIssue] = []
+    reports: list[TickerQuality] = []
+    symbols = [(t, stocks[stocks["ticker"] == t]) for t in p.tickers]
+    if p.include_index:
+        symbols.append((INDEX_LABEL, index))
+    for label, df in symbols:
+        rep, sym_issues, has_rows = _symbol_quality(label, df, p, eff_end, calendar)
+        reports.append(rep)
+        issues += [i for i in sym_issues if _SYMBOL_CHECK[i.code] in wanted]
+        if not has_rows and DQCheck.TICKER_IDENTITY in wanted:
+            if label != INDEX_LABEL and label not in known:
+                why = "snapshot'ta yok"
+            elif df.empty:
+                why = f"as_of ({as_of}) tarihine kadar satır yok"
+            else:
+                why = f"[{p.start}, {eff_end}] pencerede satır yok"
+            issues.append(DQIssue(code=DQCode.WRONG_TICKER_OR_BROKEN_HISTORY, severity=DQSeverity.HARD, ticker=label,
+                                  message=f"{label}: {why}; yanlış ticker veya bozuk fiyat geçmişi"))
+
+    if DQCheck.PRICE_JUMPS in wanted:
+        issues += classify_price_jumps(stocks, list(p.tickers), p.start, p.end, as_of, limit_pct=p.price_jump_limit_pct)
+
+    bundle = list(p.analysis_bundle)
+    run: set[DQCheck] = {c for c in _ALWAYS_RUN if c in wanted}
+    if DQCheck.AS_OF_CONSISTENCY in wanted:
+        issues += check_as_of_consistency(bundle, as_of)
+    if bundle and DQCheck.DATA_VERSION_CONSISTENCY in wanted:
+        issues += check_data_version(bundle, snap.data_version)
+        run.add(DQCheck.DATA_VERSION_CONSISTENCY)
+    if DQCheck.EVENT_COUNT in wanted:
+        ev, n_evaluated = check_event_counts(bundle)
+        issues += ev
+        if n_evaluated:
+            run.add(DQCheck.EVENT_COUNT)
+    if DQCheck.PEER_GROUP_SIZE in wanted:
+        uni = load_universe()
+        pe, ran = check_peer_group(bundle, list(p.tickers), dict(zip(uni["ticker"], uni["peer_group_size"].astype(int))))
+        issues += pe
+        if ran:
+            run.add(DQCheck.PEER_GROUP_SIZE)
+
+    checks_run = [c for c in DQCheck if c in run]
+    not_run = [c for c in DQCheck if c in wanted and c not in run]
+
+    def order(i: DQIssue):
+        return (i.code.value, i.ticker or "", i.date or date.min, i.message)   # deterministik sıra
+
+    hard = sorted((i for i in issues if i.severity == DQSeverity.HARD), key=order)
+    soft = sorted((i for i in issues if i.severity == DQSeverity.SOFT), key=order)
+    status, reason = decide_gate(hard + soft, checks_run, not_run)
+    res = CheckDataQualityResult(
+        gate_status=status, gate_reason=reason, hard_blocks=hard, soft_warnings=soft, checks_run=checks_run,
+        price_jump_limit_pct=p.price_jump_limit_pct, ticker_reports=reports)
+    return ToolOutput(results=res, warnings=warnings)
+
+
+def run(params: dict) -> dict:
+    """ARAÇ GİRİŞ NOKTASI SÖZLEŞMESİ: run(params: dict) -> dict (zarf). Harness bu imzayla çağırır."""
+    return run_on(params)
+
+
+def run_on(params: dict, *, snapshot_root: Path | None = None, data_version: str | None = None) -> dict:
+    """Test/çevrimdışı kullanım: snapshot kökünü/sürümünü açıkça verir. Sözleşmenin parçası DEĞİLDİR."""
+    return run_tool(TOOL, params, _handler, snapshot_root=snapshot_root, data_version=data_version)  # type: ignore[arg-type]
