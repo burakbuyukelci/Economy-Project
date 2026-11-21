@@ -182,7 +182,9 @@ def test_healthy_bundle_passes_and_adds_bundle_checks(clean):
 
 def test_bundle_item_as_of_after_session_as_of_is_hard_block(clean):
     env = call(clean, analysis_bundle=[bundle_item(as_of="2026-09-11")])
+    validate_envelope(env)  # ihlalin tarihi `date` alanında taşınsaydı look-ahead taraması bu zarfı reddederdi
     assert env["results"]["gate_status"] == "HARD_BLOCK" and hard_codes(env) == ["AS_OF_VIOLATION"]
+    assert env["results"]["hard_blocks"][0]["date"] is None and "2026-09-11" in env["results"]["hard_blocks"][0]["message"]
 
 
 def test_bundle_data_version_mismatch_is_investigate(clean):
@@ -256,3 +258,97 @@ def test_soft_issue_order_is_deterministic(tmp_path):
     root = build(tmp_path, drop={("MGROS", "2026-09-03"), ("BIMAS", "2026-09-04")})
     a = call(root, tickers=["MGROS", "BIMAS"])
     assert [i["ticker"] for i in a["results"]["soft_warnings"]] == ["BIMAS", "MGROS"]
+
+
+# ------------------------------------------------------------------------------------------- şema 1.2.0: issue_counts
+def test_issue_counts_is_empty_dict_not_none_when_no_issues(clean):
+    env = call(clean)
+    validate_envelope(env)
+    assert env["schema_version"] == "1.2.0" and env["results"]["issue_counts"] == {}
+
+
+def test_issue_counts_matches_hard_and_soft_lists_and_is_sorted_by_code(tmp_path):
+    root = build(tmp_path, jumps={("THYAO", 8): 1 / 11}, drop={("THYAO", "2026-09-03")})
+    env = call(root, analysis_bundle=[bundle_item("detect_reversal_events", 3)])
+    validate_envelope(env)
+    r = env["results"]
+    assert r["issue_counts"] == {"FEW_EVENTS": 1, "MISSING_TRADING_DAYS": 1, "WRONG_TICKER_OR_BROKEN_HISTORY": 1}
+    assert list(r["issue_counts"]) == sorted(r["issue_counts"])  # belirlenimcilik: anahtar sırası kod adına göre
+    assert sum(r["issue_counts"].values()) == len(r["hard_blocks"]) + len(r["soft_warnings"])
+    assert "hard 1 (WRONG_TICKER_OR_BROKEN_HISTORY×1)" in r["gate_reason"]  # geçiş dönemi: metin de duruyor
+
+
+def test_issue_counts_respects_checks_subset(tmp_path):
+    root = build(tmp_path, jumps={("THYAO", 8): 1 / 11}, drop={("THYAO", "2026-09-03")})
+    env = call(root, checks=["PRICE_JUMPS"])
+    validate_envelope(env)
+    assert env["results"]["issue_counts"] == {"WRONG_TICKER_OR_BROKEN_HISTORY": 1}
+
+
+# ------------------------------------------------------------------------------------------- şema 1.2.0: BundleItem lag / max_result_date
+def backtest_item(**extra):
+    return {**bundle_item("run_backtest", 30), **extra}
+
+
+def test_signal_lag_one_in_bundle_passes_and_signal_shift_is_run(clean):
+    env = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1)])
+    validate_envelope(env)
+    r = env["results"]
+    assert r["gate_status"] == "PASS" and "SIGNAL_SHIFT" in r["checks_run"] and "SIGNAL_SHIFT" not in r["gate_reason"].split("Çalışmayan")[-1]
+
+
+def test_signal_lag_zero_in_bundle_is_hard_lookahead_signal(clean):
+    env = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=0)])
+    validate_envelope(env)
+    r = env["results"]
+    assert r["gate_status"] == "HARD_BLOCK" and hard_codes(env) == ["LOOKAHEAD_SIGNAL"]
+    assert r["hard_blocks"][0]["value"] == 0.0 and "SIGNAL_SHIFT" in r["checks_run"]
+    assert r["issue_counts"] == {"LOOKAHEAD_SIGNAL": 1}
+
+
+def test_backtest_without_lag_in_bundle_does_not_count_as_signal_shift_checked(clean):
+    env = call(clean, analysis_bundle=[backtest_item()])
+    r = env["results"]
+    assert "SIGNAL_SHIFT" not in r["checks_run"] and "SIGNAL_SHIFT" in r["gate_reason"]  # 'geçti' sayılmaz; adıyla çalışmadı denir
+    mixed = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1), backtest_item()])
+    assert "SIGNAL_SHIFT" not in mixed["results"]["checks_run"]  # her backtest öğesi lag taşımadıkça kontrol tam sayılmaz
+
+
+def test_no_backtest_in_bundle_signal_shift_is_not_run(clean):
+    assert "SIGNAL_SHIFT" not in call(clean, analysis_bundle=[bundle_item()])["results"]["checks_run"]
+
+
+def test_backtest_result_after_as_of_is_backtest_future_info(clean):
+    env = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1, max_result_date="2026-09-11")])
+    validate_envelope(env)
+    r = env["results"]
+    assert r["gate_status"] == "HARD_BLOCK" and hard_codes(env) == ["BACKTEST_FUTURE_INFO"]
+    assert r["hard_blocks"][0]["date"] is None and "2026-09-11" in r["hard_blocks"][0]["message"]
+    ok = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1, max_result_date="2026-09-10")])
+    assert ok["results"]["gate_status"] == "PASS"  # as_of günü dahil
+
+
+def test_non_backtest_result_after_as_of_is_lookahead_signal(clean):
+    env = call(clean, analysis_bundle=[{**bundle_item("detect_reversal_events", 30), "max_result_date": "2026-09-14"}])
+    validate_envelope(env)
+    assert hard_codes(env) == ["LOOKAHEAD_SIGNAL"] and env["results"]["gate_status"] == "HARD_BLOCK"
+
+
+def test_explicit_checks_signal_shift_only_evaluates_lag_not_result_date(clean):
+    item = backtest_item(signal_lag_days_applied=0, max_result_date="2026-09-14")
+    env = call(clean, checks=["SIGNAL_SHIFT"], analysis_bundle=[item])
+    assert hard_codes(env) == ["LOOKAHEAD_SIGNAL"] and env["results"]["checks_run"] == ["SIGNAL_SHIFT"]
+    env2 = call(clean, checks=["AS_OF_CONSISTENCY"], analysis_bundle=[item])
+    assert hard_codes(env2) == ["BACKTEST_FUTURE_INFO"] and env2["results"]["checks_run"] == ["AS_OF_CONSISTENCY"]
+
+
+def test_old_style_bundle_items_without_new_fields_still_work(clean):
+    env = call(clean, analysis_bundle=[bundle_item("detect_reversal_events", 30)])
+    validate_envelope(env)
+    assert env["results"]["gate_status"] == "PASS"
+
+
+def test_bundle_with_new_fields_is_deterministic_and_changes_the_hash(clean):
+    a = call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1)])
+    assert a == call(clean, analysis_bundle=[backtest_item(signal_lag_days_applied=1)])
+    assert a["input_hash"] != call(clean, analysis_bundle=[backtest_item()])["input_hash"]

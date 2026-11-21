@@ -125,3 +125,12 @@ def test_real_determinism_and_no_rows_after_as_of_in_report():
     a, b = gate(["THYAO", "BIMAS"]), gate(["BIMAS", "THYAO"])
     assert a == b
     assert all(t["last_date"] <= AS_OF for t in a["results"]["ticker_reports"])
+
+
+# ---------------------------------------------------------------------------------------------- şema 1.2.0: issue_counts
+def test_real_issue_counts_anchors():
+    assert gate(["CCOLA"], v=V1)["results"]["issue_counts"] == {"WRONG_TICKER_OR_BROKEN_HISTORY": 1}
+    assert gate(["CCOLA"])["results"]["issue_counts"] == {}
+    assert gate(["THYAO"])["results"]["issue_counts"] == {"MISSING_TRADING_DAYS": 1}
+    assert gate(list(load_universe()["ticker"]), start="2023-01-02", as_of="2023-03-01")["results"]["issue_counts"] == {
+        "PRICE_JUMP_OVER_LIMIT": 30}

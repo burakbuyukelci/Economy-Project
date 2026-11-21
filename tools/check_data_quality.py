@@ -73,11 +73,18 @@ def _tool_name(tool: ToolName | str) -> str:
     return str(getattr(tool, "value", tool))
 
 
+def _visible(d: date | None, as_of: date) -> date | None:
+    """`DQIssue.date` alanına yalnız as_of'u AŞMAYAN tarih yazılır. `date` geçmiş-only anahtardır (schemas.registry._PAST_ONLY_KEYS):
+    as_of sonrası bir tarihi o alanda taşıyan zarf look-ahead taramasında reddedilirdi, yani kapı ihlali bulduğunda GEÇERSİZ zarf
+    üretirdi. İhlalin tarihi bu yüzden `message` içinde yazılır, `date` None kalır."""
+    return d if d is not None and d <= as_of else None
+
+
 # =============================================================== HARD kuralları
 def check_as_of_consistency(bundle: Sequence[BundleItem], as_of: date) -> list[DQIssue]:
     """Bundle öğesinin as_of'u oturum as_of'unu aşarsa HARD (gelecek bilgi geçmiş analize girmiş demektir)."""
     return [
-        DQIssue(code=DQCode.AS_OF_VIOLATION, severity=DQSeverity.HARD, date=b.as_of,
+        DQIssue(code=DQCode.AS_OF_VIOLATION, severity=DQSeverity.HARD, date=_visible(b.as_of, as_of),
                 message=f"{_tool_name(b.tool)} çıktısının as_of'u ({b.as_of}) oturum as_of'unu ({as_of}) aşıyor")
         for b in bundle if b.as_of > as_of
     ]
@@ -86,9 +93,11 @@ def check_as_of_consistency(bundle: Sequence[BundleItem], as_of: date) -> list[D
 def check_lookahead(
     signal_lag_days_applied: int | None, max_result_date: date | None, as_of: date, tool: ToolName | str,
 ) -> list[DQIssue]:
-    """signal_lag_days < 1 veya as_of sonrası tarihli sonuç -> HARD (LOOKAHEAD_SIGNAL).
+    """signal_lag_days < 1 -> LOOKAHEAD_SIGNAL; as_of sonrası tarihli sonuç -> run_backtest için BACKTEST_FUTURE_INFO (çıkış as_of
+    sonrası), diğer araçlar için LOOKAHEAD_SIGNAL. Hepsi HARD (docs/schema_1_2_0_plan.md D6).
 
-    BundleItem'da bu iki alan henüz yok (docs/schema_wishlist.md §4); şimdilik saf fonksiyon.
+    Şema 1.2.0'dan beri `BundleItem.signal_lag_days_applied` / `max_result_date` bu fonksiyonu besler (araç girişinde bağlanır);
+    saf fonksiyon olarak sentetik girdiyle de test edilir.
     """
     out: list[DQIssue] = []
     t = _tool_name(tool)
@@ -96,8 +105,12 @@ def check_lookahead(
         out.append(DQIssue(code=DQCode.LOOKAHEAD_SIGNAL, severity=DQSeverity.HARD, value=float(signal_lag_days_applied),
                            message=f"{t}: signal_lag_days={signal_lag_days_applied} < 1; sinyal günü t'de t bilgisiyle işlem"))
     if max_result_date is not None and max_result_date > as_of:
-        out.append(DQIssue(code=DQCode.LOOKAHEAD_SIGNAL, severity=DQSeverity.HARD, date=max_result_date,
-                           message=f"{t}: sonuçlarda as_of ({as_of}) sonrası tarih var: {max_result_date}"))
+        backtest = t == ToolName.RUN_BACKTEST.value
+        out.append(DQIssue(
+            code=DQCode.BACKTEST_FUTURE_INFO if backtest else DQCode.LOOKAHEAD_SIGNAL, severity=DQSeverity.HARD,
+            date=_visible(max_result_date, as_of),
+            message=(f"{t}: işlem çıkışı as_of ({as_of}) sonrası: {max_result_date}" if backtest
+                     else f"{t}: sonuçlarda as_of ({as_of}) sonrası tarih var: {max_result_date}")))
     return out
 
 
@@ -113,10 +126,10 @@ def check_backtest_information(trades: Sequence[TradeDates], as_of: date) -> lis
     out: list[DQIssue] = []
     for t in trades:
         if t.entry_date <= t.signal_date:
-            out.append(DQIssue(code=DQCode.BACKTEST_FUTURE_INFO, severity=DQSeverity.HARD, date=t.entry_date,
+            out.append(DQIssue(code=DQCode.BACKTEST_FUTURE_INFO, severity=DQSeverity.HARD, date=_visible(t.entry_date, as_of),
                                message=f"işlem girişi ({t.entry_date}) sinyal gününden ({t.signal_date}) sonra değil"))
         if t.exit_date > as_of:
-            out.append(DQIssue(code=DQCode.BACKTEST_FUTURE_INFO, severity=DQSeverity.HARD, date=t.exit_date,
+            out.append(DQIssue(code=DQCode.BACKTEST_FUTURE_INFO, severity=DQSeverity.HARD, date=_visible(t.exit_date, as_of),
                                message=f"işlem çıkışı ({t.exit_date}) as_of ({as_of}) sonrası"))
     return out
 
@@ -137,11 +150,11 @@ def check_fundamental_alignment(rows: Sequence[FundamentalRow], as_of: date) -> 
         ref = min(r.used_on or as_of, as_of)
         if r.disclosure_date > ref:
             out.append(DQIssue(
-                code=DQCode.FUTURE_FUNDAMENTAL_LEAK, severity=DQSeverity.HARD, date=r.disclosure_date,
+                code=DQCode.FUTURE_FUNDAMENTAL_LEAK, severity=DQSeverity.HARD, date=_visible(r.disclosure_date, as_of),
                 message=f"{r.period_end} dönemi bilançosu {r.disclosure_date} tarihinde açıklandı; {ref} tarihli analize girmiş"))
         elif r.disclosure_date < r.period_end:
             out.append(DQIssue(
-                code=DQCode.PERIOD_MISMATCH, severity=DQSeverity.HARD, date=r.disclosure_date,
+                code=DQCode.PERIOD_MISMATCH, severity=DQSeverity.HARD, date=_visible(r.disclosure_date, as_of),
                 message=f"açıklama tarihi ({r.disclosure_date}) dönem sonundan ({r.period_end}) önce: fiyat/bilanço hizası bozuk"))
     return out
 
@@ -372,6 +385,15 @@ def _handler(p: CheckDataQualityParams, snap: Snapshot) -> ToolOutput:
     run: set[DQCheck] = {c for c in _ALWAYS_RUN if c in wanted}
     if DQCheck.AS_OF_CONSISTENCY in wanted:
         issues += check_as_of_consistency(bundle, as_of)
+        for b in bundle:  # 1.2.0: künyedeki en geç sonuç tarihi (alan yoksa None -> sorun üretmez)
+            issues += check_lookahead(None, b.max_result_date, as_of, b.tool)
+    if DQCheck.SIGNAL_SHIFT in wanted:
+        for b in bundle:  # 1.2.0: künyedeki uygulanan sinyal gecikmesi
+            issues += check_lookahead(b.signal_lag_days_applied, None, as_of, b.tool)
+        backtests = [b for b in bundle if b.tool == ToolName.RUN_BACKTEST]
+        # "geçti" demek için HER backtest öğesi lag taşımalı; aksi halde kontrol çalışmadı sayılır ve gate_reason'da adıyla yazılır
+        if backtests and all(b.signal_lag_days_applied is not None for b in backtests):
+            run.add(DQCheck.SIGNAL_SHIFT)
     if bundle and DQCheck.DATA_VERSION_CONSISTENCY in wanted:
         issues += check_data_version(bundle, snap.data_version)
         run.add(DQCheck.DATA_VERSION_CONSISTENCY)
@@ -396,9 +418,11 @@ def _handler(p: CheckDataQualityParams, snap: Snapshot) -> ToolOutput:
     hard = sorted((i for i in issues if i.severity == DQSeverity.HARD), key=order)
     soft = sorted((i for i in issues if i.severity == DQSeverity.SOFT), key=order)
     status, reason = decide_gate(hard + soft, checks_run, not_run)
+    counts = Counter(i.code for i in hard + soft)
     res = CheckDataQualityResult(
         gate_status=status, gate_reason=reason, hard_blocks=hard, soft_warnings=soft, checks_run=checks_run,
-        price_jump_limit_pct=p.price_jump_limit_pct, ticker_reports=reports)
+        price_jump_limit_pct=p.price_jump_limit_pct, ticker_reports=reports,
+        issue_counts={c: counts[c] for c in sorted(counts, key=lambda c: c.value)})  # 1.2.0: kodlu sayaç (gate_reason metninden bağımsız)
     return ToolOutput(results=res, warnings=warnings)
 
 

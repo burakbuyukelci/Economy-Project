@@ -36,7 +36,8 @@ def codes(issues):
 def test_bundle_item_as_of_after_session_as_of_is_hard():
     out = cdq.check_as_of_consistency([item(as_of=AS_OF + timedelta(days=1))], AS_OF)
     assert codes(out) == [DQCode.AS_OF_VIOLATION]
-    assert out[0].severity == DQSeverity.HARD and out[0].date == AS_OF + timedelta(days=1)
+    assert out[0].severity == DQSeverity.HARD
+    assert out[0].date is None and (AS_OF + timedelta(days=1)).isoformat() in out[0].message  # tarih message'ta (date geçmiş-only)
     assert "detect_reversal_events" in out[0].message
 
 
@@ -60,15 +61,23 @@ def test_signal_lag_one_or_none_is_fine():
     assert cdq.check_lookahead(None, None, AS_OF, T.DETECT_REVERSAL_EVENTS) == []
 
 
-def test_result_dated_after_as_of_is_lookahead_hard_but_as_of_day_is_fine():
+def test_result_dated_after_as_of_is_hard_but_as_of_day_is_fine():
     assert cdq.check_lookahead(1, AS_OF, AS_OF, T.RUN_BACKTEST) == []
-    out = cdq.check_lookahead(1, AS_OF + timedelta(days=1), AS_OF, T.RUN_BACKTEST)
-    assert codes(out) == [DQCode.LOOKAHEAD_SIGNAL] and out[0].date == AS_OF + timedelta(days=1)
+    late = AS_OF + timedelta(days=1)
+    # D6: backtest çıkışı as_of sonrası -> BACKTEST_FUTURE_INFO; diğer araçlarda as_of sonrası sonuç -> LOOKAHEAD_SIGNAL
+    out = cdq.check_lookahead(1, late, AS_OF, T.RUN_BACKTEST)
+    assert codes(out) == [DQCode.BACKTEST_FUTURE_INFO] and out[0].severity == DQSeverity.HARD
+    assert out[0].date is None and late.isoformat() in out[0].message
+    out = cdq.check_lookahead(None, late, AS_OF, T.DETECT_REVERSAL_EVENTS)
+    assert codes(out) == [DQCode.LOOKAHEAD_SIGNAL] and out[0].severity == DQSeverity.HARD
+    assert out[0].date is None and late.isoformat() in out[0].message
 
 
 def test_lag_and_late_result_are_two_separate_issues():
-    out = cdq.check_lookahead(0, AS_OF + timedelta(days=3), AS_OF, T.RUN_BACKTEST)
-    assert codes(out) == [DQCode.LOOKAHEAD_SIGNAL, DQCode.LOOKAHEAD_SIGNAL]
+    late = AS_OF + timedelta(days=3)
+    assert codes(cdq.check_lookahead(0, late, AS_OF, T.RUN_BACKTEST)) == [DQCode.LOOKAHEAD_SIGNAL, DQCode.BACKTEST_FUTURE_INFO]
+    assert codes(cdq.check_lookahead(0, late, AS_OF, T.CALCULATE_FUNDAMENTAL_CHANGE)) == [
+        DQCode.LOOKAHEAD_SIGNAL, DQCode.LOOKAHEAD_SIGNAL]
 
 
 def test_backtest_trade_entered_on_signal_day_uses_unavailable_info():
@@ -315,3 +324,26 @@ def test_decide_output_satisfies_result_schema_consistency():
 
 def test_staleness_thresholds_are_the_agreed_tiers():
     assert (cdq.STALE_GRACE_DAYS, cdq.STALE_WARN_MAX_DAYS, cdq.STALE_UNSAFE_DAYS) == (4, 10, 30)
+
+
+# --- DQIssue.date as_of'u aşamaz (schemas look-ahead taraması geçersiz zarf üretirdi) ---------------------------------
+def test_no_issue_ever_carries_a_date_after_as_of():
+    late = AS_OF + timedelta(days=4)
+    trade = cdq.TradeDates(signal_date=late, entry_date=late, exit_date=late)
+    issues = [
+        *cdq.check_as_of_consistency([item(as_of=late)], AS_OF),
+        *cdq.check_lookahead(0, late, AS_OF, T.RUN_BACKTEST),
+        *cdq.check_lookahead(None, late, AS_OF, T.GET_MACRO_CONTEXT),
+        *cdq.check_backtest_information([trade], AS_OF),
+        *cdq.check_fundamental_alignment([cdq.FundamentalRow(period_end=date(2026, 6, 30), disclosure_date=late)], AS_OF),
+    ]
+    assert len(issues) >= 6 and all(i.date is None or i.date <= AS_OF for i in issues)
+    assert all(late.isoformat() in i.message for i in issues if "signal_lag_days" not in i.message)  # tarih message'ta kalır
+
+
+def test_dates_up_to_as_of_are_still_reported_in_the_date_field():
+    ok_day = AS_OF - timedelta(days=2)
+    out = cdq.check_fundamental_alignment([cdq.FundamentalRow(period_end=date(2026, 6, 30), disclosure_date=date(2026, 6, 1))], AS_OF)
+    assert codes(out) == [DQCode.PERIOD_MISMATCH] and out[0].date == date(2026, 6, 1)
+    t = cdq.TradeDates(signal_date=ok_day, entry_date=ok_day, exit_date=AS_OF)
+    assert [i.date for i in cdq.check_backtest_information([t], AS_OF)] == [ok_day]
