@@ -551,3 +551,16 @@ TRIGGER günü olmayan örüntü (tek gün etkisi: sıfıra karşı test henüz 
 OOS: 36 hafta, 9 dışlanan, 1 ufku dolmamış, 26 tam (dört hissede de aynı). Yapısal not: üç gün üst üste düşüş koşulu haftaların yaklaşık 1/8'idir; 26 tam OOS haftasından beklenen tetik ≈ 3, eşik 5'in altında.
 Bu örüntü için OOS'ta `STABLE` pratikte ulaşılamazdır (IS anlamlı çıksa bile `OOS_TOO_FEW`). Bu bir hata değil, kısa örneklemin dürüst sonucudur. Dışlanan hafta oranı yüksektir (IS'te 105'in 20'si, ~%19: BIST tatilleri,
 THYAO'da 2024-04-09 veri boşluğu, sınır haftası); `HOLIDAY_WEEKS_EXCLUDED` uyarısı verilir.
+
+## 18. Destek / direnç (`find_support_resistance`, `tools/find_support_resistance.py`)
+- **Fiyat:** adjusted ölçekli OHLC (§11.3); `last_close` ve tüm seviyeler aynı ölçektedir, ham işlem fiyatı olmayabilir (uyarı metni).
+- **Nedensel pivot:** `i` barı pivot tepe: `high[i] >` önceki `w` barın en yükseği **ve** `>=` sonraki `w` barın en yükseği (`w = pivot_window`, varsayılan 5); pivot dip simetrik (`low`). Onay için `i + w` bar gerekir:
+  aralığın (`[start, min(end, as_of)]`) son `w` barındaki pivot ONAYLANMAMIŞTIR ve kullanılmaz (`as_of` anında henüz bilinemez; test: aynı veride bu pivot ancak `w` bar sonra görünür). Düz bölge pivot üretmez.
+- **Kümeleme:** tepe ve dip pivotları tek havuzda, fiyata göre; küme en düşük fiyatına çıpalıdır (`p <= çıpa × (1 + tolerance_pct/100)`). Tepe/dip ayrımı yapılmaz çünkü kırılan direnç destek olabilir (rol değişimi).
+  Seviye = küme ortalaması; `zone_low/high` = küme min/max; `touch_count` = kümedeki pivot sayısı (`min_touches` altı elenir). **Dokunuş = onaylı pivot** (fiyatın seviyeye gelip döndüğü bar); yalnızca bölgeye yaklaşan barlar sayılmaz.
+- **Tip son kapanışa göredir:** seviye ≤ `last_close` → `SUPPORT`, aksi `RESISTANCE`. `nearest_support` = en yüksek destek seviyesi, `nearest_resistance` = en düşük direnç seviyesi (tüm kümelerden; listelenenlerle aynı).
+- **`strength`** = `Σ 0,5^(yaş/126) × min(2, pivot barı hacmi / aralık medyan hacmi)`; yaş = o bardan son bara bar sayısı (yarı ömür 126 bar ≈ 6 ay; hacim ağırlığı üst sınırı 2). Sabitler modülde (`RECENCY_HALF_LIFE_BARS`, `VOLUME_WEIGHT_CAP`),
+  ileri getiriye bakılmadan seçilmiştir. Birimsiz bir skordur; seviyeler arası göreli karşılaştırma içindir.
+- **Hafif zarf:** her yönde en yakın 5 seviye listelenir (`MAX_LEVELS_PER_SIDE`); sıra: önce dirençler (yakından uzağa), sonra destekler (yakından uzağa). Fazlası varsa uyarıda toplam sayı yazılır.
+- **Gerçek örnek (v2, `as_of = 2026-09-10`, varsayılan parametreler):** THYAO `last_close = 299,25`, `nearest_support = 297,1765` (9 dokunuş, son 2026-05-05), `nearest_resistance = 302,012` (5 dokunuş, son 2026-06-03).
+  Seviye fiyatları adjusted ölçeklidir. Bu seviyeler geçmiş pivotlardır; gelecekte tutacağı garanti değildir (`HISTORICAL_ONLY`).

@@ -137,3 +137,11 @@ Sürüm koşullu zorunluluk (§1 / `docs/schema_1_2_0_plan.md` D1) ile birlikte 
 - **`t_stat` yönlüdür** (pozitif = beklenen yönde; permütasyon testinin standartlaştırılmış farkı). Öneri (açıklama): alan açıklamasına yaz.
 - **İsteğe bağlı: TRIGGER'sız gün etkisi desteği (drift düzeltmeli).** Bugün TRIGGER'sız örüntü `UNSUPPORTED_PATTERN` döner. Destek için hem anlamlılık hem etki ölçüsü "tüm günlerin ortalama (drift) getirisine
   karşı" tanımlanmalı ve `tools/stability.py` (b) koşulu, `outcome_mean_diff_vs_unconditional_pct` TRIGGER'sızken 0 olacağı için buna uyarlanmalıdır. Şema değişikliği gerektirmeyebilir; sonuçları etkilediği için onay ister.
+
+## 9. `find_support_resistance`: en yakın seviyeye mesafe alanları (Bilgisayar 2 + onay; schemas/ DEĞİŞMEDİ)
+Sayılar yalnızca araç çıktısından gelebilir (kural 6); model/harness `last_close` ile `nearest_*` arasındaki farkı kendisi hesaplarsa türetilmiş sayı = doğrulayıcıda halüsinasyon sayılır. Bu yüzden başlık alanı olarak mesafeler araç çıktısında bulunmalı.
+`FindSupportResistanceResult`'a **varsayılanlı, geriye uyumlu** alanlar öneriyoruz:
+- `nearest_support_distance_pct: float | None = None`: `(last_close − nearest_support) / last_close × 100` (pozitif).
+- `nearest_resistance_distance_pct: float | None = None`: `(nearest_resistance − last_close) / last_close × 100` (pozitif).
+Tanım: `last_close` ile aynı (adjusted) ölçekte olduğundan oran ölçekten bağımsızdır (§11.3). Araç alanları doldurmaya hazırdır (yalnızca iki satır); şema eklenince `tools/find_support_resistance.py` doldurur. Etki (Bilgisayar 2): `harness/evidence.py` başlık sayıları,
+`evidence_headlines.json`, sayı havuzu. Ayrıca **`n_events`**: araç `None` döner (zarf düzeyinde olay sayısı anlamsız).
