@@ -109,14 +109,35 @@ def _fmt(x: Any) -> str:
     return "yok" if x is None else str(x)
 
 
+def _block_extra(blk: dict[str, Any]) -> tuple[str, list[dict[str, Any] | None]]:
+    """Etiket politikasının okuduğu doğrulama alanları (taban isabet, örneklem içi/dışı): committed kanıtta da bulunur
+    (evidence_headlines.json `policy_values`). Metin ve değerler doğrudan kaynak zarftan alınır; harness sayı türetmez."""
+    base = (blk.get("baseline") or {}).get("hit_rate_pct")
+    parts = [f"taban isabet %{_fmt(base)}"]
+    vals: list[dict[str, Any] | None] = [_v("baseline_hit_rate_pct", base, "pct")]
+    for key, label in (("in_sample", "örneklem içi"), ("out_of_sample", "örneklem dışı")):
+        s = blk.get(key)
+        if s is None:
+            parts.append(f"{label} doğrulama yok")
+            continue
+        parts.append(f"{label}: olay {_fmt(s.get('n_events_complete'))}, isabet %{_fmt(s.get('hit_rate_pct'))}, "
+                     f"maliyet sonrası %{_fmt(s.get('cost_adjusted_mean_return_pct'))}")
+        vals += [_v(f"{key}_n_events_complete", s.get("n_events_complete")),
+                 _v(f"{key}_hit_rate_pct", s.get("hit_rate_pct"), "pct"),
+                 _v(f"{key}_cost_adjusted_mean_return_pct", s.get("cost_adjusted_mean_return_pct"), "pct")]
+    return ", ".join(parts), vals
+
+
 def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
     out: list[Candidate] = []
     h = res.get("horizon")
     out.append(Candidate(
-        f"{res.get('sector')} grubu, {_fmt(h)} işlem günü: sektör medyan getirisi %{_fmt(res.get('sector_median_return_pct'))}, "
+        f"{res.get('sector')} grubu ({_fmt(res.get('peer_group_size'))} hisse), {_fmt(h)} işlem günü: sektör medyan getirisi "
+        f"%{_fmt(res.get('sector_median_return_pct'))}, "
         f"XU100 %{_fmt(res.get('xu100_return_pct'))}, fark {_fmt(res.get('sector_median_vs_xu100_pp'))} pp, "
         f"sektör gücü {res.get('sector_strength')}",
-        _vals(_v("sector_median_return_pct", res.get("sector_median_return_pct"), "pct"),
+        _vals(_v("peer_group_size", res.get("peer_group_size")),
+              _v("sector_median_return_pct", res.get("sector_median_return_pct"), "pct"),
               _v("xu100_return_pct", res.get("xu100_return_pct"), "pct"),
               _v("sector_median_vs_xu100_pp", res.get("sector_median_vs_xu100_pp"), "pp"),
               _v("sector_strength", res.get("sector_strength"))), "sector"))
@@ -128,19 +149,22 @@ def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
             f"{lag.get('ticker')}: {_fmt(h)} işlem günü getirisi %{_fmt(lag.get('return_pct'))}, sektör medyanına göre "
             f"{_fmt(lag.get('lag_score_pp'))} pp ({flag}), sıra {_fmt(lag.get('rank'))}",
             _vals(_v("return_pct", lag.get("return_pct"), "pct"), _v("lag_score_pp", lag.get("lag_score_pp"), "pp"),
-                  _v("rank", lag.get("rank"))), "laggard"))
+                  _v("rank", lag.get("rank")), _v("is_laggard", lag.get("is_laggard"))), "laggard"))
     for row in res.get("historical_catch_up") or []:
         blk = row.get("block") or {}
         full = blk.get("full") or {}
+        extra_text, extra_vals = _block_extra(blk)
         out.append(Candidate(
             f"Geçmiş geride kalma, ufuk {_fmt(blk.get('horizon'))}: tamamlanmış olay {_fmt(full.get('n_events_complete'))}, "
             f"başarı {_fmt(full.get('n_success'))}, yanlış pozitif {_fmt(full.get('n_false_positive'))}, "
-            f"isabet %{_fmt(full.get('hit_rate_pct'))}, medyan kapanma {_fmt(row.get('median_catch_up_size_pp'))} pp, "
+            f"isabet %{_fmt(full.get('hit_rate_pct'))}, maliyet sonrası ortalama %{_fmt(full.get('cost_adjusted_mean_return_pct'))}, "
+            f"medyan kapanma {_fmt(row.get('median_catch_up_size_pp'))} pp, {extra_text}, "
             f"örneklem dışı bozulma işareti {_fmt(blk.get('oos_degradation_flag'))}",
             _vals(_v("horizon", blk.get("horizon")), _v("n_events_complete", full.get("n_events_complete")),
                   _v("n_success", full.get("n_success")), _v("n_false_positive", full.get("n_false_positive")),
                   _v("hit_rate_pct", full.get("hit_rate_pct"), "pct"),
-                  _v("median_catch_up_size_pp", row.get("median_catch_up_size_pp"), "pp"),
+                  _v("cost_adjusted_mean_return_pct", full.get("cost_adjusted_mean_return_pct"), "pct"),
+                  _v("median_catch_up_size_pp", row.get("median_catch_up_size_pp"), "pp"), *extra_vals,
                   _v("oos_degradation_flag", blk.get("oos_degradation_flag"))), "historical_catch_up"))
     return out
 
@@ -150,19 +174,26 @@ def _reversal(res: dict[str, Any]) -> list[Candidate]:
     fam = res.get("event_family")
     for g in res.get("groups") or []:
         label = g.get("label")
-        out.append(Candidate(f"{fam} ({label}): tespit edilen olay {_fmt(g.get('n_events_detected'))}",
-                             _vals(_v("n_events_detected", g.get("n_events_detected"))), "group_count"))
+        event_dates = [str(e["date"]) for e in g.get("events") or [] if e.get("date")]
+        last_event = max(event_dates) if event_dates else None
+        out.append(Candidate(
+            f"{fam} ({label}): tespit edilen olay {_fmt(g.get('n_events_detected'))}"
+            + (f", son olay tarihi {last_event}" if last_event else ""),
+            _vals(_v("n_events_detected", g.get("n_events_detected")), _v("last_event_date", last_event)), "group_count"))
         for blk in g.get("per_horizon") or []:
             f = blk.get("full") or {}
+            extra_text, extra_vals = _block_extra(blk)
             out.append(Candidate(
                 f"{fam} ({label}), ufuk {_fmt(blk.get('horizon'))}: tamamlanmış olay {_fmt(f.get('n_events_complete'))}, "
                 f"başarı {_fmt(f.get('n_success'))}, isabet %{_fmt(f.get('hit_rate_pct'))}, "
                 f"ortalama getiri %{_fmt(f.get('mean_return_pct'))}, maliyet sonrası %{_fmt(f.get('cost_adjusted_mean_return_pct'))}, "
+                f"{extra_text}, örneklem dışı bozulma işareti {_fmt(blk.get('oos_degradation_flag'))}, "
                 f"ufku dolmamış dışlanan {_fmt(f.get('n_excluded_incomplete_horizon'))}",
                 _vals(_v("horizon", blk.get("horizon")), _v("n_events_complete", f.get("n_events_complete")),
                       _v("n_success", f.get("n_success")), _v("hit_rate_pct", f.get("hit_rate_pct"), "pct"),
                       _v("mean_return_pct", f.get("mean_return_pct"), "pct"),
-                      _v("cost_adjusted_mean_return_pct", f.get("cost_adjusted_mean_return_pct"), "pct"),
+                      _v("cost_adjusted_mean_return_pct", f.get("cost_adjusted_mean_return_pct"), "pct"), *extra_vals,
+                      _v("oos_degradation_flag", blk.get("oos_degradation_flag")),
                       _v("n_excluded_incomplete_horizon", f.get("n_excluded_incomplete_horizon"))), "per_horizon"))
         for rb in g.get("regime_breakdown") or []:
             out.append(Candidate(
@@ -202,15 +233,21 @@ def _fundamental_change(res: dict[str, Any]) -> list[Candidate]:
         for m in latest.get("metrics") or []:
             out.append(Candidate(
                 f"{res.get('ticker')} {latest.get('fiscal_period')}: {m.get('name')} {_fmt(m.get('value'))}, "
-                f"yıllık değişim {_fmt(m.get('yoy_change'))} {m.get('change_unit')}, yön {m.get('yoy_direction')}",
+                f"yıllık değişim {_fmt(m.get('yoy_change'))} {m.get('change_unit')}, yön {m.get('yoy_direction')}, "
+                f"çeyreklik yön {m.get('qoq_direction')}, enflasyon muhasebesi sonrası karşılaştırılabilir {_fmt(latest.get('tms29_comparable'))}",
                 _vals(_v("fiscal_period", latest.get("fiscal_period")), _v("disclosure_date", latest.get("disclosure_date")),
                       _v(str(m.get("name")), m.get("value")), _v("yoy_change", m.get("yoy_change"), m.get("change_unit")),
-                      _v("qoq_change", m.get("qoq_change"), m.get("change_unit"))), "latest_metrics"))
+                      _v("qoq_change", m.get("qoq_change"), m.get("change_unit")),
+                      _v("yoy_direction", m.get("yoy_direction")), _v("qoq_direction", m.get("qoq_direction")),
+                      _v("tms29_comparable", latest.get("tms29_comparable"))), "latest_metrics"))
     out.append(Candidate(
         f"Açıklanmış çeyrek {_fmt(res.get('n_quarters_disclosed_by_as_of'))}, henüz açıklanmadığı için dışlanan "
-        f"{_fmt(res.get('n_quarters_excluded_not_yet_disclosed'))}",
+        f"{_fmt(res.get('n_quarters_excluded_not_yet_disclosed'))}, iyileşme metriği {res.get('improvement_metric')} "
+        f"({res.get('improvement_basis')})",
         _vals(_v("n_quarters_disclosed_by_as_of", res.get("n_quarters_disclosed_by_as_of")),
-              _v("n_quarters_excluded_not_yet_disclosed", res.get("n_quarters_excluded_not_yet_disclosed"))), "disclosure_counts"))
+              _v("n_quarters_excluded_not_yet_disclosed", res.get("n_quarters_excluded_not_yet_disclosed")),
+              _v("improvement_metric", res.get("improvement_metric")),
+              _v("improvement_basis", res.get("improvement_basis"))), "disclosure_counts"))
     for r in res.get("reaction_summary") or []:
         out.append(Candidate(
             f"Açıklama sonrası ufuk {_fmt(r.get('horizon'))}, grup {r.get('group')}: gözlem {_fmt(r.get('n'))}, XU100'e göre "
@@ -291,7 +328,8 @@ def _backtest(res: dict[str, Any]) -> list[Candidate]:
         f"Backtest varyant {strat.get('variant')} ({strat.get('signal_type')}), maliyet sonrası: kümülatif getiri "
         f"%{_fmt(net.get('cumulative_return_pct'))}, Sharpe {_fmt(net.get('sharpe_ratio'))}, maksimum düşüş "
         f"%{_fmt(net.get('max_drawdown_pct'))}, isabet %{_fmt(net.get('win_rate_pct'))}, işlem {_fmt(net.get('n_trades'))}",
-        _vals(_v("variant", strat.get("variant")), _v("cumulative_return_pct", net.get("cumulative_return_pct"), "pct"),
+        _vals(_v("variant", strat.get("variant")), _v("signal_type", strat.get("signal_type")),
+              _v("cumulative_return_pct", net.get("cumulative_return_pct"), "pct"),
               _v("sharpe_ratio", net.get("sharpe_ratio")), _v("max_drawdown_pct", net.get("max_drawdown_pct"), "pct"),
               _v("win_rate_pct", net.get("win_rate_pct"), "pct"), _v("n_trades", net.get("n_trades"))), "strategy_net")]
     for b in res.get("benchmarks") or []:

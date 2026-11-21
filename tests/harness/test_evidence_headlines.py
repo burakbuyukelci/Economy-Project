@@ -21,7 +21,7 @@ def test_spec_covers_exactly_the_tools_that_have_an_extractor():
 
 def test_spec_is_well_formed_and_sections_are_disjoint():
     for tool, spec in SPEC.items():
-        assert set(spec) == {"headline", "context", "excluded"}, tool
+        assert set(spec) == {"headline", "context", "excluded", "policy_values"}, tool
         for key in spec:
             assert isinstance(spec[key], list) and all(isinstance(x, str) and x for x in spec[key]), (tool, key)
         names = spec["headline"] + spec["context"] + spec["excluded"]

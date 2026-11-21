@@ -1,17 +1,32 @@
 {
-  "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). Yeni bölüm eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
-  "version": 1,
+  "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). 'policy_values': harness/label_policy.py'nin etiketi belirlerken OKUDUĞU alanların committed kanıttaki DEĞER ADLARI; model yalnızca committed kanıta dayanarak açıklayacağı için etiketin dayanağı da orada bulunmalıdır (tests/harness/test_policy_evidence.py denetler). Yeni bölüm/değer eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
+  "version": 2,
   "tools": {
-    "rank_sector_relative_strength": {"headline": ["sector", "laggard", "historical_catch_up"], "context": [], "excluded": []},
-    "detect_reversal_events": {"headline": ["group_count", "per_horizon"], "context": ["regime_breakdown"], "excluded": ["events"]},
-    "test_weekday_pattern": {"headline": ["verdict", "window"], "context": [], "excluded": []},
-    "calculate_fundamental_change": {"headline": ["latest_metrics", "disclosure_counts", "reaction_summary"], "context": [], "excluded": []},
-    "get_fundamental_metrics": {"headline": ["metrics"], "context": [], "excluded": []},
-    "get_macro_context": {"headline": ["latest_point"], "context": [], "excluded": ["points"]},
-    "get_news_events": {"headline": [], "context": ["count", "events"], "excluded": []},
-    "get_speech_features": {"headline": [], "context": ["summary"], "excluded": ["segments"]},
-    "calculate_indicators": {"headline": ["latest"], "context": [], "excluded": ["recent_rows"]},
-    "find_support_resistance": {"headline": [], "context": ["levels"], "excluded": []},
-    "run_backtest": {"headline": ["strategy_net", "benchmarks", "splits", "flags"], "context": [], "excluded": ["trade_log"]}
+    "rank_sector_relative_strength": {
+      "headline": ["sector", "laggard", "historical_catch_up"], "context": [], "excluded": [],
+      "policy_values": ["peer_group_size", "sector_strength", "is_laggard", "lag_score_pp", "horizon", "n_events_complete", "hit_rate_pct",
+                        "baseline_hit_rate_pct", "cost_adjusted_mean_return_pct", "in_sample_cost_adjusted_mean_return_pct",
+                        "out_of_sample_n_events_complete", "out_of_sample_cost_adjusted_mean_return_pct", "oos_degradation_flag"]},
+    "detect_reversal_events": {
+      "headline": ["group_count", "per_horizon"], "context": ["regime_breakdown"], "excluded": ["events"],
+      "policy_values": ["n_events_detected", "last_event_date", "horizon", "n_events_complete", "hit_rate_pct", "baseline_hit_rate_pct",
+                        "cost_adjusted_mean_return_pct", "in_sample_cost_adjusted_mean_return_pct", "out_of_sample_n_events_complete",
+                        "out_of_sample_cost_adjusted_mean_return_pct", "oos_degradation_flag"]},
+    "test_weekday_pattern": {
+      "headline": ["verdict", "window"], "context": [], "excluded": [],
+      "policy_values": ["stability_verdict", "verdict_reason"]},
+    "calculate_fundamental_change": {
+      "headline": ["latest_metrics", "disclosure_counts", "reaction_summary"], "context": [], "excluded": [],
+      "policy_values": ["fiscal_period", "yoy_direction", "qoq_direction", "tms29_comparable", "n_quarters_disclosed_by_as_of",
+                        "improvement_metric", "improvement_basis"]},
+    "get_fundamental_metrics": {"headline": ["metrics"], "context": [], "excluded": [], "policy_values": []},
+    "get_macro_context": {"headline": ["latest_point"], "context": [], "excluded": ["points"], "policy_values": []},
+    "get_news_events": {"headline": [], "context": ["count", "events"], "excluded": [], "policy_values": []},
+    "get_speech_features": {"headline": [], "context": ["summary"], "excluded": ["segments"], "policy_values": []},
+    "calculate_indicators": {"headline": ["latest"], "context": [], "excluded": ["recent_rows"], "policy_values": []},
+    "find_support_resistance": {"headline": [], "context": ["levels"], "excluded": [], "policy_values": []},
+    "run_backtest": {
+      "headline": ["strategy_net", "benchmarks", "splits", "flags"], "context": [], "excluded": ["trade_log"],
+      "policy_values": ["signal_type", "benchmark_diff_pct", "n_signals", "low_signal_flag", "oos_degradation_flag"]}
   }
 }
