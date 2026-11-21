@@ -161,7 +161,7 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
   **≥ %50'si** sıçradıysa **piyasa geneli olay → SOFT** (`PRICE_JUMP_OVER_LIMIT`, tek başına HARD_BLOCK yapmaz); aksi halde
   **hisseye özgü → HARD** (`WRONG_TICKER_OR_BROKEN_HISTORY`, olası düzeltilmemiş bedelsiz/bölünme) ve kapı **HARD_BLOCK**
   olur (`gate_from_issues`). Eşik `PRICE_JUMP_MARKET_WIDE_SHARE` (config). Veri önce `as_of` ile kesilir.
-  (Tam `check_data_quality` aracı henüz yazılmadı; bu sınıflandırma onun fiyat bölümüdür.)
+  (Tam araç ve kapı kararı: §15.)
 - **`snap_2026-11-20_v1` (ham Yahoo) üzerinde 31 bayrak:**
   1. **2023-02-15 (30 hisse, +%11,43 … +%22,17):** hepsinde önceki satır **2023-02-08** (7 günlük takvim boşluğu).
      6 Şubat 2023 depremi sonrası işlem durmasıyla uyumlu; nedeni bağımsız doğrulanmadı. Piyasa geneli (30/30) → **SOFT**.
@@ -388,3 +388,85 @@ olaylara bağlıdır; `as_of` sonrası veri kabul kararını etkileyemez. Şemad
   Lag: BIMAS +16,0214 (leader), MGROS 0,0, MAVI −3,2452 pp (laggard; eşikten yalnızca 0,2452 pp uzakta, eşik hassas).
 - Tarihsel (kendisi hariç excess, bağımsız olay 44, ufku dolmamış 1): isabet oranı 5g %46,5, 10g %48,8, 20g %48,8; baz %49,7 / %50,6 / %48,7.
   20g'de ortalama +1,16 pp ama medyan −0,80 pp (büyük yakalamalar ortalamayı çekiyor); OOS (2026) isabet %40, `OOS_DEGRADATION` (20g).
+
+## 15. Veri kalitesi ve risk kapısı (`check_data_quality`, `tools/check_data_quality.py`)
+
+### 15.1 İlke
+Kapı, **hangi kontrol çalıştı** ve **ne buldu** bilgisini birlikte verir. Çalışmayan kontrol "geçti" sayılmaz: `checks_run` yalnızca gerçekten
+çalışanları listeler, `gate_reason` çalışmayanları (veri veya şema yoksa) adıyla yazar. `hard_blocks[]` ve `soft_warnings[]` kodlu (`DQCode`) ve
+sayılıdır: sayılar `gate_reason` içinde "hard 1 (WRONG_TICKER_OR_BROKEN_HISTORY×1), soft 2 (MISSING_TRADING_DAYS×2)" biçimindedir (şemada sayaç alanı yok).
+Araç `status = OK` döner; `HARD_BLOCK` bir araç hatası değil bir **bulgudur**. Sıra: veri **önce** `as_of` ile kesilir (`enforce_as_of`), sonra kontroller.
+
+### 15.2 Koşul → kapı tablosu
+En yüksek kademe kazanır: `HARD_BLOCK` > `ANALYSIS_UNSAFE` > `INVESTIGATE` > `PASS_WITH_WARNINGS` > `PASS`. Uyarı **sayısı** kapıyı yükseltmez.
+
+| Koşul | Kod | Sınıf | Kapı | Durum |
+|---|---|---|---|---|
+| Bundle öğesinin `as_of`'u oturum `as_of`'unu aşıyor | `AS_OF_VIOLATION` | HARD | HARD_BLOCK | `params` üzerinden çalışır |
+| Hisseye özgü fiyat sıçraması (aynı gün hisselerin < %50'si sıçradı); ticker snapshot'ta yok / pencerede satır yok | `WRONG_TICKER_OR_BROKEN_HISTORY` | HARD | HARD_BLOCK | `params` üzerinden çalışır |
+| `signal_lag_days < 1` ya da `as_of` sonrası tarihli sonuç | `LOOKAHEAD_SIGNAL` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_lookahead`); `BundleItem` alanları şemada yok (`schema_wishlist.md` §4) |
+| Backtest girişi sinyal gününden sonra değil / çıkış `as_of` sonrası | `BACKTEST_FUTURE_INFO` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_backtest_information`) |
+| Bilanço açıklama tarihi kullanım tarihinden veya `as_of`'tan sonra | `FUTURE_FUNDAMENTAL_LEAK` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_fundamental_alignment`); bilanço verisi henüz yok |
+| Bilanço açıklama tarihi dönem sonundan önce (dönem sonuna göre hizalama izi) | `PERIOD_MISMATCH` | HARD | HARD_BLOCK | **saf fonksiyon**; tanım bizim operasyonelleştirmemizdir (ekip teyidi gerekir) |
+| Piyasa geneli sıçrama (hisselerin ≥ %50'si, ör. 2023-02-15) | `PRICE_JUMP_OVER_LIMIT` | SOFT | PASS_WITH_WARNINGS | `params` |
+| Hissede eksik işlem günü | `MISSING_TRADING_DAYS` | SOFT | PASS_WITH_WARNINGS | `params` |
+| Bayatlık 5–10 gün | `STALE_DATA` | SOFT | PASS_WITH_WARNINGS | `params` |
+| Makro seride boşluk; seyrek haber; düşük transkript kalitesi | `MACRO_GAP`, `NEWS_SPARSE`, `TRANSCRIPT_LOW_QUALITY` | SOFT | PASS_WITH_WARNINGS | **saf fonksiyon**; veri/araç yok |
+| `n_events` < araç minimumu (0 dahil) | `FEW_EVENTS` | SOFT | **INVESTIGATE** | `params` (bundle) |
+| Peer grubu < 3 (yalnızca bundle'da rank aracı varsa) | `SMALL_PEER_GROUP` | SOFT | **INVESTIGATE** | `params` (bundle) |
+| Bundle öğesi başka `data_version`'dan | `DATA_VERSION_MISMATCH` | SOFT | **INVESTIGATE** | `params` (bundle) |
+| Bayatlık 11–30 gün | `STALE_DATA` | SOFT | **INVESTIGATE** | `params` |
+| Bayatlık > 30 gün (veri `as_of`'u kapsamıyor) | `STALE_DATA` | SOFT | **ANALYSIS_UNSAFE** | `params` |
+
+- **INVESTIGATE:** sonuç üretilebilir ama kanıt zayıf; harness eylemi `INVESTIGATE`'e bağlar (`harness/evidence.py::_action_for_gate`).
+- **ANALYSIS_UNSAFE:** yalnızca veri `as_of`'u kapsamıyorsa. "Olay yok" (`n_events = 0`) **bir bulgudur, veri hatası değil** → INVESTIGATE.
+- Bayatlık = `as_of − (as_of'a kadarki son satır tarihi)`, takvim günü, her hisse ve XU100 için. Eşikler (`tools/check_data_quality.py`, `config/`'e konmadı):
+  `STALE_GRACE_DAYS = 4` (**varsayım**: Cuma–Pazartesi tatili dahil normal; ≤ 4 gün uyarı yok), `STALE_WARN_MAX_DAYS = 10`, `STALE_UNSAFE_DAYS = 30` (ikisi onaylı).
+- Diğer **varsayım** eşikleri: `MACRO_MAX_GAP_DAYS = 7` (günlük seri), `NEWS_MIN_ITEMS = 3`, `TRANSCRIPT_MIN_QUALITY = 0.6`, `PEER_GROUP_MIN_SIZE = 3`.
+
+### 15.3 Hangi kontrol ne zaman `checks_run`'a girer
+Her zaman: `PRICE_JUMPS`, `MISSING_DAYS`, `STALENESS`, `AS_OF_CONSISTENCY`, `TICKER_IDENTITY` (boş bundle'da bile; harness'ın ilk kapısı budur).
+Bundle doluysa: `DATA_VERSION_CONSISTENCY`. Bundle'da tabloda olan bir araç ve `n_events` varsa: `EVENT_COUNT`. Bundle'da `rank_sector_relative_strength` varsa:
+`PEER_GROUP_SIZE`. **Hiçbir zaman (şimdilik):** `SIGNAL_SHIFT`, `FUNDAMENTAL_DISCLOSURE_ALIGNMENT`, `MACRO_COVERAGE`, `NEWS_COVERAGE`, `TRANSCRIPT_QUALITY`
+(veri/şema yok; saf fonksiyonları sentetik girdiyle testli). `checks` verilirse yalnızca istenenler değerlendirilir; istenip çalışamayanlar `gate_reason`'da yazılır.
+
+### 15.4 `FEW_EVENTS` araç bazlıdır (`EVENT_COUNT_RULES`)
+Birim, `schemas/envelope.py` içindeki `n_events` tanımından; minimum config sabitlerinden. **Tabloda olmayan araçta kontrol çalışmaz** ve `EVENT_COUNT` `checks_run`'a girmez.
+
+| Araç | `n_events` birimi | Minimum | Kaynak |
+|---|---|---|---|
+| `detect_reversal_events` | olay | 20 | `MIN_EVENTS` |
+| `rank_sector_relative_strength` | olay (en uzun ufuk, tamamlanmış, bağımsız) | 20 | `MIN_EVENTS` |
+| `run_backtest` | sinyal | 20 | `MIN_EVENTS` |
+| `test_weekday_pattern` | hafta (IS+OOS `n_occurrences`) | 15 | `MIN_WEEKDAY_IS_TRIGGER_WEEKS + MIN_WEEKDAY_OOS_TRIGGER_WEEKS` (10 + 5) |
+| `calculate_fundamental_change` | çeyrek | 4 | `MIN_FUNDAMENTAL_QUARTERS` |
+
+`test_weekday_pattern` için asgari **yaklaşıktır**: kapı yalnızca zarfı görür (`n_occurrences` toplamı); aracın kendi kararlılık eşikleri **tetik haftası** (`n_trigger_weeks`,
+`results` içinde) üzerindendir ve `n_occurrences ≤ n_trigger_weeks`. `get_news_events` (haber sayısı) FEW_EVENTS değil `NEWS_SPARSE` konusudur, tabloda yoktur.
+
+### 15.5 Kapı bundle seviyesinde sayar; Bilgisayar 2'nin etiket politikası özne bazlı sayacak
+- **Kapı:** `BundleItem.n_events`, yani aracın **zarf düzeyindeki toplam sayısı** (havuzlu): retail rank çağrısında `n_events = 43`; hangi hissenin kaç olay verdiği görünmez.
+- **Harness etiket politikası (planlanan, repoda henüz yok):** özne (hisse) bazında saymayı hedefliyor. Fark: havuzlu 43 ≥ 20 geçer, ama hisse bazında olay sayısı
+  çok daha küçük olabilir (`schema_wishlist.md` §1.1: retail'de ham gözlemler BIMAS 43, MAVI 227, MGROS 128; bağımsız olaylar hisse başına 9–21). Yani **kapı FEW_EVENTS vermezken özne bazlı sayaç
+  vermiş olabilir.** Çelişki değil, farklı birim: kapı = araç çıktısının yeterliliği, etiket politikası = hisse başına kanıt. Özne bazlı sayı için `per_ticker` şema isteği (§1.1) gerekir.
+- **Eşik tekrarı:** `harness/gate_params.py` ve `harness/` içinde `MIN_EVENTS`, bayatlık veya olay minimumu **tekrarı yok**; `gate_params` yalnızca `n_events`'i künyeye kopyalar. Eşikler tek yerde (bu araç + `config/settings.py`).
+- Dikkat: `bundle_items` künyeye ticker koymaz; kapı, bundle'daki öğeyle hangi hissenin eşleştiğini bilmez (peer kontrolü `tickers` param'ının tamamını kullanır).
+
+### 15.6 Fiyat kontrolü ayrıntıları
+- **Sıçrama sınıflandırması:** `tools/price_quality.py::classify_price_jumps` (§11.5). XU100 için ayrı sıçrama uyarısı üretilmez; rapordaki `n_price_jumps_over_limit` sayar.
+- **`TickerQuality.n_price_jumps_over_limit`** şema açıklamasındaki "limitin üstü" yerine sınıflandırmayla **aynı** kuralı kullanır: mutlak `adj_close` getirisi `> limit + PRICE_JUMP_TOLERANCE_PP`, pencere `[start, min(end, as_of)]`.
+- **`last_date`** pencerenin son satırıdır; **`last_data_age_days`** ise `as_of − (as_of'a kadarki son satır)` (pencere `end < as_of` ise erken bitebilir, bayatlık yine `as_of`'a göre ölçülür).
+- **Eksik gün:** birleşik takvim (§11.4), `as_of`'a kesilmiş, hissenin **kendi ilk satırından** sonraki günler. **XU100'ün eksik günü raporlanır (`n_missing_trading_days`) ama uyarı üretmez**: v2'de 2 gün (2024-12-25, 2025-12-25)
+  Yahoo'nun bilinen 25 Aralık boşluğudur ve göreli getiriler ortak günlerle hesaplanır. Hissedeki aynı boşluk uyarıdır: 2024-04-09'da 30 hissenin yalnızca 9'unda veri var (THYAO ve MGROS dahil).
+- **Kimlik:** ticker snapshot'ta yoksa, `as_of`'a kadar satırı yoksa ya da istenen pencerede satırı yoksa `WRONG_TICKER_OR_BROKEN_HISTORY` (HARD). XU100 `include_index` iken aynı kuralla.
+
+### 15.7 Gerçek değerler (v1 / v2, `as_of = 2026-09-10`, `start = 2024-01-01`; testler: `tests/tools/test_check_data_quality_real.py`)
+| Çağrı | Kapı | Bulgu |
+|---|---|---|
+| CCOLA, **v1** | HARD_BLOCK | `WRONG_TICKER_OR_BROKEN_HISTORY` 2024-08-01, getiri −%90,7479 (düzeltilmemiş %1000 bedelsiz) |
+| CCOLA, **v2** | PASS | 673 satır, 0 eksik gün, 0 sıçrama; en büyük mutlak getiri %10,0 (2025-03-21) |
+| CCOLA, v1, `as_of = 2024-07-31` | PASS | sıçrama `as_of` sonrası: görünmez (sızıntı testi); `as_of = 2024-08-01` ise HARD_BLOCK |
+| THYAO, v2 | PASS_WITH_WARNINGS | `MISSING_TRADING_DAYS`×1 (2024-04-09); 672 satır; en büyük mutlak getiri %8,5616 (2026-04-08) |
+| BIMAS+MAVI+MGROS + gerçek `rank` zarfı (`n_events = 43`), v2 | PASS_WITH_WARNINGS | yalnızca MGROS `MISSING_TRADING_DAYS`×1; EVENT_COUNT ve PEER_GROUP_SIZE çalıştı, sorun yok |
+| 30 hisse, `2023-01-02 … 2023-03-01`, v1 ve v2 | PASS_WITH_WARNINGS | `PRICE_JUMP_OVER_LIMIT`×30, hepsi 2023-02-15 (THYAO +%21,6522); hard 0 |
+| THYAO, v2, `as_of = 2026-12-31` | ANALYSIS_UNSAFE | `STALE_DATA`: son satır 2026-11-20, 41 gün (THYAO ve XU100) |
