@@ -134,9 +134,8 @@ def _bad_final(good: str, rng: random.Random) -> str:
     return head + tail + sep + label
 
 
-def generate(q: Question, *, recovery: str | None = None) -> Generated:
-    """Soru -> gerçek oturum (yalnızca gerçek araçlar). Çağıran `real_tools()` bağlamında olmalıdır."""
-    session = HarnessSession.from_question(q.text, profile="D")
+def build_steps(q: Question, session: HarnessSession, recovery: str | None = None) -> tuple[list[Any], list[int]]:
+    """Öğretmen betiği: ScriptedBackend adımları ve kayıptan MASKELENECEK asistan turlarının sırası. `session` nihai metin için (politika + kilitli kanıt) gerekir."""
     calls = plan_calls(q)
     rng = _rng(q, "compose")
 
@@ -145,7 +144,8 @@ def generate(q: Question, *, recovery: str | None = None) -> Generated:
         assert pol is not None
         reasons = [(r.code, r.message) for r in pol.reasons]
         rule = pol.rule_id                      # G5_COMBINE'da politika kimliği zaten belirleyici senaryonunkidir
-        evidence = session.evidence_snapshot()["committed_evidence_set"] if session.evidence_snapshot() else []
+        snap = session.evidence_snapshot()
+        evidence = snap["committed_evidence_set"] if snap else []
         return compose_final(qtype=q.type, plan=q.plan, ticker=q.plan.get("ticker") or "", label=pol.label, rule_id=rule, reasons=reasons,
                              evidence=evidence, rng=rng, claim=q.plan.get("claim"))
 
@@ -170,6 +170,12 @@ def generate(q: Question, *, recovery: str | None = None) -> Generated:
         bad.append(len(steps))
         steps.append(lambda msgs, tools: _bad_final(final(msgs, tools), _rng(q, "badfinal")))
     steps.append(final)
-    backend = ScriptedBackend(steps)
-    result = run_session(q.text, backend, session=session)
+    return steps, bad
+
+
+def generate(q: Question, *, recovery: str | None = None) -> Generated:
+    """Soru -> gerçek oturum (yalnızca gerçek araçlar). Çağıran `real_tools()` bağlamında olmalıdır."""
+    session = HarnessSession.from_question(q.text, profile="D")
+    steps, bad = build_steps(q, session, recovery)
+    result = run_session(q.text, ScriptedBackend(steps), session=session)
     return Generated(q, result, session, recovery, tuple(bad))

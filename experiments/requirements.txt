@@ -1,0 +1,5 @@
+# A-E deney kosucusu icin minimum bagimliliklar (Colab/Bilgisayar 1); araclar data/snapshots/ ister
+pydantic>=2
+pandas
+numpy
+pyarrow

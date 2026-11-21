@@ -1,0 +1,32 @@
+# Ollama Modelfile: ince ayarlı Gemma 3 4B (GGUF Q4_K_M) + KENDİ sohbet şablonumuz.
+#
+#   1) GGUF dosyasını bu klasöre koyun:  training/ollama/gemma3-bist-q4_k_m.gguf   (Colab çıktısı: outputs/v1/gguf/...Q4_K_M.gguf)
+#   2) ollama create gemma3-bist -f training/ollama/Modelfile
+#   3) HARNESS_MODEL=gemma3-bist  (harness/settings.py: model adı)
+#
+# ŞABLON: eğitim metniyle BİREBİR aynı olmalıdır (training/colab/data.py): `<start_of_turn>user|model\n…<end_of_turn>\n`.
+# `system` rolü YOKTUR: harness sistem metnini ilk user mesajına `\n\n` ile ekleyip gönderir (harness.text_protocol.fold_system).
+# `<bos>` şablona YAZILMAZ: GGUF tokenizer'ı otomatik ekler (iki kez eklenirse model bozulur).
+FROM ./gemma3-bist-q4_k_m.gguf
+
+TEMPLATE """{{- range $i, $_ := .Messages }}
+{{- $last := eq (len (slice $.Messages $i)) 1 }}
+{{- if or (eq .Role "user") (eq .Role "system") }}<start_of_turn>user
+{{ .Content }}<end_of_turn>
+{{ if $last }}<start_of_turn>model
+{{ end }}
+{{- else if eq .Role "assistant" }}<start_of_turn>model
+{{ .Content }}{{ if not $last }}<end_of_turn>
+{{ end }}
+{{- end }}
+{{- end }}"""
+
+# Üretim durdurma: tur sonu ve uydurma araç sonucu yazımı (harness da aynı dizeyi istekte `options.stop` ile yollar).
+PARAMETER stop "<end_of_turn>"
+PARAMETER stop "<tool_response name="
+
+# Determinizm ve bağlam (eğitim seq len 6144; canlıda biraz pay bırakılır).
+PARAMETER temperature 0
+PARAMETER seed 42
+PARAMETER num_ctx 8192
+PARAMETER num_predict 1024

@@ -176,3 +176,12 @@ def test_dataset_problems_flag_a_dominant_label_and_wrong_sizes_and_duplicates()
 def test_record_json_line_is_valid_json_with_all_fields():
     r = fake("INVESTIGATE", 1)
     assert json.loads(dumps(r))["label"] == "INVESTIGATE"
+
+
+def test_gemma_text_layout_folds_the_system_message_into_the_first_user_turn():
+    from training.tokens import count_tokens, gemma_text
+
+    msgs = [{"role": "system", "content": "S"}, {"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}]
+    assert gemma_text(msgs) == "<bos><start_of_turn>user\nS\n\nq<end_of_turn>\n<start_of_turn>model\na<end_of_turn>\n"
+    assert count_tokens(msgs) > 5
+

@@ -286,9 +286,10 @@ def test_text_mode_sends_the_tools_inside_the_prompt_and_never_as_a_tools_field(
     OllamaBackend(host=server.url, model="gemma3:4b").chat(STRUCTURED, TOOLS)
     body = server.requests[0]["body"]
     assert "tools" not in body
-    assert [m["role"] for m in body["messages"]] == ["system", "user", "assistant", "user"]           # tool rolü ve tool_calls alanı yok
-    assert "get_stock_history" in body["messages"][0]["content"] and "OHLCV" in body["messages"][0]["content"]
-    assert body["messages"][2]["content"].startswith(TOOL_CALL_OPEN) and "<tool_response" in body["messages"][3]["content"]
+    assert [m["role"] for m in body["messages"]] == ["user", "assistant", "user"]                       # system ilk user'a katılır; tool rolü/tool_calls alanı yok
+    assert body["messages"][0]["content"].startswith("SİSTEM\n\n") and "get_stock_history" in body["messages"][0]["content"] and "OHLCV" in body["messages"][0]["content"]
+    assert body["messages"][0]["content"].rstrip().endswith("soru")
+    assert body["messages"][1]["content"].startswith(TOOL_CALL_OPEN) and "<tool_response" in body["messages"][2]["content"]
     assert "tool_calls" not in str(body["messages"])
     assert body["options"]["stop"] == ["<tool_response name="]                                         # uydurma araç sonucu yazılamaz
 
@@ -322,5 +323,14 @@ def test_a_native_tool_calls_field_in_a_text_mode_reply_is_ignored_in_favour_of_
 def test_text_mode_without_tools_adds_no_block(server):
     server.responses.append(ok("x"))
     OllamaBackend(host=server.url, model="m").chat([{"role": "system", "content": "S"}, {"role": "user", "content": "q"}], None)
-    assert server.requests[0]["body"]["messages"][0]["content"] == "S"
+    assert server.requests[0]["body"]["messages"] == [{"role": "user", "content": "S\n\nq"}]
 
+
+def test_raw_prompt_tokens_calls_generate_with_raw_true_and_returns_the_count(server):
+    server.responses.append((200, {"response": "x", "done": True, "prompt_eval_count": 321}, {}))
+    n = OllamaBackend(host=server.url, model="m").raw_prompt_tokens("<start_of_turn>user\nmerhaba<end_of_turn>\n<start_of_turn>model\n")
+    req = server.requests[0]
+    assert n == 321 and req["path"] == "/api/generate" and req["body"]["raw"] is True and req["body"]["options"]["num_predict"] == 1 and req["body"]["stream"] is False
+    server.responses.append((200, {"response": "x"}, {}))
+    with pytest.raises(LLMError):
+        OllamaBackend(host=server.url, model="m").raw_prompt_tokens("x")

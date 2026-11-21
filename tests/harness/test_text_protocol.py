@@ -118,3 +118,13 @@ def test_a_hallucinated_tool_response_after_the_call_is_cut_off():
 
 def test_protocol_version_is_a_string_for_the_training_records():
     assert isinstance(TEXT_PROTOCOL_VERSION, str) and TEXT_PROTOCOL_VERSION
+
+
+def test_fold_system_matches_the_training_text_layout():
+    from harness.text_protocol import fold_system
+
+    enc = [{"role": "system", "content": "S"}, {"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}, {"role": "user", "content": "r"}]
+    folded = fold_system(enc)
+    assert folded == [{"role": "user", "content": "S\n\nq"}, {"role": "assistant", "content": "a"}, {"role": "user", "content": "r"}]
+    assert fold_system([{"role": "system", "content": "S"}]) == [{"role": "user", "content": "S"}]
+    assert fold_system(folded) == folded and enc[0]["role"] == "system"                  # girdi değişmez, idempotent

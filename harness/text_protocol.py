@@ -73,6 +73,24 @@ def encode_messages(messages: Sequence[dict[str, Any]], tools: Sequence[dict[str
     return out
 
 
+def fold_system(messages: Sequence[dict[str, str]]) -> list[dict[str, str]]:
+    """Gemma sohbet şablonu `system` rolünü bilmez: sistem metni İLK user mesajının başına `\n\n` ile eklenir (HF şablonu ve eğitim metniyle aynı).
+    Ollama'ya yalnızca user/assistant gider; Modelfile şablonu bu yüzden system'e bakmaz."""
+    out: list[dict[str, str]] = []
+    system = ""
+    for m in messages:
+        if m["role"] == "system":
+            system = m["content"] + "\n\n"
+            continue
+        content = m["content"]
+        if system and m["role"] == "user":
+            content, system = system + content, ""
+        out.append({"role": m["role"], "content": content})
+    if system:  # user yoksa (yalnızca system): user olarak gönder
+        out.insert(0, {"role": "user", "content": system.rstrip()})
+    return out
+
+
 @dataclass(frozen=True)
 class ParsedCall:
     name: str

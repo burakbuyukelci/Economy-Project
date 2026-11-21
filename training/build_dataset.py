@@ -77,6 +77,8 @@ def build(splits: tuple[str, ...], seed: int, *, progress: bool = False) -> dict
             natural: dict[str, Counter[str]] = defaultdict(Counter)
             drops: Counter[str] = Counter()
             for i, q in enumerate(cands):
+                if progress and i % 200 == 0:
+                    print(f"  {split} {i}/{len(cands)}", file=sys.stderr, flush=True)
                 rec, why = _run(q)
                 if rec is not None:
                     natural[q.type][rec["label"]] += 1
@@ -86,8 +88,6 @@ def build(splits: tuple[str, ...], seed: int, *, progress: bool = False) -> dict
                         drops[f"first_invalid:{q.type}:{why[:110]}"] += 1
                     continue
                 ok_by_type[q.type].append(rec)
-                if progress and i % 200 == 0:
-                    print(f"  {split} {i}/{len(cands)}", file=sys.stderr)
             chosen: list[dict[str, Any]] = []
             for qtype, n in spec.allocate(split).items():
                 chosen += _select(ok_by_type[qtype], qtype, n)

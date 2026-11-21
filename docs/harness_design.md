@@ -401,3 +401,46 @@ Gemma 3'ün Ollama şablonunda yerel araç çağırma yoktur/güvenilmezdir; bu 
 * **Eğitim = çıkarım:** eğitim verisi biçimlendirmesi `encode_messages(messages, tools)` çıktısını kullanır (tek kod yolu); `chat_template` Gemma'nın kendisidir (Modelfile `TEMPLATE`, training/README.md).
 * Gerçek model testi (Bilgisayar 1, Ollama): bu bilgisayarda Ollama yok; istemci yerel bir HTTP sahte sunucusuna karşı sınanır (`tests/harness/test_llm_backend.py`). Model adı varsayılanı `gemma3:4b`; fine-tune sonrası kendi ad.
 
+
+## 14. v1 eğitim verisi ve değerlendirme hattı (`training/`, `experiments/`)
+**Kapsam (karar):** yalnızca GERÇEK araçlar (hisse/endeks geçmişi, göstergeler, destek/direnç, rank, backtest, reversal, weekday) ve şema 1.3.0; kapı ve kanıt paketi harness'te. Modele yalnızca bu 8 araç gösterilir
+(`harness/settings.EXPOSED_TOOLS`, oturumda `exposed_tools`). Bilanço/makro/haber/konuşma araçları gerçek olunca eklenir; üreteç artımlıdır (`training/spec.py`, `questions.BUILDERS`, `teacher.plan_calls`, `composer._pick`).
+
+**Soru tipleri (9):** haftanın günü, teknik dönüş (BB alt dokunuş / RSI dibi; ~%30 birleşik koşullu, ~%70 backtest'li, ~%50 taze sinyal gününe kurulu), catch-up (retail), göstergeler, destek/direnç, fiyat geçmişi,
+tavsiye/kesinlik (hedef fiyat isteği, "kesin yükselir" iddiası; bir kısmı reversal+backtest'li, G6 ile WATCH), araçta olmayan veri/gelecek (F/K, makro, haber, gelecek fiyat), bayat veri (as_of >= 2027-01-18: gerçek kapı `ANALYSIS_UNSAFE`).
+Etiketler her zaman `label_policy`'den; açıklama kilitli kanıt cümlelerinden belirlenimli kurulur (`composer.py`, LLM yok); eşik sayıları ve türetilmiş sayı yazılmaz.
+
+**Bölme (üretimden ÖNCE):** peer grupları bölmelere tek parça (hash sırası): test = telekom, kimya-dışı grupların ~%25'i vb.; tarih aralıkları ayrık (eğitim 2025-03 → 2026-05, doğrulama 2026-06 → 2026-08, test 2026-09 → 2026-11 + bayat aralıklar);
+test şablonları (sıra % 4 == 3) eğitimde yok. Retail tek ≥3 üyeli grup: catch-up soruları grup bazında tutulamaz (yalnızca tarih ve şablon). `leakage_problems` hisse, tarih, şablon, metin sızıntısını denetler.
+
+**Hata-kurtarma (%10, deterministik):** `as_of` uyuşmazlığı, bozuk araç çağrısı biçimi, erken bitirme, nihai metin ihlali + geri besleme. Hatalı asistan turu `train_mask`'te False (bağlamda kalır, kayıpta değil).
+
+**Bağlam:** gerçek Gemma tokenizer ile ölçüldü (karakter/3 tahmini JSON ağırlıklı içerikte ~%12 eksik sayıyordu: ~2,7 karakter/token). Model görünümü (`model_view.py`) kanıtın alıntılamadığı uzun listeleri/alanları kırpar;
+araç tanımları (`tool_view.py`) 8 araç için ~1,7 bin token. Süzgeç: oturum > 6144 token ise elenir (rapor `dropped`/`shortfall`).
+
+**Doğrulama hattı (`training/validate.py`) her kayıtta:** etiket = politika; sayı halüsinasyonu 0 ve kanıtsız sayı 0; eylem koruması ihlali 0; tüm zarflar `snap_*_v2` ve şema 1.3.0 (mock yok); geri çekilme yok;
+beklenmeyen hata zarfı yok; aday etiketlerde not; nihai metin ilk denemede kabul (kurtarma yörüngelerinde 2.). Veri kümesi: sızıntı 0, tek etiket payı <= %80, yinelenen kimlik yok.
+
+### 14.1 Değerlendirme koşucusu ve hocanın metrikleri (`experiments/eval_runner.py`)
+Aynı sorular, profil (A–E) x model (temel/ince ayarlı); her koşu gerçek oturum ve `final_metrics()` ile sayılır. Çıktı: `results.csv` (satır = soru x profil x model x tekrar) + `summary.json`.
+| Hocanın ölçütü (CLAUDE.md) | `summary.json` alanı | Not |
+|---|---|---|
+| Sayısal halüsinasyon | `numerical_hallucination_rate`, `n_hallucinated`, `n_number_claims` | teslim edilen metin; deneme düzeyi `n_hallucinated_attempts` (csv) |
+| Hatalı araç çağrısı | `invalid_tool_call_rate` | geçersiz / (geçerli + geçersiz); `MALFORMED_TOOL_CALL` dahil |
+| Kanıtsız sonuç | `unevidenced_rate` | araç çıktısında var, kilitli kanıtta yok (yalnızca D/E'de anlamlı) |
+| Kural ihlali (tavsiye, zorunlu adım atlama) | `rule_violation_rate_delivered`, `rule_violation_rate_attempts`, `advice_language_rate`, `mandatory_step_skipped_rate`, `fallback_rate` | iki düzey ayrı |
+| Etiket uyumu | `action_matches_policy_rate`, `action_matches_expected_rate` | D/E'de büyük ölçüde harness'ten gelir (bölüm 12 notu) |
+| Tekrarlanabilirlik | `reproducibility_rate` | `--repeats 2` ile |
+| Bağlam | `max_prompt_tokens` | Ollama `prompt_eval_count` |
+
+### 14.2 v1 üretim sonucu (tohum 42; `data/training/v1/report.json`, commit edilmez)
+| Bölme | Oturum (hedef) | Etiketler | Hata-kurtarma | Token ort./p95/max |
+|---|---|---|---|---|
+| eğitim | 600 (600) | INVESTIGATE 372, REJECT_SIGNAL 114, ANALYSIS_UNSAFE 48, HOLD 47, WATCH 12, TECHNICAL_REVERSAL_CANDIDATE 7 | 45 (%7,5) | 4336 / 6106 / 6143 |
+| doğrulama | 49 (50) | INVESTIGATE 32, REJECT_SIGNAL 9, ANALYSIS_UNSAFE 4, HOLD 4 | 3 | 4334 / 6107 / 6127 |
+| test | 92 (100) | INVESTIGATE 54, REJECT_SIGNAL 23, ANALYSIS_UNSAFE 8, TECHNICAL_REVERSAL_CANDIDATE 4, HOLD 2, WATCH 1 | 8 | 4133 / 5835 / 6096 |
+Genel: tek etiket payı **%61,8** (INVESTIGATE) < %80 eşiği, devam edildi. **Eksikler:** test 8 ve doğrulama 1 catch-up oturumu (retail oturumları bağlamı aşıyor: eğitimde 148 catch-up ve 175 reversal adayı `too_long` ile elendi);
+`POTENTIAL_CATCH_UP_CANDIDATE` ve `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` verisi YOK (gerçek araçlarla CU adayı hiç oluşmadı; bilanço aracı yok): model bu iki etiketi bu veriden öğrenemez.
+`TECHNICAL_REVERSAL_CANDIDATE` yalnızca 7 eğitim örneği (taze sinyal günü hedeflemesine rağmen nadir); `WATCH` 12. Colab hattı doğrulaması (gerçek tokenizer): 0 elenen, eğitilen token payı ~%10.
+Eğitim hedefi büyük ölçüde protokol/biçim/ret davranışı (araç çağırma, sayı disiplini, tavsiye reddi, güvenli hata yolu); etiket dağılımı INVESTIGATE/REJECT ağırlıklıdır (negatifler güçlü, adaylar zayıf).
+

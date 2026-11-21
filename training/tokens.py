@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from harness.text_protocol import fold_system
 from training import spec
 
 DEFAULT_PATH = Path(__file__).resolve().parent / ".cache" / "tokenizer.json"
@@ -18,17 +19,11 @@ ESTIMATE_CHARS_PER_TOKEN = 2.7
 
 
 def gemma_text(text_messages: list[dict[str, str]]) -> str:
-    """Sohbet şablonunun metin hali (system mesajı ilk user'ın başına eklenir)."""
-    parts: list[str] = ["<bos>"]
-    system = ""
-    for m in text_messages:
-        if m["role"] == "system":
-            system = m["content"] + "\n\n"
-            continue
+    """Sohbet şablonunun metin hali: `<bos>` + her mesaj için `<start_of_turn>user|model\n...<end_of_turn>\n` (system ilk user'a `fold_system` ile katılır)."""
+    parts = ["<bos>"]
+    for m in fold_system(text_messages):
         role = "model" if m["role"] == "assistant" else "user"
-        content = (system + m["content"]) if (role == "user" and system) else m["content"]
-        system = "" if role == "user" else system
-        parts.append(f"<start_of_turn>{role}\n{content}<end_of_turn>\n")
+        parts.append(f"<start_of_turn>{role}\n{m['content']}<end_of_turn>\n")
     return "".join(parts)
 
 

@@ -20,7 +20,7 @@ from typing import Any, Sequence
 from urllib.parse import urlsplit
 
 from harness import settings
-from harness.text_protocol import STOP_SEQUENCES, encode_messages, parse_reply
+from harness.text_protocol import STOP_SEQUENCES, encode_messages, fold_system, parse_reply
 
 
 class LLMError(RuntimeError):
@@ -160,7 +160,7 @@ class OllamaBackend(LLMBackend):
             "options": {"temperature": self.temperature, "num_ctx": self.num_ctx, "seed": self.seed},
         }
         if self.tool_mode == "text":     # araçlar istemde METİN; yalnızca system/user/assistant rolleri; uydurma araç sonucu yazılamaz
-            body["messages"] = encode_messages(messages, tools)
+            body["messages"] = fold_system(encode_messages(messages, tools))
             body["options"]["stop"] = list(STOP_SEQUENCES)
         elif tools:
             body["tools"] = _to_ollama_tools(tools)
@@ -176,6 +176,22 @@ class OllamaBackend(LLMBackend):
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise LLMError(f"Ollama yanıtı geçerli JSON değil: {exc}") from None
         return self._parse(payload)
+
+    def raw_prompt_tokens(self, prompt: str) -> int:
+        """`/api/generate` raw=true: Modelfile şablonu UYGULANMADAN, verilen metnin token sayısı (şablon doğrulaması için: sohbet çağrısının prompt_eval_count'uyla eşleşmeli)."""
+        body = {"model": self.model, "prompt": prompt, "raw": True, "stream": False,
+                "options": {"temperature": 0, "num_ctx": self.num_ctx, "seed": self.seed, "num_predict": 1}}
+        req = urllib.request.Request(f"{self.host}/api/generate", data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with self._opener.open(req, timeout=self.timeout) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+            raise LLMError(f"Ollama'ya bağlanılamadı ({self.host}): {exc}") from None
+        n = payload.get("prompt_eval_count")
+        if not isinstance(n, int):
+            raise LLMError("Ollama yanıtında prompt_eval_count yok")
+        return n
 
     def _parse(self, payload: Any) -> ModelReply:
         msg = payload.get("message") if isinstance(payload, dict) else None
