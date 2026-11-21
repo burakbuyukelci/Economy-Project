@@ -17,8 +17,9 @@ V2 = "snap_2026-11-20_v2"
 TICKERS = ["BIMAS", "CCOLA", "MAVI", "MGROS", "THYAO"]
 
 
-def build(tmp_path, jumps=None, drop=None, dates=DATES, tickers=TICKERS, version=V2):
-    """jumps: {(ticker, gün_indeksi): çarpan} adj_close'a bu günden itibaren uygulanır; drop: {(ticker, 'YYYY-MM-DD')}."""
+def build(tmp_path, jumps=None, drop=None, dates=DATES, tickers=TICKERS, version=V2, drop_index=None):
+    """jumps: {(ticker, gün_indeksi): çarpan} adj_close'a bu günden itibaren uygulanır; drop: {(ticker, 'YYYY-MM-DD')};
+    drop_index: {'YYYY-MM-DD'} XU100'den silinen günler."""
     frames = []
     for k, tk in enumerate(tickers):
         f = make_frame(tk, 100 + 10 * k, dates)
@@ -30,6 +31,7 @@ def build(tmp_path, jumps=None, drop=None, dates=DATES, tickers=TICKERS, version
     for tk, d in (drop or set()):
         stocks = stocks[~((stocks["ticker"] == tk) & (stocks["date"] == pd.Timestamp(d)))]
     index = make_frame("XU100", 10000, dates, adj_factor=1.0).drop(columns=["ticker"])
+    index = index[~index["date"].isin([pd.Timestamp(d) for d in (drop_index or ())])]
     make_snapshot(tmp_path, stocks, index, version=version)
     return tmp_path
 
@@ -140,6 +142,14 @@ def test_missing_trading_day_is_soft(tmp_path):
     assert soft_codes(env) == ["MISSING_TRADING_DAYS"] and env["results"]["gate_status"] == "PASS_WITH_WARNINGS"
     assert env["results"]["ticker_reports"][0]["n_missing_trading_days"] == 1
     assert env["results"]["soft_warnings"][0]["value"] == 1
+
+
+def test_index_missing_day_is_reported_but_raises_no_warning(tmp_path):
+    """XU100'de bilinen Yahoo boşluğu (25 Aralık; data_dictionary 11.4): rapora girer, kapıyı etkilemez. Hissede aynı boşluk uyarıdır."""
+    env = call(build(tmp_path, drop_index={"2026-09-03"}))
+    xu = next(t for t in env["results"]["ticker_reports"] if t["ticker"] == "XU100")
+    assert xu["n_missing_trading_days"] == 1                      # 09-03'te hisselerin hepsinde veri var -> takvimde
+    assert env["results"]["soft_warnings"] == [] and env["results"]["gate_status"] == "PASS"
 
 
 # ------------------------------------------------------------------------------------------- bayatlık kademeleri

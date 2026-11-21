@@ -342,7 +342,10 @@ def _handler(p: CheckDataQualityParams, snap: Snapshot) -> ToolOutput:
     for label, df in symbols:
         rep, sym_issues, has_rows = _symbol_quality(label, df, p, eff_end, calendar)
         reports.append(rep)
-        issues += [i for i in sym_issues if _SYMBOL_CHECK[i.code] in wanted]
+        # XU100'ün eksik günü raporda sayılır ama uyarı DEĞİLDİR: Yahoo'da bilinen boşluk (her 25 Aralık; data_dictionary 11.4)
+        # ve göreli getiriler ortak günlerle hesaplanır. Hissedeki aynı boşluk (ör. 2024-04-09) uyarıdır.
+        issues += [i for i in sym_issues if _SYMBOL_CHECK[i.code] in wanted
+                   and not (label == INDEX_LABEL and i.code == DQCode.MISSING_TRADING_DAYS)]
         if not has_rows and DQCheck.TICKER_IDENTITY in wanted:
             if label != INDEX_LABEL and label not in known:
                 why = "snapshot'ta yok"
