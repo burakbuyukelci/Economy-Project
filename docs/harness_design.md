@@ -156,3 +156,5 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
 * Hocadan teyit: `run_backtest` yalnızca catch-up'ta mı zorunlu (bölüm 3).
 * `RISK_GATE` ve `BUILD_EVIDENCE` için `tools/check_data_quality.py` henüz yok; kapı şimdilik mock. Gerçek kapıyla `analysis_bundle` ve
   `hard_blocks` alanlarının davranışı yeniden test edilmeli.
+* **Karar (2026-11-21, kodlanmadı):** `find_support_resistance` gerçek araç olunca seviye alanları (en yakın destek/direnç ve mesafeleri) `evidence_headlines.json`'da **başlık** (committed) olacak;
+  kalan seviye listesi bağlamda kalır. O zamana dek araç mock olduğundan `levels` bağlamdadır.

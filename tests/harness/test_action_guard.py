@@ -401,3 +401,15 @@ def test_ascii_folded_innocent_phrases_do_not_alarm(text):
 def test_ascii_and_turkish_uppercase_noun_variants_are_exempt(noun):
     assert not find_advice_language(f"KESIN YUKSELIR {noun} DOGRULANMAMISTIR.")[0]
     assert find_advice_language(f"KESIN YUKSELIR {noun} DOGRULANMAMIS DEGILDIR.")[0]
+
+
+# =============================== kelime sınırı: tr_fold sonrası masum köklerin kuyrukları ===============================
+@pytest.mark.parametrize("text", [
+    "alinti yapildi", "ALINTI", "alıntı yapıldı", "satinalma sozlesmesi", "satınalma sözleşmesi", "alinan karar", "alınan karar",
+    "alindi", "alınmış pozisyon", "alinmis", "alinmali", "alınabilir", "alinacak", "alinir", "satinalinan", "satin alinan",
+    "kesinlikle degil", "kesinlikle değil", "kesin degil", "kesin değildir", "kesinlikle emin degiliz", "garantor", "garantör",
+    "kalinti", "salinim", "alinim", "satisa", "satiş", "hedefler", "hedef sektor",
+])
+def test_word_boundaries_hold_after_ascii_folding(text):
+    violations, _ = find_advice_language(text)
+    assert not violations, (text, [(v.rule_id, v.phrase) for v in violations])
