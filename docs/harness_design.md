@@ -76,7 +76,10 @@ Kurallar:
 * Çıktı yalnızca **istenen kaynakların** kanıtını içerir; zarf, params ile tutarlı kalır. `run_backtest` dahil her araç zarfı kaynak olabilir.
 * **Sayılar yalnızca araç çıktısından** (CLAUDE.md kural 6): kanıt cümlelerindeki ve değerlerindeki her sayı kaynak zarftan birebir alınır, harness
   yeni sayı türetmez (testle denetlenir). Sayı doğrulayıcı (madde 4) kilitli `committed_evidence_set`'i kullanacak.
-* `committed_evidence_set`: sonucu gerekçelendiren birincil bulgular; ham veri yükleri ve bağlam (haber, rejim kırılımı, göstergeler) yalnızca `full_evidence_set`'te.
+* `committed_evidence_set`: sonucu gerekçelendiren **başlık bölümleri**; ham veri yükleri ve bağlam (haber, rejim kırılımı, destek/direnç) yalnızca `full_evidence_set`'te.
+  Hangi bölümün başlık olduğu **veri**dir: `harness/evidence_headlines.json` (araç → `headline` / `context` / `excluded`). Çıkarıcılar her kanıt adayına bir bölüm adı verir;
+  bildirilmemiş bölüm bağlam sayılır. `calculate_indicators` için başlık = `latest` (as_of günü değerleri ve durumları); `recent_rows` kasıtlı olarak kanıta HİÇ girmez.
+  `tests/harness/test_evidence_headlines.py` çıkarıcı ↔ dosya tutarlılığını (bildirilmemiş ve bayat bölüm adı) denetler.
 * **Kilit:** `lock_hash` = sha256(analysis_id, sürüm, committed kanıtlar, nihai kapı durumu). Kilitli pakete yazılamaz (`BUNDLE_LOCKED`).
 * Kaynaklardan biri mock ise paketin `data_version`'ı mock sentineli taşır (eğitim verisine girmez).
 * Neden harness'te: kanıt oturumdaki zarflardan kurulur (hash → zarf); `tools/` tek tek araç hesaplar, oturumu bilmez.
@@ -129,8 +132,8 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
 * **Gerçek örnek (THYAO 10.09.2026, `get_stock_history` + `calculate_indicators` zarfları):** `299,25` → `EXACT` (`rows[2].close`); `44,83` → `ROUNDED`
   (`latest.values.RSI_14 = 44.8273`); `38,4 milyon` → `ROUNDED` (`rows[2].volume = 38386110.0`); `10.09.2026` ve `08.09.2026` → `ALLOWLISTED`
   (`as_of` ve çağrının `start` parametresi). Uydurma `RSI 31,2`, `310,50`, `61 milyon` → `HALLUCINATION` (oran 3/4).
-* **Not (gerçek kanıt paketi):** `calculate_indicators` kanıtı `commit=False` (bağlam) olduğundan RSI/Bollinger sayıları `UNEVIDENCED` çıkar; gösterge değerlerinin
-  sonuç gerekçesi olarak yazılması için ya göstergeler committed'a alınmalı ya da bu uyarı bilinçli kabul edilmeli (ekip kararı; kod değiştirilmedi).
+* **Gerçek kanıt paketi (THYAO):** göstergelerin `latest` bölümü committed olduğundan as_of günü RSI/Bollinger/Supertrend sayıları `SUPPORTED`; `recent_rows`'taki bir önceki
+  günün RSI'ı araç çıktısında var ama kanıta girmediği için `UNEVIDENCED` (yumuşak uyarı) çıkar. `find_support_resistance` bağlamda bırakıldı (karar sonraya).
 
 ### 9.2 Eylem koruması
 * **Etiket:** nihai çıktıda `EYLEM: <ETİKET>` (ya da `ACTION:`) satırı **zorunlu**; etiket tam olarak `AllowedAction` değeri olmalı. Kodlar: `NO_ACTION`, `MULTIPLE_ACTIONS`,

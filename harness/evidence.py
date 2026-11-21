@@ -22,6 +22,8 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Callable
 
 from harness import settings
@@ -65,12 +67,27 @@ class EnvelopeStore:
         return self._by_hash.get(input_hash)
 
 
+# =============================== başlık bölümleri (veri) ====================================
+HEADLINES_PATH = Path(__file__).resolve().parent / "evidence_headlines.json"
+
+
+@lru_cache(maxsize=1)
+def headline_spec() -> dict[str, dict[str, list[str]]]:
+    """Araç başına {"headline": [...], "context": [...], "excluded": [...]} (harness/evidence_headlines.json)."""
+    return json.loads(HEADLINES_PATH.read_text(encoding="utf-8"))["tools"]
+
+
+def is_headline(tool: T, section: str) -> bool:
+    """Bölüm aracın başlık listesindeyse committed; listede olmayan/bildirilmemiş bölüm yalnızca full sette kalır."""
+    return section in (headline_spec().get(tool.value) or {}).get("headline", [])
+
+
 # =============================== çıkarıcılar ================================================
 @dataclass
 class Candidate:
     statement: str
     values: list[dict[str, Any]]
-    commit: bool  # True: sonucu gerekçelendiren (committed) kanıt; False: yalnızca gözlenen bağlam
+    section: str  # çıkarıcının verdiği bölüm adı; committed olup olmadığını harness/evidence_headlines.json belirler
 
 
 def _v(name: str, value: Any, unit: str | None = None) -> dict[str, Any] | None:
@@ -102,7 +119,7 @@ def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
         _vals(_v("sector_median_return_pct", res.get("sector_median_return_pct"), "pct"),
               _v("xu100_return_pct", res.get("xu100_return_pct"), "pct"),
               _v("sector_median_vs_xu100_pp", res.get("sector_median_vs_xu100_pp"), "pp"),
-              _v("sector_strength", res.get("sector_strength"))), True))
+              _v("sector_strength", res.get("sector_strength"))), "sector"))
     ranking = res.get("ranking") or []
     if ranking:
         lag = min(ranking, key=lambda r: (r.get("lag_score_pp") is None, r.get("lag_score_pp")))
@@ -111,7 +128,7 @@ def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
             f"{lag.get('ticker')}: {_fmt(h)} işlem günü getirisi %{_fmt(lag.get('return_pct'))}, sektör medyanına göre "
             f"{_fmt(lag.get('lag_score_pp'))} pp ({flag}), sıra {_fmt(lag.get('rank'))}",
             _vals(_v("return_pct", lag.get("return_pct"), "pct"), _v("lag_score_pp", lag.get("lag_score_pp"), "pp"),
-                  _v("rank", lag.get("rank"))), True))
+                  _v("rank", lag.get("rank"))), "laggard"))
     for row in res.get("historical_catch_up") or []:
         blk = row.get("block") or {}
         full = blk.get("full") or {}
@@ -124,7 +141,7 @@ def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
                   _v("n_success", full.get("n_success")), _v("n_false_positive", full.get("n_false_positive")),
                   _v("hit_rate_pct", full.get("hit_rate_pct"), "pct"),
                   _v("median_catch_up_size_pp", row.get("median_catch_up_size_pp"), "pp"),
-                  _v("oos_degradation_flag", blk.get("oos_degradation_flag"))), True))
+                  _v("oos_degradation_flag", blk.get("oos_degradation_flag"))), "historical_catch_up"))
     return out
 
 
@@ -134,7 +151,7 @@ def _reversal(res: dict[str, Any]) -> list[Candidate]:
     for g in res.get("groups") or []:
         label = g.get("label")
         out.append(Candidate(f"{fam} ({label}): tespit edilen olay {_fmt(g.get('n_events_detected'))}",
-                             _vals(_v("n_events_detected", g.get("n_events_detected"))), True))
+                             _vals(_v("n_events_detected", g.get("n_events_detected"))), "group_count"))
         for blk in g.get("per_horizon") or []:
             f = blk.get("full") or {}
             out.append(Candidate(
@@ -146,13 +163,13 @@ def _reversal(res: dict[str, Any]) -> list[Candidate]:
                       _v("n_success", f.get("n_success")), _v("hit_rate_pct", f.get("hit_rate_pct"), "pct"),
                       _v("mean_return_pct", f.get("mean_return_pct"), "pct"),
                       _v("cost_adjusted_mean_return_pct", f.get("cost_adjusted_mean_return_pct"), "pct"),
-                      _v("n_excluded_incomplete_horizon", f.get("n_excluded_incomplete_horizon"))), True))
+                      _v("n_excluded_incomplete_horizon", f.get("n_excluded_incomplete_horizon"))), "per_horizon"))
         for rb in g.get("regime_breakdown") or []:
             out.append(Candidate(
                 f"{fam} ({label}), rejim {rb.get('regime')}, ufuk {_fmt(rb.get('horizon'))}: olay {_fmt(rb.get('n_events'))}, "
                 f"isabet %{_fmt(rb.get('hit_rate_pct'))}",
                 _vals(_v("horizon", rb.get("horizon")), _v("n_events", rb.get("n_events")),
-                      _v("hit_rate_pct", rb.get("hit_rate_pct"), "pct")), False))
+                      _v("hit_rate_pct", rb.get("hit_rate_pct"), "pct")), "regime_breakdown"))
     return out
 
 
@@ -161,7 +178,7 @@ def _weekday(res: dict[str, Any]) -> list[Candidate]:
     out = [Candidate(
         f"{label}: kararlılık hükmü {res.get('stability_verdict')}, kodlar {', '.join(res.get('verdict_codes') or []) or 'yok'}",
         _vals(_v("stability_verdict", res.get("stability_verdict")), _v("verdict_reason", res.get("verdict_reason"))),
-        True)]
+        "verdict")]
     for key, name in (("in_sample", "Örneklem içi"), ("out_of_sample", "Örneklem dışı")):
         w = res.get(key) or {}
         out.append(Candidate(
@@ -173,7 +190,7 @@ def _weekday(res: dict[str, Any]) -> list[Candidate]:
                   _v("outcome_mean_return_pct", w.get("outcome_mean_return_pct"), "pct"),
                   _v("outcome_mean_diff_vs_unconditional_pct", w.get("outcome_mean_diff_vs_unconditional_pct"), "pct"),
                   _v("cost_adjusted_outcome_mean_return_pct", w.get("cost_adjusted_outcome_mean_return_pct"), "pct"),
-                  _v("p_value_adjusted", w.get("p_value_adjusted"))), True))
+                  _v("p_value_adjusted", w.get("p_value_adjusted"))), "window"))
     return out
 
 
@@ -188,12 +205,12 @@ def _fundamental_change(res: dict[str, Any]) -> list[Candidate]:
                 f"yıllık değişim {_fmt(m.get('yoy_change'))} {m.get('change_unit')}, yön {m.get('yoy_direction')}",
                 _vals(_v("fiscal_period", latest.get("fiscal_period")), _v("disclosure_date", latest.get("disclosure_date")),
                       _v(str(m.get("name")), m.get("value")), _v("yoy_change", m.get("yoy_change"), m.get("change_unit")),
-                      _v("qoq_change", m.get("qoq_change"), m.get("change_unit"))), True))
+                      _v("qoq_change", m.get("qoq_change"), m.get("change_unit"))), "latest_metrics"))
     out.append(Candidate(
         f"Açıklanmış çeyrek {_fmt(res.get('n_quarters_disclosed_by_as_of'))}, henüz açıklanmadığı için dışlanan "
         f"{_fmt(res.get('n_quarters_excluded_not_yet_disclosed'))}",
         _vals(_v("n_quarters_disclosed_by_as_of", res.get("n_quarters_disclosed_by_as_of")),
-              _v("n_quarters_excluded_not_yet_disclosed", res.get("n_quarters_excluded_not_yet_disclosed"))), True))
+              _v("n_quarters_excluded_not_yet_disclosed", res.get("n_quarters_excluded_not_yet_disclosed"))), "disclosure_counts"))
     for r in res.get("reaction_summary") or []:
         out.append(Candidate(
             f"Açıklama sonrası ufuk {_fmt(r.get('horizon'))}, grup {r.get('group')}: gözlem {_fmt(r.get('n'))}, XU100'e göre "
@@ -202,7 +219,7 @@ def _fundamental_change(res: dict[str, Any]) -> list[Candidate]:
             _vals(_v("horizon", r.get("horizon")), _v("n", r.get("n")),
                   _v("mean_abnormal_vs_xu100_pct", r.get("mean_abnormal_vs_xu100_pct"), "pct"),
                   _v("hit_rate_vs_xu100_pct", r.get("hit_rate_vs_xu100_pct"), "pct"),
-                  _v("n_excluded_incomplete_horizon", r.get("n_excluded_incomplete_horizon"))), True))
+                  _v("n_excluded_incomplete_horizon", r.get("n_excluded_incomplete_horizon"))), "reaction_summary"))
     return out
 
 
@@ -210,7 +227,7 @@ def _fundamental_metrics(res: dict[str, Any]) -> list[Candidate]:
     return [Candidate(
         f"{res.get('ticker')} {res.get('fiscal_period')}: {m.get('name')} {_fmt(m.get('value'))} {m.get('unit') or ''}".rstrip(),
         _vals(_v("fiscal_period", res.get("fiscal_period")), _v("disclosure_date", res.get("disclosure_date")),
-              _v(str(m.get("name")), m.get("value"), m.get("unit"))), True) for m in res.get("metrics") or []]
+              _v(str(m.get("name")), m.get("value"), m.get("unit"))), "metrics") for m in res.get("metrics") or []]
 
 
 def _macro(res: dict[str, Any]) -> list[Candidate]:
@@ -223,17 +240,17 @@ def _macro(res: dict[str, Any]) -> list[Candidate]:
         out.append(Candidate(
             f"{s.get('series')} son gözlem değeri {_fmt(last.get('value'))} ({s.get('source')})",
             _vals(_v("value", last.get("value")), _v("observation_date", last.get("observation_date")),
-                  _v("publication_date", last.get("publication_date"))), True))
+                  _v("publication_date", last.get("publication_date"))), "latest_point"))
     return out
 
 
 def _news(res: dict[str, Any]) -> list[Candidate]:
     out = [Candidate(f"Haber/KAP olay sayısı {_fmt(res.get('n_events_returned'))}",
-                     _vals(_v("n_events_returned", res.get("n_events_returned"))), False)]
+                     _vals(_v("n_events_returned", res.get("n_events_returned"))), "count")]
     for e in (res.get("events") or [])[:10]:
         out.append(Candidate(f"{e.get('source')}: {e.get('headline')}",
                              _vals(_v("event_id", e.get("event_id")), _v("published_date", e.get("published_date")),
-                                   _v("category", e.get("category"))), False))
+                                   _v("category", e.get("category"))), "events"))
     return out
 
 
@@ -241,11 +258,13 @@ def _speech(res: dict[str, Any]) -> list[Candidate]:
     return [Candidate(f"Konuşma özellikleri yüklendi (kaynak {res.get('source_id')}), transkript kalitesi "
                       f"{_fmt(res.get('transcript_quality'))}",
                       _vals(_v("source_id", res.get("source_id")), _v("transcript_quality", res.get("transcript_quality"))),
-                      False)]
+                      "summary")]
 
 
 def _indicators(res: dict[str, Any]) -> list[Candidate]:
-    """schemas 1.1.0: sayılar `latest.values`, kategoriler `latest.states` (as_of günündeki durum)."""
+    """schemas 1.1.0: sayılar `latest.values`, kategoriler `latest.states` (as_of günündeki durum).
+
+    `latest` başlık bölümüdür (committed); `recent_rows` kasıtlı olarak kanıta HİÇ girmez (evidence_headlines.json: excluded)."""
     latest = res.get("latest")
     if not latest:
         return []
@@ -254,7 +273,7 @@ def _indicators(res: dict[str, Any]) -> list[Candidate]:
     shown = ", ".join([f"{k} {_fmt(v)}" for k, v in numbers.items()] + [f"{k} {v}" for k, v in states.items()])
     vals = [_v("close", latest.get("close"))] + [_v(k, v) for k, v in numbers.items()] + [_v(k, v) for k, v in states.items()]
     return [Candidate(f"{res.get('ticker')} son gün göstergeleri: kapanış {_fmt(latest.get('close'))}, {shown}",
-                      _vals(*vals), False)]
+                      _vals(*vals), "latest")]
 
 
 def _support_resistance(res: dict[str, Any]) -> list[Candidate]:
@@ -262,7 +281,7 @@ def _support_resistance(res: dict[str, Any]) -> list[Candidate]:
         f"{res.get('ticker')} son kapanış {_fmt(res.get('last_close'))}, en yakın destek {_fmt(res.get('nearest_support'))}, "
         f"en yakın direnç {_fmt(res.get('nearest_resistance'))}",
         _vals(_v("last_close", res.get("last_close")), _v("nearest_support", res.get("nearest_support")),
-              _v("nearest_resistance", res.get("nearest_resistance"))), False)]
+              _v("nearest_resistance", res.get("nearest_resistance"))), "levels")]
 
 
 def _backtest(res: dict[str, Any]) -> list[Candidate]:
@@ -274,27 +293,27 @@ def _backtest(res: dict[str, Any]) -> list[Candidate]:
         f"%{_fmt(net.get('max_drawdown_pct'))}, isabet %{_fmt(net.get('win_rate_pct'))}, işlem {_fmt(net.get('n_trades'))}",
         _vals(_v("variant", strat.get("variant")), _v("cumulative_return_pct", net.get("cumulative_return_pct"), "pct"),
               _v("sharpe_ratio", net.get("sharpe_ratio")), _v("max_drawdown_pct", net.get("max_drawdown_pct"), "pct"),
-              _v("win_rate_pct", net.get("win_rate_pct"), "pct"), _v("n_trades", net.get("n_trades"))), True)]
+              _v("win_rate_pct", net.get("win_rate_pct"), "pct"), _v("n_trades", net.get("n_trades"))), "strategy_net")]
     for b in res.get("benchmarks") or []:
         out.append(Candidate(
             f"Backtest, {b.get('name')} karşılaştırması: kümülatif getiri farkı {_fmt(b.get('cumulative_return_diff_pct'))}, "
             f"Sharpe farkı {_fmt(b.get('sharpe_diff'))}",
             _vals(_v("cumulative_return_diff_pct", b.get("cumulative_return_diff_pct"), "pct"),
-                  _v("sharpe_diff", b.get("sharpe_diff"))), True))
+                  _v("sharpe_diff", b.get("sharpe_diff"))), "benchmarks"))
     for sp in res.get("splits") or []:
         nm = sp.get("net_metrics") or {}
         out.append(Candidate(
             f"Backtest {sp.get('name')} bölümü: sinyal {_fmt(sp.get('n_signals'))}, net kümülatif getiri "
             f"%{_fmt(nm.get('cumulative_return_pct'))}, benchmark farkı {_fmt(sp.get('benchmark_diff_pct'))}",
             _vals(_v("n_signals", sp.get("n_signals")), _v("cumulative_return_pct", nm.get("cumulative_return_pct"), "pct"),
-                  _v("benchmark_diff_pct", sp.get("benchmark_diff_pct"), "pct")), True))
+                  _v("benchmark_diff_pct", sp.get("benchmark_diff_pct"), "pct")), "splits"))
     out.append(Candidate(
         f"Backtest bayrakları: örneklem dışı bozulma {_fmt(res.get('oos_degradation_flag'))}, az sinyal "
         f"{_fmt(res.get('low_signal_flag'))}, sinyal {_fmt(res.get('n_signals'))}, ufku dolmamış dışlanan "
         f"{_fmt(res.get('n_excluded_incomplete_horizon'))}",
         _vals(_v("oos_degradation_flag", res.get("oos_degradation_flag")), _v("low_signal_flag", res.get("low_signal_flag")),
               _v("n_signals", res.get("n_signals")),
-              _v("n_excluded_incomplete_horizon", res.get("n_excluded_incomplete_horizon"))), True))
+              _v("n_excluded_incomplete_horizon", res.get("n_excluded_incomplete_horizon"))), "flags"))
     return out
 
 
@@ -384,7 +403,7 @@ class EvidenceBundle:
             eid = f"E{len(self._items) + 1}"
             self._items.append({"evidence_id": eid, "statement": cand.statement, "source_tool": rec.tool.value,
                                 "source_input_hash": env["input_hash"], "values": cand.values})
-            if cand.commit:
+            if is_headline(rec.tool, cand.section):
                 self._committed.add(eid)
 
     def _envelope(self, norm: dict[str, Any], records: list[Record]) -> dict[str, Any]:

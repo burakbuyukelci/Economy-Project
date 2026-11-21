@@ -1,0 +1,17 @@
+{
+  "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). Yeni bölüm eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
+  "version": 1,
+  "tools": {
+    "rank_sector_relative_strength": {"headline": ["sector", "laggard", "historical_catch_up"], "context": [], "excluded": []},
+    "detect_reversal_events": {"headline": ["group_count", "per_horizon"], "context": ["regime_breakdown"], "excluded": ["events"]},
+    "test_weekday_pattern": {"headline": ["verdict", "window"], "context": [], "excluded": []},
+    "calculate_fundamental_change": {"headline": ["latest_metrics", "disclosure_counts", "reaction_summary"], "context": [], "excluded": []},
+    "get_fundamental_metrics": {"headline": ["metrics"], "context": [], "excluded": []},
+    "get_macro_context": {"headline": ["latest_point"], "context": [], "excluded": ["points"]},
+    "get_news_events": {"headline": [], "context": ["count", "events"], "excluded": []},
+    "get_speech_features": {"headline": [], "context": ["summary"], "excluded": ["segments"]},
+    "calculate_indicators": {"headline": ["latest"], "context": [], "excluded": ["recent_rows"]},
+    "find_support_resistance": {"headline": [], "context": ["levels"], "excluded": []},
+    "run_backtest": {"headline": ["strategy_net", "benchmarks", "splits", "flags"], "context": [], "excluded": ["trade_log"]}
+  }
+}

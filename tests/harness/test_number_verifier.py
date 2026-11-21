@@ -476,8 +476,10 @@ def test_real_derived_change_is_hallucination(thyao_history):
     assert r.derivation_hint is not None
 
 
-def test_real_indicator_values_are_context_not_committed(thyao_history, thyao_indicators):
-    """Gerçek kanıt paketi: göstergeler yalnızca full_evidence_set'te (harness_design §5) => RSI KANITSIZ (yumuşak)."""
+def test_real_indicator_latest_is_committed_but_recent_rows_are_not(thyao_history, thyao_indicators):
+    """Gerçek kanıt paketi: göstergelerin `latest` bölümü committed (evidence_headlines.json); recent_rows kanıta hiç girmez.
+
+    => as_of günü RSI SUPPORTED; önceki günün RSI'ı (recent_rows) araç çıktısında var ama committed'da yok => KANITSIZ."""
     from harness.evidence import EnvelopeStore, EvidenceBundle, make_analysis_id
     from datetime import date as _d
 
@@ -490,10 +492,11 @@ def test_real_indicator_values_are_context_not_committed(thyao_history, thyao_in
                   "source_input_hashes": [thyao_history["input_hash"], thyao_indicators["input_hash"]]})
     bundle.lock("PASS")
     committed = bundle.snapshot()["committed_evidence_set"]
-    rep = verify_numbers("RSI_14 44,83 ve kapanış 299,25", question=QUESTION,
+    rep = verify_numbers("RSI_14 44,83, kapanış 299,25; bir önceki işlem günü RSI 40,64", question=QUESTION,
                          envelopes=[thyao_history, thyao_indicators], committed_evidence=committed)
-    assert rep.n_hallucinated == 0
-    assert rep.n_unevidenced == 2 and rep.unevidenced_rate == 1.0   # hiçbir şey committed değil: ham/gösterge verisi
+    by = {r.claim.raw: r.verdict for r in rep.claims}
+    assert by == {"44,83": "SUPPORTED", "299,25": "SUPPORTED", "40,64": "UNEVIDENCED"}
+    assert rep.n_hallucinated == 0 and rep.unevidenced_rate == pytest.approx(1 / 3)
 
 
 # =============================== ek: hash maskesi, oturum yardımcısı ===============================
