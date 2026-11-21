@@ -107,7 +107,7 @@ Mock/gerçek geçişi: `settings.TOOL_BACKEND_OVERRIDES = {ToolName.X: "real"}`.
   `PRECONDITION_FAILED`, `AS_OF_*`, `INVALID_PARAMS`, `TICKER_UNDETERMINED`, `AS_OF_INVALID`) sayılır ve olay günlüğüne yazılır.
 
 ## 9. Sayı doğrulayıcı (`harness/number_verifier.py`) ve eylem koruması (`harness/action_guard.py`)
-İkisi de **saf fonksiyon**dur (oturum/MCP bağımlılığı yok); oturuma bağlama (`complete_explanation` öncesi çağrı, yeniden deneme) sonraki iştir.
+İkisi de **saf fonksiyon**dur (oturum/MCP bağımlılığı yok); oturuma bağlama bölüm 12'dedir (`HarnessSession.submit_final`).
 `verify_session(session, metin)` yalnızca ince bir yardımcıdır.
 
 ### 9.1 Sayı doğrulayıcı
@@ -119,6 +119,10 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
 * **Sınıflar:** `ALLOWLISTED` (soruda ya da herhangi bir araç çağrısı parametresinde AYNEN var; iddia sayılmaz, paydaya girmez) →
   `HALLUCINATION` (hiçbir araç çıktısında yok; hocanın metriği) → `UNEVIDENCED` (araç çıktısında var, kilitli `committed_evidence_set`'te yok; yumuşak uyarı) → `SUPPORTED`.
   Kanıt kümesi verilmezse (`None`; A–C aşamaları, kilit yok) ikinci seviye kapalıdır.
+* **Havuz kaynağı:** zarfın `results` ağacı **ve** zarf düzeyi `n_events`, `n_excluded_incomplete_horizon`, `warnings` metinleri (yol örn. `warnings[3]`). Gerçek retail zarfında
+  `HISTORICAL_ONLY` uyarısındaki ham sayılar ("BIMAS 43, MAVI 227 ... toplam 398") bu yüzden alıntılanabilir. Bu alanlar kanıt paketine girmediğinden, kilitli pakette (D/E) böyle bir sayı `UNEVIDENCED` çıkar.
+* **`ALLOWLISTED_POLICY`:** D/E'de model politika bloğunu görür (bölüm 12); bloktaki sayılar (örn. `MIN_EVENTS (20)`, `< 4` çeyrek) araç çıktısında yoksa `HALLUCINATION` değil `ALLOWLISTED_POLICY` olur.
+  Ayrı sayılır (`n_allowlisted_policy`), paydaya girmez; araç kanıtı her zaman önce gelir (aynı sayı araçta da varsa `SUPPORTED`). `policy_text` boşsa (A–C, D′) özellik kapalıdır.
 * **Metrikler:** `numerical_hallucination_rate = n_hallucinated / n_claims`; `unevidenced_rate` ayrı. `n_claims` izin listesindekileri içermez.
   Eşleşme sayaçları: `n_exact`, `n_rounded` (d≥1), `n_rounded_coarse` (d=0), **`n_rounded_total`** (ikisinin toplamı), `n_sign_relaxed`.
 * **Yuvarlama kuralı:** yazılan sayı d ondalıklıysa havuz değeri d basamağa **yarıdan yukarı** (`Decimal`) yuvarlanınca eşitse doğru. Tam sayı (d=0) yalnızca
@@ -264,3 +268,86 @@ Gerçek `tools.rank_sector_relative_strength` çıktısı. MAVI geride kalan (`l
 * Güncel sinyal için resmi tatiller sayılmaz (iş günü = hafta içi).
 * Birden çok backtest uygulanabilirse en temkinli birleşim kullanılır (TEST farkı en küçük, bayraklardan herhangi biri).
 * `proposed_action` (kanıt paketi): kapı `INVESTIGATE` iken artık eylem ZORLANMAZ (`None`); yalnızca `HARD_BLOCK`/`ANALYSIS_UNSAFE` -> `ANALYSIS_UNSAFE`. Asıl etiket politikadandır.
+
+## 12. Nihai çıktı denetimi ve oturuma bağlama (`final_check.py`, `HarnessSession.submit_final`)
+**Akış.** Model açıklama ister (`request_explanation`) -> nihai metni `submit_final(metin)` ile verir -> `check_final` sayı doğrulayıcı (`verify_session`), eylem koruması
+(`check_final_output`) ve politika etiketini (`decide_session`) tek raporda toplar. Metin yalnızca geçerse `complete_explanation` çağrılır.
+
+**Ölçüm ve zorlama ayrı.** Ölçüm her profilde (A–E) aynı değerlendiriciyle yapılır; zorlama (yeniden deneme, güvenli geri çekilme, `required_action`) yalnızca profilde `enforce_final_check` açıksa.
+Bayraklar `profiles.py`'de veridir; A–E'yi aynı ölçüyle karşılaştırabilmek için böyle yapıldı.
+
+| Bileşen | A | B | C | D | E | (D′) |
+|---|---|---|---|---|---|---|
+| Araçlar modele açık | – | ✓ | ✓ | ✓ (13) | ✓ (13) | ✓ (13) |
+| `as_of` ve şema doğrulaması | – | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Durum sırası + zorunlu adım (model çağırır) | – | – | ✓ | ✓ | ✓ | ✓ |
+| Kapı ve kanıt paketini harness çalıştırır | – | – | – | ✓ | ✓ | ✓ |
+| Kanıt kilidi + güvenli hata yolu | – | – | – | ✓ | ✓ | ✓ |
+| İnsan incelemesi | – | – | – | – | ✓ | – |
+| Nihai çıktı **ölçümü** (sayı + eylem + politika uyumu, rapor) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Nihai çıktı **zorlaması** (yeniden deneme, geri çekilme, `required_action`) | – | – | – | ✓ | ✓ | ✓ |
+| Sayı doğrulayıcı 2. seviye (kilitli kanıt) | – | – | – | ✓ | ✓ | ✓ |
+| Politika etiketi + gerekçe modele **gösterilir** | – | – | – | ✓ | ✓ | – |
+
+D′ = D, ama etiket/gerekçe gösterilmez (yalnızca denetlenir + yeniden deneme). `EXTRA_PROFILES`'te durur, A–E'ye girmez; **deney şimdilik koşulmaz**, yalnızca bayrak hazırdır.
+A'da kapı yok, B'de modelin kapıyı çağırması şart değil: politika kapı sonucu olmadığında `INVESTIGATE` (G2) üretir; A–B'de "politika uyumu" bu temkinli etikete karşı ölçülür.
+
+> **Raporlama notu (karar):** D/E'de etiket doğruluğu büyük ölçüde **harness'ten** gelir (politika etiketi modele verilir, `required_action` ile zorlanır, geçmezse harness'in kendi etiketi yazılır). Bu doğruluk **model başarısı diye raporlanmaz**;
+> modelin payı açıklamanın kanıta sadakati (sayı halüsinasyonu, tavsiye dili, gerekçenin etikete uyumu) ve A–C'deki kendi etiketidir.
+
+**Politika bloğu** (`render_policy_block`): izinli etiket, kural kimliği, kapı sonucu, gerekçe kodları ve metinleri. Gerekçe metinlerinde geçen eşik sayıları (`MIN_EVENTS (20)`, `< 4` çeyrek) araç çıktısında olmadığından
+modelin alıntısı `HALLUCINATION` sayılmasın diye sayı doğrulayıcıda **`ALLOWLISTED_POLICY`** olur (ayrı sayılır, paydaya girmez; araç kanıtı önce gelir). D′ ve A–C'de blok yoktur, özellik kapalıdır.
+
+**Deneme.** `settings.FINAL_MAX_RETRIES = 2` (`HARNESS_FINAL_RETRIES` ile ezilir) => en çok 3 deneme. İhlalli denemede modele Türkçe geri besleme gider (uydurma sayı + `derivation_hint`, tavsiye ifadesi ve cümlesi, eylem sorunu, gerekli son satır).
+Hak bitince **güvenli geri çekilme**: sayı ve tavsiye dili içermeyen sabit metin (`fallback_text`, kendisi denetimden geçer), etiket = politika etiketi (güvenli hata yolunda `ANALYSIS_UNSAFE`). A–C'de zorlama olmadığı için geri çekilme yoktur;
+metinde çözümlenebilir etiket yoksa makineyi kapatmak için `INVESTIGATE` yazılır ve `ACTION_DEFAULTED` olayıyla `action_source="defaulted"` işaretlenir (ihlal `NO_ACTION` olarak yine sayılır).
+
+**İhlal sayımı iki düzeyde** (`session.final_metrics()`, `FINAL_DELIVERED` olayı):
+* *deneme düzeyi:* her denemedeki ihlaller (`by_code`, `by_source`, `n_hallucinated`) — yeniden denemeyle düzelse de sayılır; modelin kural ihlali eğilimidir. Olay: `RULE_VIOLATION level=attempt`.
+* *teslim düzeyi:* teslim edilen metindeki ihlaller. D/E'de zorlama sonrası 0 olmalıdır (geri çekilme metni de denetlenir); A–C'de modelin ham çıktısının ihlalleridir. `fallback`, `action_source`, `policy_match` ile birlikte.
+
+**Bilinen sınırlar.** `UNEVIDENCED` yalnızca not (ihlal değil). Politika bloğu kanıt eşiklerini (`+5 pp` marjı vb.) göstermez; model bunları alıntılarsa `HALLUCINATION` sayılır (gerekçe metinlerinde geçmiyorsa).
+Aday etiketlerde `CANDIDATE_CAVEAT` notunun metinde bulunması bu aşamada zorlanmaz (eğitim verisi kuralı 7, `training/RULES.md`).
+
+## 13. Model arayüzü (`llm_backend.py`) ve orkestratör (`agent_loop.py`)
+**`LLMBackend.chat(messages, tools) -> ModelReply`** (metin ve/veya araç çağrıları). `ScriptedBackend` testler için betikli sahte modeldir (adım: metin, `ModelReply` ya da
+`(mesajlar, araçlar) -> yanıt` fonksiyonu; betik bitince `ScriptExhausted`). `OllamaBackend` yerel Ollama'ya `/api/chat` ile konuşur (akış yok, `urllib`).
+* **Yalnızca localhost:** adres `localhost`, `127.0.0.1`, `::1` ya da loopback IP olmalı (kimlik bilgisi, yol, dış ana makine, `localhost.evil.com`, `127.0.0.1@evil.com` reddedilir);
+  yönlendirme izlenmez, `HTTP_PROXY` gibi ortam proxy'leri yok sayılır. `urllib` yalnızca bu dosyada geçer, hiçbir yerde bulut AI SDK'sı yok (ikisi de testli; CLAUDE.md kural 3-4).
+* **Ayarlar** `harness/settings.py` (`config/` ortak olduğu için): model adı (`HARNESS_MODEL`; adı YER TUTUCUDUR, temel model kararı ekibindir), sıcaklık 0 (`HARNESS_TEMPERATURE`),
+  bağlam sınırı (`HARNESS_NUM_CTX`), seed = `config.settings.RANDOM_SEED`, adres (`HARNESS_OLLAMA_HOST`).
+* **Bağlam sınırı sessizce kırpılmaz:** Ollama sınırı aşan istemi kırpar (sistem istemi kaybolabilir). `prompt_eval_count >= num_ctx` ise `ContextLimitExceeded` fırlatılır.
+  **Ölçüm:** 13 araç şeması ~23 bin karakter, Q1/Q3 oturumunun mesajları 10-12 bin karakter => ~11-12 bin token (3 karakter/token yaklaşığı, gerçek tokenizer değil); varsayılan bu yüzden 16384.
+
+**Orkestratör protokolü** (`run_session`; `session.py` model bilmez): model araç çağırır; araç çağrısız metin "hazırım" sayılır. `request_explanation` reddedilirse eksik adım modele bildirilir ve döngü sürer.
+* **D/E:** harness politika bloğunu + nihai biçim istemini verir; model nihai metni (araçsız) yazar. İlk metin taslaktır ve kullanılmaz.
+* **A–C ve D′:** araç çağrısız ilk metin doğrudan nihai metindir (blok yok).
+* `submit_final` RETRY ise geri besleme modele gider; ACCEPTED/FALLBACK/RECORDED ise oturum kapanır (insan incelemesi `PENDING_HUMAN_REVIEW` kalır).
+* **Durdurma:** tur sınırı (`AGENT_MAX_TURNS = 40`) ya da model hatası => `LOOP_ABORTED`; zorlama açık profilde ve açıklama aşaması mümkünse (yan etkisiz `peek_explanation` ile bakılır, geçersiz çağrı sayacı şişmez)
+  güvenli geri çekilme teslim edilir; mümkün değilse (zorunlu adım eksik) ya da A–C'de teslim edilen metin yoktur.
+* İstem biçimi `SYSTEM_PROMPT_VERSION` ile sürümlenir: **fine-tune eğitim kayıtları çıkarımdaki istemle (sistem istemi, `HAZIR` sinyali, politika bloğu, nihai biçim istemi) aynı biçimde olmak zorundadır.**
+
+**Uçtan uca testler** (`tests/harness/test_e2e_sessions.py`): 5 örnek soru, gerçek v2 araçlar (`get_stock_history`, `get_index_history`, `calculate_indicators`, `rank_sector_relative_strength`, `check_data_quality`) + mock'lar.
+Karma oturumda **gerçek kapı mock zarfı `DATA_VERSION_MISMATCH` ile işaretler**: ilk kapı (yalnızca gerçek veri) `PASS_WITH_WARNINGS`, son kapı `INVESTIGATE` olur; paket mock damgası taşır ve eğitime girmez.
+Q1'de etiket yine `REJECT_SIGNAL` (G3 yalnızca aday etiketleri düşürür). Karma oturumda aday etiket üretilemez; aday yolu mock-only birim testlerinde (`test_label_policy.py`) sınanır.
+
+### 13.1 Eğitimden ÖNCE dondurulacak biçimler (`SYSTEM_PROMPT_VERSION = "1"`, henüz DONDURULMADI)
+Fine-tune kayıtları çıkarımdaki istemle birebir aynı olmak zorundadır. Aşağıdaki biçimler **eğitim verisi üretilmeden önce dondurulacaktır**; dondurulana kadar değişebilir ve her değişiklikte
+`SYSTEM_PROMPT_VERSION` artırılır (eğitim kaydı hangi sürümle üretildiğini taşır). Kaynak: `agent_loop.py` (`build_system_prompt`, `FINAL_INSTRUCTION`, `TOOLS_CLOSED`), `final_check.py` (`render_policy_block`, `build_feedback`).
+
+| Aşama | Mesaj dizisi (rol: içerik) |
+|---|---|
+| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç şemaları ayrı `tools` alanında (13 araç; D/E'de kapı ve kanıt paketi yok). |
+| **Geçiş** | Model araç çağırmadan metin yazar (D/E'de `HAZIR`). Harness `request_explanation` der; reddedilirse `user`: `Açıklama aşamasına geçilemedi (<kod>): <mesaj>. Eksik adımları araç çağrılarıyla tamamlayın.` |
+| **2. Nihai aşama (D/E)** | `user`: `POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):` + `EYLEM: <ETİKET>` + `Kural:` + `Kalite kapısı:` + `Gerekçeler:` (`- KOD: mesaj`) + boş satır + `FINAL_INSTRUCTION` → `assistant`: nihai metin (araç yok, `tools` alanı boş). Son satır `EYLEM: <ETİKET>`. |
+| **2. Nihai aşama (A–C, D′)** | Blok ve ek istem yok: araç çağrısız ilk `assistant` metni nihai metindir. |
+| **Yeniden deneme** | `assistant`: başarısız metin → `user`: `build_feedback` çıktısı (`Nihai cevabınız kurallara uymadı (deneme n/N)…`, ihlal başına bir satır, son satır `Son satır tam olarak şu olmalı: EYLEM: <ETİKET>`). Nihai aşamada araç çağrısı `TOOLS_CLOSED` ile reddedilir (deneme harcanmaz). |
+
+Eğitim kayıtları için kural (karar): **`training/RULES.md` madde 5 aynen geçerlidir.** Eğitim veri üreticisi açıklamalarda **yalnızca kilitli committed kanıttaki sayıları** kullanır
+(`UNEVIDENCED` sayı yok); `warnings` metnindeki ya da kanıta girmeyen sayılar alıntılanmaz. Politika bloğundaki eşik sayıları (`ALLOWLISTED_POLICY`) yalnızca D/E çıkarımında tolere edilir, eğitim açıklamasında kullanılmaz.
+
+### 13.2 Sıradaki iş: araç tanımlarını kısaltma (bağlam hedefi ≤ 8192)
+`LLM_NUM_CTX = 16384` **geçici** varsayılandır; hedef ≤ 8192. Plan: modele görünen `description` metinlerini ve `input_schema`'ları sadeleştirmek, gelişmiş parametreleri (`config`, `indicator_config`,
+maliyet/slipaj, `n_tests_declared` vb.) modele göstermemek (harness sabit varsayılan koyar), ölçümü Ollama'nın `prompt_eval_count` değeriyle yapmak (karakter/token yaklaşığı yerine).
+Araç tanımları istemin parçası olduğundan bu iş bittiğinde `SYSTEM_PROMPT_VERSION` artırılır ve biçim ancak ondan sonra dondurulur.
+

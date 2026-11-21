@@ -519,3 +519,84 @@ def test_verify_session_uses_session_envelopes_and_question(thyao_history):
     by = {r.claim.raw: r.verdict for r in rep.claims}
     assert by == {"299,25": "SUPPORTED", "08.09.2026": "ALLOWLISTED", "%7": "HALLUCINATION"}
     assert rep.tier2_enabled is False   # profil B: kanıt paketi yok
+
+
+# =============================== zarf düzeyi alanlar: n_events, n_excluded..., warnings ===============================
+def test_envelope_level_counts_and_warning_numbers_are_in_the_pool():
+    e = env({"x": 1.5})
+    e.update({"n_events": 43, "n_excluded_incomplete_horizon": 7,
+              "warnings": ["HISTORICAL_ONLY: ham laggard hisse-günü: BIMAS 4311, MAVI 227 (toplam 398); olay 2024-12-25"]})
+    rep = verify_numbers("Olay 43, dışlanan 7, MAVI 227, toplam 398, tarih 25.12.2024.", envelopes=[e], question="")
+    by = {r.claim.raw: (r.verdict, r.sources[0].path) for r in rep.claims}
+    assert by["43"] == ("SUPPORTED", "n_events")
+    assert by["7"] == ("SUPPORTED", "n_excluded_incomplete_horizon")
+    assert by["227"] == ("SUPPORTED", "warnings[0]") and by["398"] == ("SUPPORTED", "warnings[0]")
+    assert by["25.12.2024"][0] == "SUPPORTED"
+
+
+def test_envelope_level_pool_does_not_excuse_other_numbers_or_error_envelopes():
+    ok = env({"x": 1.5})
+    ok.update({"n_events": 43, "warnings": ["MULTIPLE_TESTING_RISK: 3 ileri ufuk denendi"]})
+    bad = env(None, status="ERROR")
+    bad.update({"n_events": 9999, "warnings": ["UNUSABLE: 8888"]})
+    rep = verify_numbers("Olay 44, 9999, 8888 ve 3 ufuk.", envelopes=[ok, bad], question="")
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"44": "HALLUCINATION", "9999": "HALLUCINATION",
+                                                           "8888": "HALLUCINATION", "3": "SUPPORTED"}
+
+
+def test_real_retail_historical_only_numbers_are_not_hallucinations(retail_rank_split):
+    """Gerçek retail zarfı (split_date'li): HISTORICAL_ONLY uyarısındaki ham sayılar ve zarf sayaçları alıntılanabilir."""
+    assert retail_rank_split["n_events"] == 43
+    text = ("Ham laggard hisse-günü: BIMAS 43, MAVI 227, MGROS 128 (toplam 398); bağımsızlaştırma sonrası olay: "
+            "BIMAS 9, MAVI 21, MGROS 14 (toplam 44). Toplam olay sayısı 43; ufku dolmayan 1 olay dışlandı. "
+            "Ortak panelden 3 işlem günü düşürüldü (2024-12-25).")
+    rep = verify_numbers(text, envelopes=[retail_rank_split], question="Analiz tarihi: 10.09.2026")
+    assert rep.n_hallucinated == 0, [(r.claim.raw, r.verdict) for r in rep.claims if r.verdict == "HALLUCINATION"]
+    assert rep.by_raw("398").sources[0].path == "warnings[3]"
+    fake = verify_numbers("Toplam 399 laggard hisse-günü.", envelopes=[retail_rank_split], question="")
+    assert fake.by_raw("399").verdict == "HALLUCINATION"        # uydurma sayı hâlâ yakalanır
+
+
+# =============================== ALLOWLISTED_POLICY: modele gösterilen politika bloğundaki sayılar ===============================
+POLICY_TEXT = ("Politika etiketi: INVESTIGATE (G7_NO_SCENARIO)\n"
+               "- FEW_EVENTS: tamamlanmış olay sayısı MIN_EVENTS (20) altında\n"
+               "- FEW_QUARTERS: açıklanmış çeyrek sayısı yetersiz (< 4)")
+
+
+def test_policy_block_numbers_get_their_own_verdict():
+    rep = verify_numbers("Tamamlanmış olay 20 eşiğinin altında; en az 4 çeyrek gerekir.", envelopes=[env({"x": 1.5})],
+                         question="", policy_text=POLICY_TEXT)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "4": "ALLOWLISTED_POLICY"}
+    assert rep.n_allowlisted_policy == 2 and rep.n_allowlisted == 0
+    assert rep.n_claims == 0 and rep.numerical_hallucination_rate == 0.0     # paydaya girmez (ALLOWLISTED gibi)
+    assert rep.claims[0].match_kind is None and rep.claims[0].sources[0].tool == "policy"
+    assert rep.to_dict()["n_allowlisted_policy"] == 2
+
+
+def test_without_policy_text_the_same_numbers_are_hallucinations():
+    rep = verify_numbers("Tamamlanmış olay 20 eşiğinin altında.", envelopes=[env({"x": 1.5})], question="")
+    assert rep.by_raw("20").verdict == "HALLUCINATION" and rep.n_allowlisted_policy == 0
+
+
+def test_policy_allowlist_is_exact_and_does_not_hide_other_numbers():
+    rep = verify_numbers("Eşik 20, ama 21 olay ve 4,5 çeyrek.", envelopes=[env({"x": 1.5})], question="", policy_text=POLICY_TEXT)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "21": "HALLUCINATION", "4,5": "HALLUCINATION"}
+    assert rep.n_claims == 2 and rep.numerical_hallucination_rate == 1.0   # 20 paydaya girmez; 21 ve 4,5 uydurma
+
+
+def test_tool_evidence_wins_over_the_policy_allowlist():
+    rep = verify_numbers("Olay sayısı 20.", envelopes=[env({"n_events_complete": 20})], question="", policy_text=POLICY_TEXT)
+    assert rep.by_raw("20").verdict == "SUPPORTED" and rep.n_allowlisted_policy == 0
+
+
+def test_policy_allowlist_also_rescues_a_number_that_is_in_a_tool_but_not_committed():
+    committed = [{"evidence_id": "E1", "source_input_hash": "a" * 64, "statement": "yalnızca 7 olay", "values": []}]
+    rep = verify_numbers("Eşik 20, 7 olay.", envelopes=[env({"a": 20, "b": 7})], question="", policy_text=POLICY_TEXT,
+                         committed_evidence=committed)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "7": "SUPPORTED"}
+
+
+def test_policy_dates_are_allowlisted_too():
+    rep = verify_numbers("Son kapı 08.09.2026'da çalıştı.", envelopes=[env({"x": 1})], question="",
+                         policy_text="Kapı tarihi 2026-09-08")
+    assert rep.claims[0].verdict == "ALLOWLISTED_POLICY"

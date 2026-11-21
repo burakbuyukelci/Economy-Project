@@ -265,3 +265,30 @@ def test_snapshot_reports_counters_and_mode():
     m = to_calculate_technicals("lenient")
     snap = m.snapshot()
     assert snap["order_mode"] == "lenient" and snap["n_order_violations"] == 0
+
+
+# --- nihai çıktı bayrakları (enforce_final_check, show_policy_label) -------------------------------
+@pytest.mark.parametrize("name,flags", [
+    ("A", (False, False)), ("B", (False, False)), ("C", (False, False)), ("D", (True, True)), ("E", (True, True)),
+])
+def test_final_output_flags_per_stage(name, flags):
+    """Ölçüm her profilde; ZORLAMA ve politika etiketinin modele verilmesi yalnızca D/E (karar: etiket doğruluğu D/E'de
+    büyük ölçüde harness'ten gelir, model başarısı diye raporlanmaz)."""
+    p = PROFILES[name]
+    assert (p.enforce_final_check, p.show_policy_label) == flags
+
+
+def test_d_prime_is_d_without_showing_the_label_and_is_not_one_of_a_to_e():
+    d, dp = get_profile("D"), get_profile("D'")
+    assert dp.name == "D'" and dp == dataclasses.replace(d, name="D'", show_policy_label=False)
+    assert dp.enforce_final_check and not dp.show_policy_label
+    assert "D'" not in PROFILES and list(PROFILES) == ["A", "B", "C", "D", "E"]     # A–E karşılaştırması bozulmaz
+
+
+def test_final_flags_require_the_evidence_and_policy_machinery():
+    base = dict(tools_enabled=True, enforce_states=True, auto_gates=False, human_review=False)
+    with pytest.raises(ValueError):
+        StageProfile("x", evidence=False, enforce_final_check=True, **base)     # politika etiketi için kanıt/kapı gerekir
+    with pytest.raises(ValueError):
+        StageProfile("x", evidence=False, show_policy_label=True, **base)
+    StageProfile("x", evidence=True, enforce_final_check=True, show_policy_label=False, **base)   # D′ biçimi serbest

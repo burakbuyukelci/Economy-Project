@@ -40,7 +40,7 @@ from typing import Any, Iterable, NamedTuple
 
 BUNDLE_TOOL = "build_evidence_bundle"
 
-VERDICTS = ("SUPPORTED", "UNEVIDENCED", "HALLUCINATION", "ALLOWLISTED")
+VERDICTS = ("SUPPORTED", "UNEVIDENCED", "HALLUCINATION", "ALLOWLISTED", "ALLOWLISTED_POLICY")
 _RANK = {"EXACT": 0, "ROUNDED": 1, "ROUNDED_COARSE": 2}  # küçük = daha güçlü eşleşme
 
 _SCALES = {"bin": Decimal(10) ** 3, "milyon": Decimal(10) ** 6, "milyar": Decimal(10) ** 9, "trilyon": Decimal(10) ** 12,
@@ -320,8 +320,13 @@ class VerificationReport:
         return self._n("ALLOWLISTED")
 
     @property
+    def n_allowlisted_policy(self) -> int:
+        """Modele gösterilen politika bloğunda (eşik sayıları vb.) geçen ve araç çıktısında bulunmayan sayılar; ayrı sayılır."""
+        return self._n("ALLOWLISTED_POLICY")
+
+    @property
     def n_claims(self) -> int:
-        return len(self.claims) - self.n_allowlisted
+        return len(self.claims) - self.n_allowlisted - self.n_allowlisted_policy
 
     @property
     def n_supported(self) -> int:
@@ -376,7 +381,8 @@ class VerificationReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "n_claims": self.n_claims, "n_allowlisted": self.n_allowlisted, "n_supported": self.n_supported,
+            "n_claims": self.n_claims, "n_allowlisted": self.n_allowlisted,
+            "n_allowlisted_policy": self.n_allowlisted_policy, "n_supported": self.n_supported,
             "n_unevidenced": self.n_unevidenced, "n_hallucinated": self.n_hallucinated,
             "n_hallucinated_derivable": self.n_hallucinated_derivable,
             "n_exact": self.n_exact, "n_rounded": self.n_rounded, "n_rounded_coarse": self.n_rounded_coarse,
@@ -426,19 +432,29 @@ def _derivation_hint(claim: NumberClaim, operands: list[tuple[Decimal, Decimal]]
 
 
 # =============================== 6. ana fonksiyon ===============================
+# results dışında, zarfın kendisinde bulunan sayı taşıyan alanlar (havuz yolu: "n_events", "warnings[2]" …)
+_ENVELOPE_LEVEL = ("n_events", "n_excluded_incomplete_horizon", "warnings")
+
+
 def _usable(env: dict[str, Any]) -> bool:
     return (env.get("status") == "OK" and str(env.get("tool")) != BUNDLE_TOOL and isinstance(env.get("results"), dict))
 
 
-def _build_allowlist(question: str, envelopes: Iterable[dict[str, Any]]) -> tuple[set[Decimal], set[date]]:
+def _text_pool(text: str, tag: str) -> _Pool:
+    """Bir metindeki (soru, politika bloğu) sayı ve tarihlerin havuzu; kaynak etiketi `tag`."""
     pool = _Pool()
-    for c in extract_claims(question or ""):
+    for c in extract_claims(text or ""):
         if c.kind == "date":
             if c.date is not None:
-                pool.add_date(c.date, Source("question", "", "", c.raw))
+                pool.add_date(c.date, Source(tag, "", "", c.raw))
         else:
             for cand in c.candidates:
-                pool.add_number(cand.value, Source("question", "", "", c.raw))
+                pool.add_number(cand.value, Source(tag, "", "", c.raw))
+    return pool
+
+
+def _build_allowlist(question: str, envelopes: Iterable[dict[str, Any]]) -> tuple[set[Decimal], set[date]]:
+    pool = _text_pool(question, "question")
     for env in envelopes:
         if str(env.get("tool")) != BUNDLE_TOOL:
             pool.add_tree(env.get("params") or {}, tool="params", input_hash=str(env.get("input_hash", "")))
@@ -458,20 +474,35 @@ def _committed_pool(evidence: list[dict[str, Any]]) -> _Pool:
 
 
 def verify_numbers(text: str, *, envelopes: Iterable[dict[str, Any]], question: str = "",
-                   committed_evidence: list[dict[str, Any]] | None = None) -> VerificationReport:
+                   committed_evidence: list[dict[str, Any]] | None = None, policy_text: str = "") -> VerificationReport:
     """Cevap metnindeki sayısal iddiaları denetler.
 
     envelopes          oturumdaki tüm araç zarfları (yalnızca status=OK ve build_evidence_bundle olmayanlar havuza girer)
     question           kullanıcı sorusu (izin listesi)
     committed_evidence kilitli paketin committed_evidence_set'i; None => 2. seviye (KANITSIZ) kapalı
+    policy_text        modele GÖSTERİLEN politika bloğunun metni (etiket, gerekçe kodları, eşik sayıları). Buradaki sayılar araç
+                       çıktısında yoksa HALLUCINATION yerine ALLOWLISTED_POLICY olur (ayrı sayılır, paydaya girmez); araç kanıtı
+                       her zaman önce gelir. Boş metin => özellik kapalı (D′ ve A–C: model bloğu görmez)
     """
     envs = list(envelopes)
     pool = _Pool()
     for env in envs:
         if _usable(env):
-            pool.add_tree(env["results"], tool=str(env["tool"]), input_hash=str(env.get("input_hash", "")))
+            tool, h = str(env["tool"]), str(env.get("input_hash", ""))
+            pool.add_tree(env["results"], tool=tool, input_hash=h)
+            # zarf düzeyi alanlar da araç çıktısıdır: model uyarı metnini ("ham laggard ... toplam 398") ve sayaçları alıntılar
+            pool.add_tree({k: env[k] for k in _ENVELOPE_LEVEL if env.get(k) is not None}, tool=tool, input_hash=h)
     allow_nums, allow_dates = _build_allowlist(question, envs)
     committed = _committed_pool(committed_evidence) if committed_evidence is not None else None
+    policy = _text_pool(policy_text, "policy")
+    policy_nums, policy_dates = set(policy._exact), set(policy.dates)
+
+    def by_policy(claim: NumberClaim) -> ClaimResult | None:
+        if claim.kind == "date":
+            hit = claim.date is not None and claim.date in policy_dates
+        else:
+            hit = any(c.value in policy_nums for c in claim.candidates)
+        return ClaimResult(claim, "ALLOWLISTED_POLICY", sources=[Source("policy", "", "", claim.raw)]) if hit else None
 
     results: list[ClaimResult] = []
     for claim in extract_claims(text):
@@ -480,10 +511,15 @@ def verify_numbers(text: str, *, envelopes: Iterable[dict[str, Any]], question: 
                 results.append(ClaimResult(claim, "ALLOWLISTED"))
                 continue
             srcs = pool.dates.get(claim.date) if claim.date is not None else None
+            in_committed = bool(srcs) and (committed is None or (claim.date in committed.dates))
+            if not in_committed:
+                rescued = by_policy(claim)
+                if rescued is not None:
+                    results.append(rescued)
+                    continue
             if not srcs:
                 results.append(ClaimResult(claim, "HALLUCINATION"))
                 continue
-            in_committed = committed is None or (claim.date in committed.dates)
             results.append(ClaimResult(claim, "SUPPORTED" if in_committed else "UNEVIDENCED", "DATE",
                                        sources=list(srcs[:3])))
             continue
@@ -491,10 +527,15 @@ def verify_numbers(text: str, *, envelopes: Iterable[dict[str, Any]], question: 
             results.append(ClaimResult(claim, "ALLOWLISTED"))
             continue
         match = pool.find(claim)
+        in_committed = match is not None and (committed is None or committed.find(claim) is not None)
+        if not in_committed:
+            rescued = by_policy(claim)
+            if rescued is not None:
+                results.append(rescued)
+                continue
         if match is None:
             results.append(ClaimResult(claim, "HALLUCINATION"))
             continue
-        in_committed = committed is None or committed.find(claim) is not None
         results.append(ClaimResult(claim, "SUPPORTED" if in_committed else "UNEVIDENCED", match.kind,
                                    rounding=match.rounding, sources=list(match.sources)))
 
@@ -520,10 +561,10 @@ def verify_numbers(text: str, *, envelopes: Iterable[dict[str, Any]], question: 
 
 
 def verify_session(session: Any, text: str) -> VerificationReport:
-    """Bir HarnessSession için: oturum zarfları + soru + (kilitliyse) committed_evidence_set."""
+    """Bir HarnessSession için: oturum zarfları + soru + (kilitliyse) committed_evidence_set + (gösterildiyse) politika bloğu."""
     committed = None
     bundle = getattr(session, "bundle", None)
     if bundle is not None and bundle.locked:
         committed = bundle.snapshot()["committed_evidence_set"]
     return verify_numbers(text, envelopes=[r.envelope for r in session.store.records], question=session.question,
-                          committed_evidence=committed)
+                          committed_evidence=committed, policy_text=getattr(session, "policy_text", "") or "")
