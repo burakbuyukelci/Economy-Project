@@ -561,6 +561,40 @@ THYAO'da 2024-04-09 veri boşluğu, sınır haftası); `HOLIDAY_WEEKS_EXCLUDED` 
 - **Tip son kapanışa göredir:** seviye ≤ `last_close` → `SUPPORT`, aksi `RESISTANCE`. `nearest_support` = en yüksek destek seviyesi, `nearest_resistance` = en düşük direnç seviyesi (tüm kümelerden; listelenenlerle aynı).
 - **`strength`** = `Σ 0,5^(yaş/126) × min(2, pivot barı hacmi / aralık medyan hacmi)`; yaş = o bardan son bara bar sayısı (yarı ömür 126 bar ≈ 6 ay; hacim ağırlığı üst sınırı 2). Sabitler modülde (`RECENCY_HALF_LIFE_BARS`, `VOLUME_WEIGHT_CAP`),
   ileri getiriye bakılmadan seçilmiştir. Birimsiz bir skordur; seviyeler arası göreli karşılaştırma içindir.
+- **Mesafeler (şema 1.3.0):** `nearest_support_distance_pct = (last_close − nearest_support) / last_close × 100`, `nearest_resistance_distance_pct = (nearest_resistance − last_close) / last_close × 100` (pozitif; yuvarlanmış değerlerden türer). THYAO: 0,6929 ve 0,923.
 - **Hafif zarf:** her yönde en yakın 5 seviye listelenir (`MAX_LEVELS_PER_SIDE`); sıra: önce dirençler (yakından uzağa), sonra destekler (yakından uzağa). Fazlası varsa uyarıda toplam sayı yazılır.
 - **Gerçek örnek (v2, `as_of = 2026-09-10`, varsayılan parametreler):** THYAO `last_close = 299,25`, `nearest_support = 297,1765` (9 dokunuş, son 2026-05-05), `nearest_resistance = 302,012` (5 dokunuş, son 2026-06-03).
   Seviye fiyatları adjusted ölçeklidir. Bu seviyeler geçmiş pivotlardır; gelecekte tutacağı garanti değildir (`HISTORICAL_ONLY`).
+
+## 19. Teknik dönüş olayları (`detect_reversal_events`, `tools/detect_reversal_events.py`)
+### 19.1 Kapsam
+Tek yönlü dört aile: `BB_LOWER_TOUCH` (UP), `BB_UPPER_TOUCH` (DOWN), `RSI_LOCAL_TROUGH` (UP), `RSI_LOCAL_PEAK` (DOWN). Olayları hem yukarı hem aşağı yönlü olabilen aileler
+(`BB_MID_TEST`, `SUPERTREND_FLIP`, `KAMA_*`, `ICHIMOKU_*`, `SR_TOUCH`) `status = ERROR`, `error.code = UNSUPPORTED_EVENT_FAMILY` döner (neden: sonuçta tek bir `expected_direction` var; çözüm önerisi `schema_wishlist.md` §11, `event_direction`).
+
+### 19.2 Olay tanımı
+- **Ham olay günü:** Bollinger'da §4'teki temas günü (`touch_mode`); RSI'da yerel dip/zirve **teyit günü** (`RSI[t−1]` son 5 değerin en küçüğü/büyüğü ve `RSI[t]` yön değiştirdi; bkz. `calibration_thresholds.md`).
+- **Olay = ardışık ham gün serisinin İLK günü** (önceki işlem günü ham gün değilse). Gerekçe: ardışık temas günlerini ayrı olay saymak `n_events`'i şişirir ve ileri pencereleri örtüştürür (rank'taki cooldown sorunuyla aynı).
+  `n_raw_event_days` (şema 1.3.0): grubun olaylarına ait serilerin toplam ham gün sayısı (koşulsuz grupta: analiz penceresinde başlayan tüm serilerin toplamı). `n_overlapping_forward_windows`: bir sonraki olay en fazla `max(forward_horizons)` işlem günü sonraysa sayılır.
+- **İleri getiri:** olay günü kapanışından `t+h` kapanışına, adjusted. Başarı: beklenen yönde `> 0` (eşitlik başarı değil). `reversal_strength_pct` (MFE) = `t+1..t+h` kapanışları boyunca beklenen yönde en büyük hareket, **en az 0**
+  (hiç lehte kapanış yoksa 0). `ForwardReturn.return_pct` HAM getiridir; `HorizonStats` (ortalama, medyan, maliyet sonrası) YÖNLÜdür (DOWN'da işaret çevrilir: pozitif = beklenen yönde). Maliyet sonrası = yönlü ortalama − tur maliyeti (§5).
+- **Ufku dolmamış olay (kural 2):** `t+h` veri sonunu (`as_of`) aşarsa o ufkun istatistiğine girmez, `n_excluded_incomplete_horizon`; olay kaydında `complete = false`, getiri alanları `null`. Zarfta `n_events` = koşulsuz grup `n_events_detected`; `n_excluded_incomplete_horizon` = koşulsuz grubun EN UZUN ufuktaki dışlananı.
+- **Baz:** aynı dönem (`t ≥ analysis_start`), aynı ufuk, tüm günler (yönlü getiri; olay şartı yok, örtüşen pencereler dahil). `mean_diff_vs_baseline_pct` = olay ortalaması − baz ortalaması.
+- **IS/OOS:** `split_date` verilirse olay günü `< split_date` IS, `≥ split_date` OOS. `oos_degradation_flag` §9 kuralı (`tools/stability.py`); OOS tamamlanmış olay `< MIN_OOS_EVENTS` ise `false` + `OOS_TOO_SMALL`. Uyarılar grup başına tek satırdır.
+- **Birleşik koşullar:** olay koşuldan bağımsız belirlenir, koşul olayı OLAY GÜNÜNÜN gösterge durumlarına göre süzer (durum `None` ise eşleşmez). Koşullu grup koşulsuz grubun alt kümesidir. Her koşul ek bir karşılaştırmadır (`MULTIPLE_TESTING_RISK`; araç p-değeri üretmez).
+- **Rejim kırılımı** (en uzun ufuk, tamamlanmış olaylar): `XU100_UP/DOWN` = olay gününe kadar son 20 işlem günü XU100 getirisi `> 0` / `≤ 0`; `HIGH/LOW_VOLATILITY` = hissenin 20 günlük volatilitesi, o güne kadarki tüm 20 günlük volatiliteler medyanının üstünde/altında (genişleyen, nedensel medyan). **Varsayım:** şema rejim tanımını vermiyor; bu tanımlar ekibe aittir.
+- `events` listesi en son 100 olayı taşır (`events_truncated`).
+
+### 19.3 Gerçek örnek (v2, ASELS, `BB_LOWER_TOUCH`, `touch_mode = close`, `as_of = 2026-09-10`, analiz 2024-01-01 → 2026-09-10, `split_date = 2026-01-01`, ufuklar 1/3/5/10; test: `tests/tools/test_detect_reversal_events.py`)
+- **Koşulsuz:** 17 ham temas günü → **12 olay** (IS 9, OOS 3), 5 olayın ileri penceresi bir sonrakiyle çakışıyor, ufku dolmamış 0.
+  Olaylar: 2024-03-26, 04-02, 05-29, 06-11, 07-01, 08-02, 2025-10-16, 11-06, 11-11, 2026-05-21, 05-26, 06-04.
+
+| Ufuk | n | İsabet % | Ort. getiri % | Medyan % | Maliyet sonrası ort. % | Baz isabet % | Baz ort. % | Fark (ort.) pp | IS / OOS isabet % |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 12 | 66,67 | 0,8680 | 1,0194 | 0,3680 | 52,61 | 0,3558 | +0,5122 | 55,56 / 100,0 |
+| 3 | 12 | 66,67 | 1,9797 | 0,8195 | 1,4797 | 58,30 | 1,0653 | +0,9144 | 66,67 / 66,67 |
+| 5 | 12 | 66,67 | 2,9608 | 3,1341 | 2,4608 | 59,22 | 1,7803 | +1,1805 | 66,67 / 66,67 |
+| 10 | 12 | 50,00 | 2,7972 | −0,0546 | 2,2972 | 61,78 | 3,6015 | −0,8043 | 55,56 / 33,33 |
+
+- **Birleşik (Soru 3):** `rsi_trough_high_volume` (RSI `LOCAL_LOW` + hacim `HIGH` aynı gün): **0 olay**; `supertrend_bearish_below_cloud` (Supertrend `BEARISH` + Ichimoku `BELOW_CLOUD`): **5 olay**.
+- **Yorum sınırları:** ASELS'in analiz dönemi yukarı eğilimlidir (baz isabet %52–62), 10 günde olay isabeti bazın altındadır; olay sayısı `MIN_EVENTS`'in (20) altındadır (`FEW_EVENTS`), OOS 3 olaydır (`OOS_TOO_SMALL`). Hiçbiri kesin sonuç değildir (`HISTORICAL_ONLY`).
+- **Not (RSI koşulu):** RSI durumu olay GÜNÜNDE değerlendirilir. Bollinger teması fiyat düşerken oluştuğundan, aynı gün RSI'ın yukarı dönmesi (teyit) nadirdir; bu yüzden "RSI dibi + yüksek hacim" birleşik koşulu çoğu hissede 0–birkaç olay verir. "Son k günde RSI dibi" gibi geriye bakan bir koşul ayrı bir tasarım kararıdır (şimdilik yok).

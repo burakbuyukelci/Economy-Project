@@ -59,3 +59,13 @@ Dağılım: p1 = −1,78 · p5 = −1,34 · p10 = −1,12 · p25 = −0,74 · me
 
 Gerekçe: ±1σ simetrik ve yorumlaması kolay; hisseler arası dağılım homojen (HIGH %14,6–19,3). Not: HIGH ve LOW payları
 birbirine eşit değildir (sağa çarpıklık). Birleşik koşullarla (ör. dip + yüksek hacim) olay sayısı hızla düşer; `FEW_EVENTS` uyarısı bunu yakalar.
+
+## RSI yerel dip/zirve durumu (`detect_reversal_events`, 2026-11-21)
+| Sabit | Değer | Yer | Anlam |
+|---|---|---|---|
+| `RSI_LOCAL_WINDOW` | 5 | `tools/detect_reversal_events.py` | `t` günü: `RSI[t−1]`, `RSI[t−5..t−1]` penceresinin en küçüğü ve `RSI[t] > RSI[t−1]` ise `LOCAL_LOW`; en büyüğü ve `RSI[t] < RSI[t−1]` ise `LOCAL_HIGH`; aksi `NEUTRAL` |
+| `REGIME_WINDOW` | 20 | `tools/detect_reversal_events.py` (= `VOLATILITY_WINDOW`) | rejim kırılımı: XU100 son 20 gün getirisi ve hissenin 20 günlük volatilitesi |
+
+**Getirilere bakılmadan seçildi.** `w = 5` bir işlem haftasıdır; seçim ileri getiriye, isabet oranına ya da olay sonuçlarına bakılmadan, tanımın okunabilirliği (kısa vadeli yerel dönüş) gerekçesiyle yapıldı.
+Bu sabit sonradan olay sonuçlarına bakılarak DEĞİŞTİRİLMEZ (üstteki ilkeyle aynı): aksi halde eşik seçimi olay istatistiklerinde gizli bir çoklu-test kaynağı olur.
+Sabitler araç modülündedir (`config/` ortak bölgedir; taşınması istenirse onay gerekir). **Teyit günü olay günüdür:** yerel dip ancak ertesi gün (RSI dönünce) bilinebilir; olay günü bilginin ilk mümkün olduğu gündür, bu yüzden look-ahead yoktur.
