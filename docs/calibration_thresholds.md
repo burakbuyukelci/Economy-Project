@@ -69,3 +69,11 @@ birbirine eşit değildir (sağa çarpıklık). Birleşik koşullarla (ör. dip 
 **Getirilere bakılmadan seçildi.** `w = 5` bir işlem haftasıdır; seçim ileri getiriye, isabet oranına ya da olay sonuçlarına bakılmadan, tanımın okunabilirliği (kısa vadeli yerel dönüş) gerekçesiyle yapıldı.
 Bu sabit sonradan olay sonuçlarına bakılarak DEĞİŞTİRİLMEZ (üstteki ilkeyle aynı): aksi halde eşik seçimi olay istatistiklerinde gizli bir çoklu-test kaynağı olur.
 Sabitler araç modülündedir (`config/` ortak bölgedir; taşınması istenirse onay gerekir). **Teyit günü olay günüdür:** yerel dip ancak ertesi gün (RSI dönünce) bilinebilir; olay günü bilginin ilk mümkün olduğu gündür, bu yüzden look-ahead yoktur.
+
+### RSI DURUMU: geriye bakan pencere (2026-11-21)
+| Sabit | Değer | Yer | Anlam |
+|---|---|---|---|
+| `RSI_STATE_LOOKBACK_DAYS` | 5 | `tools/detect_reversal_events.py` | `t` günü `LOCAL_LOW` = son 5 işlem günü içinde (`t` dahil) TEYİT EDİLMİŞ bir yerel dip var; `LOCAL_HIGH` simetrik; ikisi de varsa en son teyit edilen; yoksa `NEUTRAL` |
+
+`ConditionSet.rsi_state` ve olay kaydındaki `states.rsi` bu tanımı kullanır. `RSI_LOCAL_TROUGH/PEAK` olay ailesi noktasal teyit gününde (`RSI_LOCAL_WINDOW = 5`) kalır. **Getirilere bakılmadan seçildi:** 5 = `RSI_LOCAL_WINDOW` ile aynı (bir işlem haftası);
+neden: aynı gün teyit şartı Bollinger temasıyla nadiren çakışıyordu (ASELS'te 0 olay), geriye bakan pencere temas sırasında "yakın zamanda dönüş" durumunu yakalar. Pencere sonradan olay sonuçlarına bakılarak DEĞİŞTİRİLMEZ. Nedensellik: `t` günündeki durum yalnızca `≤ t` verisinden gelir (test: önek değişmezliği).

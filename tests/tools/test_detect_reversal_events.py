@@ -53,6 +53,23 @@ def test_rsi_local_state_is_causal():
         assert tool.rsi_local_state(rsi[:t + 1], 5) == full[:t + 1]
 
 
+def test_rsi_lookback_state_hand_examples():
+    L, H, N = RsiState.LOCAL_LOW, RsiState.LOCAL_HIGH, RsiState.NEUTRAL
+    point = [None, N, N, L, N, N, N, N]
+    assert tool.rsi_lookback_state(point, 3) == [None, N, N, L, L, L, N, N]  # teyit t=3; 3 gün (t=3,4,5) geçerli
+    assert tool.rsi_lookback_state([N, L, N, H, N, N], 3) == [N, L, L, H, H, H]  # ikisi de varsa EN SON teyit
+    assert tool.rsi_lookback_state([N, L, H, N], 3)[3] == H
+    assert tool.rsi_lookback_state([L, N, N, N, N, N], 5) == [L, L, L, L, L, N]  # varsayılan pencere 5 (t dahil)
+
+
+def test_rsi_lookback_state_is_causal():
+    rng = np.random.default_rng(3)
+    pt = tool.rsi_local_state(50 + 20 * np.sin(np.arange(80) / 3) + rng.normal(0, 2, 80), 5)
+    full = tool.rsi_lookback_state(pt)
+    for t in (10, 30, 55, 79):
+        assert tool.rsi_lookback_state(pt[:t + 1]) == full[:t + 1]
+
+
 def test_series_starts_and_overlap():
     assert tool.series_starts(np.array([0, 1, 1, 0, 1], bool)) == [(1, 2), (4, 1)]
     assert tool.series_starts(np.zeros(3, bool)) == []
@@ -379,3 +396,18 @@ def test_real_events_are_never_after_as_of_and_forward_windows_complete():
         for e in g.events:
             for f in e.forward_returns:
                 assert (f.return_pct is not None) == f.complete
+
+
+@needs_snapshot
+def test_real_asels_rsi_lookback_condition():
+    """RSI dibi koşulu geriye bakar (son 5 gün, t dahil): 12 olaydan 6'sı; hacim HIGH ile birlikte 0 (HIGH hacimli 2 olayda RSI NEUTRAL)."""
+    r = res(real(condition_sets=[{"label": "rsi_trough", "rsi_state": "LOCAL_LOW"},
+                                 {"label": "rsi_trough_high_volume", "rsi_state": "LOCAL_LOW", "volume_regime": "HIGH"},
+                                 {"label": "high_volume", "volume_regime": "HIGH"}]))
+    u, rt, rth, hv = r.groups
+    assert (u.n_events_detected, rt.n_events_detected, rth.n_events_detected, hv.n_events_detected) == (12, 6, 0, 2)
+    assert all(e.states.rsi == RsiState.LOCAL_LOW for e in rt.events)
+    assert [e.date.isoformat() for e in rt.events] == ["2024-05-29", "2024-07-01", "2024-08-02", "2025-11-11", "2026-05-21", "2026-05-26"]
+    h5 = next(b for b in rt.per_horizon if b.horizon == 5).full
+    assert (h5.n_events_complete, h5.hit_rate_pct, h5.mean_return_pct) == (6, 66.6667, 2.9199)
+    assert {e.states.rsi.value for e in hv.events} == {"NEUTRAL"}

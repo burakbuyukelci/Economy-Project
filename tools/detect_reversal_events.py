@@ -6,8 +6,9 @@ KAPSAM: tek yönlü dört aile (BB_LOWER_TOUCH, BB_UPPER_TOUCH, RSI_LOCAL_TROUGH
 TANIMLAR (docs/data_dictionary.md §19):
   * Ham olay günü: Bollinger'da temas günü (§4, `touch_mode`); RSI'da "yerel dip/zirve teyit günü" (aşağıda).
   * OLAY = ardışık ham gün serisinin İLK günü (seri, o gün öncesinde ham gün yoksa başlar). Ham gün sayısı `n_raw_event_days`.
-  * RSI durumu (w = 5, TEYİT GÜNÜ olay günüdür): `RSI[t-1]`, `RSI[t-w..t-1]` pencerenin en küçüğü ve `RSI[t] > RSI[t-1]` ise LOCAL_LOW;
+  * RSI NOKTASAL durumu (olay ailesi; w = 5, TEYİT GÜNÜ olay günüdür): `RSI[t-1]`, `RSI[t-w..t-1]` pencerenin en küçüğü ve `RSI[t] > RSI[t-1]` ise LOCAL_LOW;
     `RSI[t-1]` pencerenin en büyüğü ve `RSI[t] < RSI[t-1]` ise LOCAL_HIGH; aksi NEUTRAL. t günü yalnızca <= t verisini kullanır.
+  * RSI DURUMU (ConditionSet.rsi_state ve EventStates.rsi): son 5 işlem günü (t dahil) içinde teyit edilmiş yerel dip/zirve (RSI_STATE_LOOKBACK_DAYS).
   * İleri getiri: olay günü kapanışından t+h kapanışına (adjusted). Başarı: beklenen yönde > 0 (eşitlik başarı değil).
     MFE (`reversal_strength_pct`): t+1..t+h kapanışları boyunca beklenen yönde en büyük hareket, en az 0.
   * İstatistikler (HorizonStats) YÖNLÜDÜR: DOWN beklentisinde getiri işareti çevrilir (pozitif = beklenen yönde).
@@ -47,6 +48,7 @@ from tools.stability import oos_degradation
 TOOL = ToolName.DETECT_REVERSAL_EVENTS
 ROUND = 4
 RSI_LOCAL_WINDOW = 5      # docs/calibration_thresholds.md: getirilere bakılmadan seçildi
+RSI_STATE_LOOKBACK_DAYS = 5  # RSI DURUMU (koşul/states): son 5 işlem günü (t dahil) içinde teyit edilmiş yerel dip/zirve; getirilere bakılmadan seçildi
 REGIME_WINDOW = VOLATILITY_WINDOW  # 20 işlem günü
 MAX_EVENTS_LISTED = 100
 SINGLE_LABEL = "single_indicator"
@@ -84,6 +86,25 @@ def rsi_local_state(rsi: np.ndarray, w: int = RSI_LOCAL_WINDOW) -> list[RsiState
             out.append(RsiState.LOCAL_HIGH)
         else:
             out.append(RsiState.NEUTRAL)
+    return out
+
+
+def rsi_lookback_state(point: list[RsiState | None], k: int = RSI_STATE_LOOKBACK_DAYS) -> list[RsiState | None]:
+    """RSI DURUMU (ConditionSet.rsi_state / EventStates.rsi): gün t'de, son k işlem günü içinde (t dahil) TEYİT EDİLMİŞ
+    yerel dip varsa LOCAL_LOW, yerel zirve varsa LOCAL_HIGH; ikisi de varsa EN SON teyit edilen kazanır; yoksa NEUTRAL.
+    point[t] None (ısınma) ise None. Olay AİLESİ (RSI_LOCAL_TROUGH/PEAK) noktasal teyit gününü kullanır, bu fonksiyonu DEĞİL.
+    Örnek (k=3): point=[N, N, LOW, N, N, N] -> t=2,3,4: LOCAL_LOW; t=5: NEUTRAL (teyit 3 günden eski). Yalnızca <= t verisi."""
+    out: list[RsiState | None] = []
+    for t, cur in enumerate(point):
+        if cur is None:
+            out.append(None)
+            continue
+        state = RsiState.NEUTRAL
+        for j in range(t, max(-1, t - k), -1):
+            if point[j] in (RsiState.LOCAL_LOW, RsiState.LOCAL_HIGH):
+                state = point[j]
+                break
+        out.append(state)
     return out
 
 
@@ -167,7 +188,8 @@ def build_events(px: pd.DataFrame, cfg, family: EventFamily, touch_mode: str, an
         return col[next(k for k in col if k.startswith(prefix))]
 
     lower, upper, rsi = pick("BB_LOWER_"), pick("BB_UPPER_"), pick("RSI_")
-    rsi_state = rsi_local_state(rsi)
+    rsi_point = rsi_local_state(rsi)            # noktasal teyit günü (olay ailesi için)
+    rsi_state = rsi_lookback_state(rsi_point)   # geriye bakan durum (koşullar ve states için)
     st = {k: v.tolist() for k, v in comp.states.items()}
     low, high = px["low"].to_numpy(float), px["high"].to_numpy(float)
     with np.errstate(invalid="ignore"):
@@ -176,9 +198,9 @@ def build_events(px: pd.DataFrame, cfg, family: EventFamily, touch_mode: str, an
         elif family == EventFamily.BB_UPPER_TOUCH:
             raw = (close if touch_mode == "close" else high) >= upper
         elif family == EventFamily.RSI_LOCAL_TROUGH:
-            raw = np.array([s == RsiState.LOCAL_LOW for s in rsi_state])
+            raw = np.array([s == RsiState.LOCAL_LOW for s in rsi_point])
         else:
-            raw = np.array([s == RsiState.LOCAL_HIGH for s in rsi_state])
+            raw = np.array([s == RsiState.LOCAL_HIGH for s in rsi_point])
     raw = np.asarray(raw, bool)
     a_start = int(np.searchsorted(dates.to_numpy(), np.datetime64(analysis_start), side="left"))
     series = [(i, ln) for i, ln in series_starts(raw) if i >= a_start]
