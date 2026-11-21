@@ -155,7 +155,7 @@ def ok(content="", tool_calls=None, **extra):
 
 def test_request_carries_model_temperature_context_seed_and_no_streaming(server):
     server.responses.append(ok("cevap", prompt_eval_count=120, eval_count=7))
-    b = OllamaBackend(host=server.url, model="qwen-test", temperature=0.0, num_ctx=4096, seed=42)
+    b = OllamaBackend(host=server.url, model="qwen-test", temperature=0.0, num_ctx=4096, seed=42, tool_mode="native")
     r = b.chat(MESSAGES, TOOLS)
     req = server.requests[0]
     assert req["path"] == "/api/chat"
@@ -168,6 +168,7 @@ def test_request_carries_model_temperature_context_seed_and_no_streaming(server)
 
 
 def test_defaults_come_from_settings(server, monkeypatch):
+    monkeypatch.setenv(settings.LLM_TOOL_MODE_ENV, "native")
     monkeypatch.setenv(settings.LLM_MODEL_ENV, "env-model")
     monkeypatch.setenv(settings.LLM_NUM_CTX_ENV, "2048")
     monkeypatch.setenv(settings.OLLAMA_HOST_ENV, server.url)
@@ -182,7 +183,7 @@ def test_defaults_come_from_settings(server, monkeypatch):
 def test_tool_calls_are_parsed_with_dict_or_json_string_arguments(server):
     server.responses.append(ok("", [{"function": {"name": "get_stock_history", "arguments": {"ticker": "THYAO", "as_of": "2026-09-10"}}},
                                     {"function": {"name": "check_data_quality", "arguments": '{"tickers": ["THYAO"]}'}}]))
-    r = OllamaBackend(host=server.url, model="m").chat(MESSAGES, TOOLS)
+    r = OllamaBackend(host=server.url, model="m", tool_mode="native").chat(MESSAGES, TOOLS)
     assert r.tool_calls == (ToolCall("get_stock_history", {"ticker": "THYAO", "as_of": "2026-09-10"}),
                             ToolCall("check_data_quality", {"tickers": ["THYAO"]}))
 
@@ -191,7 +192,7 @@ def test_tool_calls_are_parsed_with_dict_or_json_string_arguments(server):
 def test_unusable_tool_arguments_are_an_llm_error_not_a_silent_empty_call(server, args):
     server.responses.append(ok("", [{"function": {"name": "x", "arguments": args}}]))
     with pytest.raises(LLMError):
-        OllamaBackend(host=server.url, model="m").chat(MESSAGES, TOOLS)
+        OllamaBackend(host=server.url, model="m", tool_mode="native").chat(MESSAGES, TOOLS)
 
 
 def test_prompt_at_the_context_limit_is_reported_instead_of_silently_truncated(server):
@@ -264,3 +265,62 @@ def test_only_llm_backend_imports_network_libraries_and_no_cloud_sdk_anywhere():
             if bad:
                 offenders[str(py.relative_to(root))] = bad
     assert not offenders, offenders
+
+
+# =============================== metin tabanlı araç protokolü (Gemma 3 varsayılanı) ===============================
+from harness.text_protocol import TOOL_CALL_CLOSE, TOOL_CALL_OPEN  # noqa: E402
+
+STRUCTURED = [{"role": "system", "content": "SİSTEM"}, {"role": "user", "content": "soru"},
+              {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "get_stock_history", "arguments": {"ticker": "THYAO"}}}]},
+              {"role": "tool", "name": "get_stock_history", "content": "{\"status\":\"OK\"}"}]
+
+
+def test_text_mode_is_the_default_and_needs_no_native_tool_support():
+    assert settings.llm_tool_mode() == "text"
+    with pytest.raises(ValueError):
+        OllamaBackend(host="http://127.0.0.1:1", model="m", tool_mode="olmayan")
+
+
+def test_text_mode_sends_the_tools_inside_the_prompt_and_never_as_a_tools_field(server):
+    server.responses.append(ok("HAZIR"))
+    OllamaBackend(host=server.url, model="gemma3:4b").chat(STRUCTURED, TOOLS)
+    body = server.requests[0]["body"]
+    assert "tools" not in body
+    assert [m["role"] for m in body["messages"]] == ["system", "user", "assistant", "user"]           # tool rolü ve tool_calls alanı yok
+    assert "get_stock_history" in body["messages"][0]["content"] and "OHLCV" in body["messages"][0]["content"]
+    assert body["messages"][2]["content"].startswith(TOOL_CALL_OPEN) and "<tool_response" in body["messages"][3]["content"]
+    assert "tool_calls" not in str(body["messages"])
+    assert body["options"]["stop"] == ["<tool_response name="]                                         # uydurma araç sonucu yazılamaz
+
+
+def test_text_mode_parses_tool_calls_from_the_reply_text(server):
+    server.responses.append(ok('Önce veri.\n' + TOOL_CALL_OPEN + '{"name": "get_stock_history", "arguments": {"ticker": "THYAO"}}' + TOOL_CALL_CLOSE,
+                               prompt_eval_count=500, eval_count=40))
+    r = OllamaBackend(host=server.url, model="gemma3:4b").chat(STRUCTURED, TOOLS)
+    assert r.tool_calls == (ToolCall("get_stock_history", {"ticker": "THYAO"}),) and r.text == "Önce veri." and r.format_error is None
+    assert r.prompt_tokens == 500 and r.completion_tokens == 40
+
+
+def test_text_mode_plain_reply_has_no_calls(server):
+    server.responses.append(ok("HAZIR"))
+    r = OllamaBackend(host=server.url, model="m").chat(STRUCTURED, TOOLS)
+    assert r.text == "HAZIR" and not r.has_tool_calls and r.format_error is None
+
+
+def test_text_mode_malformed_call_is_reported_as_a_format_error_not_an_exception(server):
+    server.responses.append(ok(TOOL_CALL_OPEN + "{bozuk" + TOOL_CALL_CLOSE))
+    r = OllamaBackend(host=server.url, model="m").chat(STRUCTURED, TOOLS)
+    assert r.format_error and not r.has_tool_calls
+
+
+def test_a_native_tool_calls_field_in_a_text_mode_reply_is_ignored_in_favour_of_text(server):
+    server.responses.append(ok("metin", [{"function": {"name": "x", "arguments": {}}}]))
+    r = OllamaBackend(host=server.url, model="m").chat(STRUCTURED, TOOLS)
+    assert not r.has_tool_calls and r.text == "metin"
+
+
+def test_text_mode_without_tools_adds_no_block(server):
+    server.responses.append(ok("x"))
+    OllamaBackend(host=server.url, model="m").chat([{"role": "system", "content": "S"}, {"role": "user", "content": "q"}], None)
+    assert server.requests[0]["body"]["messages"][0]["content"] == "S"
+

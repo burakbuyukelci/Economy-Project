@@ -441,6 +441,10 @@ class HarnessSession:
         self.log.append("HARNESS_ERROR", tool=tool.value, code=code, message=message)
         return ToolCallResult(ok=False, error={"type": "HARNESS_ERROR", "code": code, "message": message})
 
+    def malformed_call(self, message: str) -> ToolCallResult:
+        """Metin protokolünde bozuk araç çağrısı biçimi: geçersiz çağrı olarak sayılır ve loglanır, durum ilerlemez."""
+        return self._invalid("malformed_tool_call", "MALFORMED_TOOL_CALL", message)
+
     def _safe_failure_result(self) -> ToolCallResult:
         ev = self.log.of_kind("SAFE_FAILURE")[-1]
         gate = ev["gate_status"]

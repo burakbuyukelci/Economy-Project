@@ -355,7 +355,7 @@ Fine-tune kayıtları çıkarımdaki istemle birebir aynı olmak zorundadır. A�
 
 | Aşama | Mesaj dizisi (rol: içerik) |
 |---|---|
-| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı: as_of, varsayılanlar, OOS kuralı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç tanımları ayrı `tools` alanında (13 araç; D/E'de kapı ve kanıt paketi yok): `harness/tool_view.py` görünümü (kısa description, sadeleştirilmiş şema, gizli gelişmiş parametreler; bkz. 13.2). |
+| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı: as_of, varsayılanlar, OOS kuralı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç tanımları (13 araç; D/E'de kapı ve kanıt paketi yok): `harness/tool_view.py` görünümü (kısa description, sadeleştirilmiş şema, gizli gelişmiş parametreler; bkz. 13.2). **Gemma 3 için araçlar ayrı bir alanda DEĞİL, sistem mesajının sonunda METİN olarak verilir ve çağrılar/sonuçlar metin etiketleriyle taşınır (13.4); eğitim kaydı `harness.text_protocol.encode_messages` çıktısıdır.** |
 | **Geçiş** | Model araç çağırmadan metin yazar (D/E'de `HAZIR`). Harness `request_explanation` der; reddedilirse `user`: `Açıklama aşamasına geçilemedi (<kod>): <mesaj>. Eksik adımları araç çağrılarıyla tamamlayın.` |
 | **2. Nihai aşama (D/E)** | `user`: `POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):` + `EYLEM: <ETİKET>` + `Kural:` + `Kalite kapısı:` + `Gerekçeler:` (`- KOD: mesaj`) + boş satır + `FINAL_INSTRUCTION` → `assistant`: nihai metin (araç yok, `tools` alanı boş). Son satır `EYLEM: <ETİKET>`. |
 | **2. Nihai aşama (A–C, D′)** | Blok ve ek istem yok: araç çağrısız ilk `assistant` metni nihai metindir. |
@@ -388,4 +388,16 @@ Eğitim kayıtları için kural (karar): **`training/RULES.md` madde 5 aynen ge�
   rank'te `per_ticker` yalnızca ÖZNE satırı tam (diğerleri özet sayı), `ranking` sıkıştırılır, `view_trimmed` işareti konur. Gerçek retail zarfı ~13,3 bin → ~yarı.
 * **Bağlam (hedef ≤ 6000 token, karakter/3):** Q3, Q4, Q5 uyuyor; **Q1 tepe ~7,4 bin, Q2 ~6,3 bin** (strict xfail). Kalan yük araç tanımları (~2,8 bin token) + havuzlu bloklar (rank) ve `per_day` blokları (weekday). Daha fazla kırpmak modelin gördüğü
   sonuçları azaltır (sahibin kararı); bunun yerine **eğitim üreticisi her oturumun gerçek token sayısını (Gemma tokenizer) ölçüp seq len 6144'ü aşanları eler**, canlıda bağlam `num_ctx` ile açılır.
+
+### 13.4 Metin tabanlı araç protokolü (`harness/text_protocol.py`, `TEXT_PROTOCOL_VERSION = "1"`)
+Gemma 3'ün Ollama şablonunda yerel araç çağırma yoktur/güvenilmezdir; bu yüzden `OllamaBackend` varsayılan olarak `tool_mode="text"` çalışır (`HARNESS_TOOL_MODE=native` Qwen/Llama gibi destekleyen modeller için):
+* **İstem:** `render_tools_block` araç listesini (ad, kısa açıklama, sıkıştırılmış şema) sistem mesajının SONUNA ekler; istek gövdesinde `tools` alanı YOKTUR.
+* **Çağrı:** model `<tool_call>{"name": "...", "arguments": {...}}</tool_call>` yazar (bir yanıtta birden çok blok olabilir). **Sonuç:** `user` rolünde `<tool_response name="...">
+{görünüm JSON}
+</tool_response>`.
+  Yalnızca system/user/assistant rolleri vardır; ardışık aynı roller birleştirilir (Gemma şablonu user/assistant alternasyonu ister). Üretim `<tool_response name=` dizesinde durdurulur (`options.stop`): model uydurma araç sonucu yazamaz.
+* **Bozuk çağrı** (geçersiz JSON, kapanmamış etiket, `arguments` nesne değil; bir blok bozuksa HİÇBİRİ çalıştırılmaz): istemci `ModelReply.format_error` döner; orkestratör bunu **`MALFORMED_TOOL_CALL` geçersiz araç çağrısı** olarak sayar/loglar ve modele düzeltme mesajı verir
+  (nihai aşamada diğer araç çağrıları gibi reddedilir, hak harcanmaz). Markdown çit (```json) etiket içinde tolere edilir.
+* **Eğitim = çıkarım:** eğitim verisi biçimlendirmesi `encode_messages(messages, tools)` çıktısını kullanır (tek kod yolu); `chat_template` Gemma'nın kendisidir (Modelfile `TEMPLATE`, training/README.md).
+* Gerçek model testi (Bilgisayar 1, Ollama): bu bilgisayarda Ollama yok; istemci yerel bir HTTP sahte sunucusuna karşı sınanır (`tests/harness/test_llm_backend.py`). Model adı varsayılanı `gemma3:4b`; fine-tune sonrası kendi ad.
 

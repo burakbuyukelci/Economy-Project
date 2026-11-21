@@ -98,6 +98,16 @@ def run_session(question: str, backend: LLMBackend, *, profile: str | None = Non
             session.log.append("MODEL_TURN", turn=turns, estimated_prompt_tokens=estimate_tokens(messages=messages, tools=offered),
                                prompt_tokens=reply.prompt_tokens, completion_tokens=reply.completion_tokens,
                                n_tool_calls=len(reply.tool_calls))
+            if reply.format_error:                       # metin protokolü: bozuk araç çağrısı (çalıştırılmaz)
+                if final_phase:
+                    messages += [{"role": "assistant", "content": reply.text}, {"role": "user", "content": TOOLS_CLOSED}]
+                else:
+                    bad = session.malformed_call(reply.format_error)
+                    messages += [{"role": "assistant", "content": reply.text},
+                                 {"role": "user", "content": f"Araç çağrısı biçimi geçersiz (MALFORMED_TOOL_CALL): {reply.format_error}. "
+                                                              "Çağrıyı doğru biçimde yeniden yaz."}]
+                    assert not bad.ok
+                continue
             if reply.has_tool_calls:
                 if final_phase:
                     messages += [_assistant(reply), {"role": "user", "content": TOOLS_CLOSED}]

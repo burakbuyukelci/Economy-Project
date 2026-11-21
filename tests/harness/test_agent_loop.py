@@ -227,3 +227,19 @@ def test_every_model_turn_logs_the_estimated_prompt_tokens_next_to_the_real_ones
     assert turns[0]["estimated_prompt_tokens"] < turns[2]["estimated_prompt_tokens"]    # araç sonuçları geldikçe bağlam büyür
     assert [e["n_tool_calls"] for e in turns] == [1, 1, 0, 0]
 
+
+def test_malformed_tool_call_text_is_an_invalid_call_the_model_must_resend():
+    bad = ModelReply(text="çağrı denedim", format_error="araç çağrısı geçerli JSON değil")
+    res, backend = run([bad, RANK, BACKTEST, "HAZIR", GOOD])
+    assert res.final.status == "ACCEPTED" and res.session.machine.n_invalid_calls == 1
+    msg = backend.calls[1]["messages"][-1]
+    assert msg["role"] == "user" and "MALFORMED_TOOL_CALL" in msg["content"] and "JSON" in msg["content"]
+    assert backend.calls[1]["messages"][-2] == {"role": "assistant", "content": "çağrı denedim"}
+    assert [e["code"] for e in res.session.events if e["kind"] == "INVALID_TOOL_CALL"] == ["MALFORMED_TOOL_CALL"]
+
+
+def test_malformed_call_in_the_final_phase_is_refused_like_any_tool_call():
+    res, backend = run([RANK, BACKTEST, "HAZIR", ModelReply(text="x", format_error="bozuk"), GOOD])
+    assert res.final.status == "ACCEPTED" and res.final.attempt == 1 and res.session.machine.n_invalid_calls == 0
+    assert "araç" in backend.calls[4]["messages"][-1]["content"].lower()
+

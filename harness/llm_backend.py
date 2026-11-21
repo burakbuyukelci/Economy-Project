@@ -20,6 +20,7 @@ from typing import Any, Sequence
 from urllib.parse import urlsplit
 
 from harness import settings
+from harness.text_protocol import STOP_SEQUENCES, encode_messages, parse_reply
 
 
 class LLMError(RuntimeError):
@@ -46,6 +47,7 @@ class ModelReply:
     tool_calls: tuple[ToolCall, ...] = ()
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    format_error: str | None = None     # metin protokolünde bozuk araç çağrısı: çağrı çalıştırılmaz, model uyarılır (oturum "geçersiz çağrı" sayar)
 
     @property
     def has_tool_calls(self) -> bool:
@@ -138,13 +140,16 @@ class OllamaBackend(LLMBackend):
     """POST {host}/api/chat (akış yok). Sıcaklık varsayılan 0, seed sabit; ayarlar settings'ten, parametreyle ezilebilir."""
 
     def __init__(self, *, host: str | None = None, model: str | None = None, temperature: float | None = None,
-                 num_ctx: int | None = None, seed: int | None = None, timeout: float | None = None) -> None:
+                 num_ctx: int | None = None, seed: int | None = None, timeout: float | None = None, tool_mode: str | None = None) -> None:
         self.host = _check_local(host if host is not None else settings.ollama_host())
         self.model = model or settings.llm_model()
         self.temperature = settings.llm_temperature() if temperature is None else temperature
         self.num_ctx = settings.llm_num_ctx() if num_ctx is None else num_ctx
         self.seed = settings.LLM_SEED if seed is None else seed
         self.timeout = settings.LLM_TIMEOUT_S if timeout is None else timeout
+        self.tool_mode = tool_mode if tool_mode is not None else settings.llm_tool_mode()
+        if self.tool_mode not in ("text", "native"):
+            raise ValueError(f"tool_mode 'text' ya da 'native' olmalı: {self.tool_mode!r}")
         self.name = f"ollama:{self.model}"
         # ortam proxy'lerini YOK SAY (istek başka yere yönlenemesin) ve yönlendirmeyi izleme
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
@@ -154,7 +159,10 @@ class OllamaBackend(LLMBackend):
             "model": self.model, "messages": list(messages), "stream": False,
             "options": {"temperature": self.temperature, "num_ctx": self.num_ctx, "seed": self.seed},
         }
-        if tools:
+        if self.tool_mode == "text":     # araçlar istemde METİN; yalnızca system/user/assistant rolleri; uydurma araç sonucu yazılamaz
+            body["messages"] = encode_messages(messages, tools)
+            body["options"]["stop"] = list(STOP_SEQUENCES)
+        elif tools:
             body["tools"] = _to_ollama_tools(tools)
         req = urllib.request.Request(f"{self.host}/api/chat", data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
@@ -173,15 +181,24 @@ class OllamaBackend(LLMBackend):
         msg = payload.get("message") if isinstance(payload, dict) else None
         if not isinstance(msg, dict) or not isinstance(msg.get("content", ""), str):
             raise LLMError("Ollama yanıtında geçerli 'message' yok")
+        if self.tool_mode == "text":
+            return self._parse_text(msg.get("content", ""), payload)
         calls: list[ToolCall] = []
         for tc in msg.get("tool_calls") or []:
             fn = tc.get("function") if isinstance(tc, dict) else None
             if not isinstance(fn, dict) or not isinstance(fn.get("name"), str):
                 raise LLMError("Ollama araç çağrısında 'function.name' yok")
             calls.append(ToolCall(fn["name"], _parse_arguments(fn.get("arguments", {}), fn["name"])))
-        prompt = payload.get("prompt_eval_count")
-        done = payload.get("eval_count")
+        prompt, done = self._counts(payload)
+        return ModelReply(msg.get("content", ""), tuple(calls), prompt, done)
+
+    def _counts(self, payload: dict[str, Any]) -> tuple[int | None, int | None]:
+        prompt, done = payload.get("prompt_eval_count"), payload.get("eval_count")
         if isinstance(prompt, int) and prompt >= self.num_ctx:
             raise ContextLimitExceeded(f"istem {prompt} token; bağlam sınırı {self.num_ctx} (kırpılmış olabilir)")
-        return ModelReply(msg.get("content", ""), tuple(calls), prompt if isinstance(prompt, int) else None,
-                          done if isinstance(done, int) else None)
+        return (prompt if isinstance(prompt, int) else None), (done if isinstance(done, int) else None)
+
+    def _parse_text(self, content: str, payload: dict[str, Any]) -> ModelReply:
+        parsed = parse_reply(content)
+        prompt, done = self._counts(payload)
+        return ModelReply(parsed.text, tuple(ToolCall(c.name, c.arguments) for c in parsed.calls), prompt, done, parsed.error)

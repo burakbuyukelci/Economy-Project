@@ -109,7 +109,7 @@ def final_max_retries() -> int:
 # Final sistemde bulut AI API'si YOK (CLAUDE.md kural 4): yalnızca yerel Ollama, yalnızca loopback adres.
 # `config/` ortak bölge olduğundan model ayarları burada durur; ortam değişkenleriyle ezilir.
 # NOT: model adı YER TUTUCUDUR (temel model kararı ekibindir; fine-tune sonrası kendi model adı yazılır).
-LLM_MODEL = "qwen2.5:7b-instruct"
+LLM_MODEL = "gemma3:4b"
 LLM_MODEL_ENV = "HARNESS_MODEL"
 LLM_TEMPERATURE = 0.0              # determinizm (CLAUDE.md kural 8)
 LLM_TEMPERATURE_ENV = "HARNESS_TEMPERATURE"
@@ -121,6 +121,18 @@ LLM_SEED = RANDOM_SEED             # config.settings.RANDOM_SEED (ortak, 42)
 OLLAMA_HOST = "http://127.0.0.1:11434"
 OLLAMA_HOST_ENV = "HARNESS_OLLAMA_HOST"
 LLM_TIMEOUT_S = 300.0
+# Araç çağırma biçimi: "text" = araç tanımları istemde METİN, çağrılar yanıt metninden ayrıştırılır (harness/text_protocol.py; Gemma 3 için varsayılan,
+# çünkü Ollama gemma3 şablonunda yerel `tools` desteği yok/güvenilmez); "native" = Ollama'nın `tools` alanı (Qwen/Llama gibi destekleyen modeller).
+LLM_TOOL_MODE = "text"
+LLM_TOOL_MODE_ENV = "HARNESS_TOOL_MODE"
+_TOOL_MODES = ("text", "native")
+
+
+def llm_tool_mode() -> str:
+    mode = os.environ.get(LLM_TOOL_MODE_ENV, "").strip().lower() or LLM_TOOL_MODE
+    if mode not in _TOOL_MODES:
+        raise ValueError(f"{LLM_TOOL_MODE_ENV}={mode!r} geçersiz; geçerli: {_TOOL_MODES}")
+    return mode
 
 
 def llm_model() -> str:

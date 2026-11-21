@@ -262,3 +262,12 @@ def test_peek_explanation_does_not_count_an_invalid_call():
     for t in (T.RANK_SECTOR_RELATIVE_STRENGTH, T.RUN_BACKTEST):
         s2.call_tool(t.value, example_params(t))
     assert s2.machine.peek_explanation().allowed and s2.machine.state != S.GENERATE_EXPLANATION   # yalnızca bakar
+
+
+def test_malformed_call_is_logged_as_an_invalid_call_without_advancing_the_state():
+    s = HarnessSession.from_question(QUESTION, profile="D")
+    state = s.machine.state
+    r = s.malformed_call("araç çağrısı geçerli JSON değil")
+    assert not r.ok and r.error["type"] == "INVALID_TOOL_CALL" and r.error["code"] == "MALFORMED_TOOL_CALL"
+    assert s.machine.n_invalid_calls == 1 and s.machine.state == state and r.error["allowed_tools"]
+
