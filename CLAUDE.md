@@ -28,6 +28,7 @@ Notlandırma = fine-tune edilmiş yerel LLM'in canlı testi. Ölçülenler: say�
 12. **Eğitim verisi yalnızca v2 snapshot'tan üretilir.** Eğitim kayıtlarındaki `data_version` v2 olmalıdır (`snap_2026-11-20_v2`); v1'den üretilen çıktı geçersizdir ve eğitim setine alınmaz. Eğitim verisinin harness'e özgü diğer kuralları (OOS `split_date` kuralı, etiketin `label_policy`'den gelmesi, doğrulama) için `training/RULES.md`'ye bak.
 13. **Her oturum `git pull --rebase` ve `pytest` ile başlar.** Testler geçmeden yeni işe başlanmaz.
 14. **Force push yasaktır.**
+15. **Hızlı kip:** (a) Mekanik işlerde (sözleşmeye göre araç yazmak, test, dokümantasyon, tekrar eden desen) kısa plan yaz ama onay BEKLEME, hemen başla. (b) Şu durumlarda DUR ve sor: `schemas/`, `config/` veya `CLAUDE.md` değişikliği gerekiyor; sonuçları veya etiketi etkileyen, makul iki alternatifi olan bir tasarım kararı; bir hata iki denemede çözülmüyor; değişmez kurallardan biriyle çelişki; kullanıcının sağlaması gereken veri/anahtar/ağ. (c) `pytest` yeşil ve `git pull --rebase` temiz ise kendi bölgendeki commit'leri sormadan push et (force yok). Dal birleştirme ve paylaşılan bölge değişikliği yine onay ister. (d) Her iş sonunda tek kısa rapor: ne yapıldı, gerçek değerler, kararlar/varsayımlar, testler, push edilenler.
 
 ## Araç sözleşmesi (`schemas/`)
 Tüm araçlar aynı zarfı döndürür:
