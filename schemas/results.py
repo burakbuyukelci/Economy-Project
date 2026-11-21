@@ -1,7 +1,7 @@
 """15 aracın SONUÇ (`results`) şemaları (SÖZLEŞME).
 
-KESİN (alan listesi bağlayıcı): rank_sector_relative_strength, test_weekday_pattern,
-detect_reversal_events, calculate_indicators (1.1.0), calculate_fundamental_change, run_backtest,
+KESİN (alan listesi bağlayıcı): rank_sector_relative_strength (1.2.0: per_ticker vb.), test_weekday_pattern,
+detect_reversal_events, calculate_indicators (1.1.0; 1.2.0: hafif varsayılanlar), calculate_fundamental_change, run_backtest,
 check_data_quality, get_stock_history, get_index_history.
 HAFİF (iskelet kesin, iç ayrıntı gevşek): find_support_resistance,
 get_fundamental_metrics, get_macro_context, get_news_events, get_speech_features,
@@ -11,6 +11,7 @@ Birim kuralları için bkz. schemas/common.py başlığı (`_pct`, 0-100 ölçe�
 """
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date
 from typing import Annotated, Any
 
@@ -19,6 +20,7 @@ from pydantic import Field, StringConstraints, model_validator
 from schemas.common import (
     BaselineStats,
     BenchmarkDefinition,
+    ColumnName,
     CostModel,
     FiscalPeriod,
     Horizon,
@@ -111,12 +113,11 @@ class GetIndexHistoryResult(Strict):
 
 
 # ======================================================================
-# 3  calculate_indicators (KESİN, schema_version 1.1.0)
+# 3  calculate_indicators (KESİN; 1.1.0, 1.2.0'da hafif varsayılanlar)
 # ======================================================================
 # Kompakt zarf: tüm zaman serisi DEĞİL; `latest` (as_of günü durumu) + `recent_rows` (önceki en fazla N gün).
 # Sayılar `values` içinde (yalnızca float|None; NaN/inf yasak, ısınma = None), kategoriler `states` içinde.
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
-ColumnName = Annotated[str, StringConstraints(pattern=r"^[A-Z0-9_.]+$")]
 
 
 class IndicatorColumn(Strict):
@@ -151,7 +152,11 @@ class CalculateIndicatorsResult(Strict):
     n_bars_used: int = Field(ge=0, description="Hesapta kullanılan toplam bar (ısınma dahil, <= as_of)")
     history_first_date: date | None = Field(description="Hesapta kullanılan ilk bar (snapshot başı)")
     first_valid_date: date | None = Field(description="İstenen TÜM kolonların geçerli olduğu ilk gün")
-    columns: list[IndicatorColumn]
+    columns_meta_included: bool = Field(
+        default=True, description="False: columns boş (include_columns_meta=False); 1.1.0 zarfları True sayılır")
+    columns: list[IndicatorColumn] = Field(description="columns_meta_included=False iken boş")
+    invalid_columns_at_as_of: list[ColumnName] | None = Field(
+        default=None, description="latest.values'ı None (ısınma) olan kolon adları, sıralı; 1.2.0+ zarflarında None olamaz")
     latest: IndicatorRow | None = Field(description="state_date günündeki gösterge durumu (as_of durumu)")
     recent_rows: list[IndicatorRow] = Field(description="latest'ten ÖNCEKİ en fazla last_n_rows gün, eskiden yeniye")
 
@@ -160,6 +165,8 @@ class CalculateIndicatorsResult(Strict):
         names = [c.name for c in self.columns]
         if len(set(names)) != len(names):
             raise ValueError("kolon adları tekil olmalı")
+        if not self.columns_meta_included and self.columns:
+            raise ValueError("columns_meta_included=False iken columns boş olmalı")
         for c in self.columns:
             if c.first_valid_date is None and c.valid_at_as_of:
                 raise ValueError(f"{c.name}: first_valid_date yok ama valid_at_as_of=True")
@@ -168,13 +175,20 @@ class CalculateIndicatorsResult(Strict):
                 raise ValueError("latest yoksa state_date None ve recent_rows boş olmalı")
             if any(c.valid_at_as_of for c in self.columns):
                 raise ValueError("latest yoksa hiçbir kolonda valid_at_as_of=True olamaz")
+            if self.invalid_columns_at_as_of:
+                raise ValueError("latest yoksa invalid_columns_at_as_of boş olmalı")
             return self
         if self.state_date != self.latest.date:
             raise ValueError("state_date, latest.date ile aynı olmalı")
         rows = [*self.recent_rows, self.latest]
+        keys = set(self.latest.values)
+        if self.columns_meta_included:
+            for r in rows:
+                if set(r.values) != set(names):
+                    raise ValueError(f"{r.date}: values anahtarları columns ile birebir aynı olmalı")
         for r in rows:
-            if set(r.values) != set(names):
-                raise ValueError(f"{r.date}: values anahtarları columns ile birebir aynı olmalı")
+            if set(r.values) != keys:
+                raise ValueError(f"{r.date}: values anahtarları latest ile aynı olmalı")
         dates = [r.date for r in rows]
         if dates != sorted(set(dates)):
             raise ValueError("recent_rows tarihleri artan ve tekil olmalı, hepsi latest.date'ten önce")
@@ -183,6 +197,10 @@ class CalculateIndicatorsResult(Strict):
         for c in self.columns:
             if c.valid_at_as_of != (self.latest.values[c.name] is not None):
                 raise ValueError(f"{c.name}: valid_at_as_of, latest değeriyle tutarsız")
+        if self.invalid_columns_at_as_of is not None:
+            expected = sorted(k for k, v in self.latest.values.items() if v is None)
+            if list(self.invalid_columns_at_as_of) != expected:
+                raise ValueError("invalid_columns_at_as_of, latest.values içindeki None kolonlarla (sıralı) aynı olmalı")
         return self
 
 
@@ -280,6 +298,34 @@ class CatchUpHorizon(Strict):
     )
 
 
+class TickerCatchUp(Strict):
+    """1.2.0: tek hissenin tarihsel catch-up kırılımı. Havuzlu `historical_catch_up`'ın PARÇASIDIR (toplamları havuza eşit).
+
+    IS/OOS yoktur (hisse başına 9-21 olay bölünemez); `per_horizon[].block.in_sample/out_of_sample` None olmalıdır.
+    `is_laggard` ve `lag_score_pp` `ranking` satırının aynasıdır (tek kaynak: aynı dizi).
+    """
+
+    ticker: Ticker
+    is_laggard: bool
+    lag_score_pp: float
+    n_raw_laggard_observations: int = Field(ge=0, description="Ham laggard hisse-günü (cooldown ÖNCESİ)")
+    n_independent_events: int = Field(ge=0, description="Cooldown sonrası kabul edilen olay (tamamlanmamış ufuklar dahil)")
+    n_excluded_incomplete_horizon: int = Field(ge=0, description="EN UZUN ufukta ufku as_of'u aşıp dışlanan olay")
+    per_horizon: list[CatchUpHorizon]
+
+    @model_validator(mode="after")
+    def _own(self):
+        hs = [row.block.horizon for row in self.per_horizon]
+        if len(set(hs)) != len(hs):
+            raise ValueError(f"{self.ticker}: per_horizon ufukları tekil olmalı")
+        for row in self.per_horizon:
+            if row.block.in_sample is not None or row.block.out_of_sample is not None:
+                raise ValueError(f"{self.ticker}: per_ticker blokları in_sample/out_of_sample taşıyamaz")
+        if self.n_independent_events > self.n_raw_laggard_observations:
+            raise ValueError(f"{self.ticker}: n_independent_events ham gözlem sayısını aşamaz")
+        return self
+
+
 class RankSectorRelativeStrengthResult(Strict):
     sector: PeerGroup
     peer_group_size: int = Field(ge=1)
@@ -296,8 +342,53 @@ class RankSectorRelativeStrengthResult(Strict):
     lag_threshold_pp: float
     ranking: list[RankingRow]
     historical_catch_up: list[CatchUpHorizon]
+    n_raw_laggard_observations: int | None = Field(
+        default=None, ge=0, description="1.2.0: tüm üyelerin ham laggard hisse-günü toplamı (cooldown öncesi); tek hisseli grupta None")
+    cooldown_days: int | None = Field(
+        default=None, ge=1, description="1.2.0: bağımsızlaştırma süresi, işlem günü (= max(forward_horizons)); tek hisseli grupta None")
+    outcome_benchmark_definition: BenchmarkDefinition | None = Field(
+        default=None, description="1.2.0: tarihsel SONUÇ ölçütü: peer medyanı, hisse HARİÇ (members = grup üyeleri; her hisse için kendisi çıkarılır)")
+    per_ticker: list[TickerCatchUp] = Field(
+        default_factory=list, description="1.2.0: hisse bazlı kırılım (ticker sıralı); tek hisseli grupta boş")
     cost_model: CostModel
     structural_vs_temporary: str | None = Field(default=None, description="Temel/makro araçlar gelince doldurulacak; şimdilik None")
+
+    @model_validator(mode="after")
+    def _per_ticker_sums_to_pool(self):
+        """Havuz = parçaların toplamı: ham sayı, olay sayıları ve başarı/yanlış pozitif sayıları hisse bazında toplanınca havuzlu değere eşit."""
+        if not self.per_ticker:
+            return self
+        rank = {r.ticker: r for r in self.ranking}
+        tickers = [t.ticker for t in self.per_ticker]
+        if len(set(tickers)) != len(tickers):
+            raise ValueError("per_ticker ticker'ları tekil olmalı")
+        if set(tickers) != set(rank):
+            raise ValueError("per_ticker ticker'ları ranking ile aynı olmalı")
+        for t in self.per_ticker:
+            r = rank[t.ticker]
+            if t.is_laggard != r.is_laggard or t.lag_score_pp != r.lag_score_pp:
+                raise ValueError(f"{t.ticker}: per_ticker is_laggard/lag_score_pp ranking ile aynı olmalı")
+        if self.n_raw_laggard_observations is not None and \
+                sum(t.n_raw_laggard_observations for t in self.per_ticker) != self.n_raw_laggard_observations:
+            raise ValueError("Σ per_ticker.n_raw_laggard_observations != n_raw_laggard_observations")
+        pooled = {row.block.horizon: row.block.full for row in self.historical_catch_up}
+        by_ticker = {}
+        for t in self.per_ticker:
+            by_h = {row.block.horizon: row.block.full for row in t.per_horizon}
+            if set(by_h) != set(pooled):
+                raise ValueError(f"{t.ticker}: per_horizon ufukları historical_catch_up ile aynı olmalı")
+            for h, f in by_h.items():
+                if t.n_independent_events != f.n_events_complete + f.n_excluded_incomplete_horizon:
+                    raise ValueError(f"{t.ticker}: n_independent_events != n_events_complete + n_excluded (ufuk {h})")
+            if by_h and t.n_excluded_incomplete_horizon != by_h[max(by_h)].n_excluded_incomplete_horizon:
+                raise ValueError(f"{t.ticker}: n_excluded_incomplete_horizon en uzun ufuk bloğuyla aynı olmalı")
+            by_ticker[t.ticker] = by_h
+        for h, p in pooled.items():
+            for attr in ("n_events_complete", "n_excluded_incomplete_horizon", "n_success", "n_false_positive"):
+                total = sum(getattr(by_ticker[t][h], attr) for t in by_ticker)
+                if total != getattr(p, attr):
+                    raise ValueError(f"ufuk {h}: Σ per_ticker.{attr} ({total}) != havuz ({getattr(p, attr)})")
+        return self
 
 
 # ======================================================================
@@ -659,10 +750,14 @@ class TickerQuality(Strict):
     first_date: date | None
     last_date: date | None
     n_missing_trading_days: int = Field(ge=0)
-    last_data_age_days: int | None = Field(ge=0, description="as_of - last_date (takvim günü)")
+    last_data_age_days: int | None = Field(
+        ge=0, description="as_of - (as_of'a kadarki son satır tarihi), takvim günü; last_date pencere sonudur, "
+                          "bu yüzden end < as_of iken as_of - last_date'e eşit olmayabilir")
     max_abs_daily_return_pct: float | None
     max_abs_daily_return_date: date | None
-    n_price_jumps_over_limit: int = Field(ge=0, description="|günlük getiri| > price_jump_limit_pct olan gün sayısı")
+    n_price_jumps_over_limit: int = Field(
+        ge=0, description="|günlük adj_close getirisi| > price_jump_limit_pct + PRICE_JUMP_TOLERANCE_PP olan gün sayısı; "
+                          "pencere [start, min(end, as_of)]; classify_price_jumps ile aynı kural")
 
 
 class CheckDataQualityResult(Strict):
@@ -673,9 +768,15 @@ class CheckDataQualityResult(Strict):
     checks_run: list[DQCheck]
     price_jump_limit_pct: float
     ticker_reports: list[TickerQuality]
+    issue_counts: dict[DQCode, int] | None = Field(
+        default=None, description="1.2.0: kod -> adet (hard ve soft birlikte; sıfır girdi yok). None = raporlanmadı (1.1.0); 1.2.0+ zarflarında None olamaz")
 
     @model_validator(mode="after")
     def _consistency(self):
+        if self.issue_counts is not None:
+            actual = dict(Counter(i.code for i in [*self.hard_blocks, *self.soft_warnings]))
+            if any(v < 1 for v in self.issue_counts.values()) or self.issue_counts != actual:
+                raise ValueError(f"issue_counts hard_blocks+soft_warnings ile birebir aynı olmalı (beklenen {actual})")
         if any(i.severity != DQSeverity.HARD for i in self.hard_blocks):
             raise ValueError("hard_blocks yalnızca severity=HARD içerebilir")
         if any(i.severity != DQSeverity.SOFT for i in self.soft_warnings):

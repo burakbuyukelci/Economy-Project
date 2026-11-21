@@ -362,6 +362,7 @@ def test_gate_consistency_rules():
     with pytest.raises(ValidationError):
         validate_envelope(env)  # hard_block var ama gate_status PASS
     env["results"]["gate_status"] = "HARD_BLOCK"
+    env["results"]["issue_counts"] = {"LOOKAHEAD_SIGNAL": 1, "PRICE_JUMP_OVER_LIMIT": 1}  # 1.2.0: sayaç listelerle birebir
     validate_envelope(env)
 
 

@@ -97,6 +97,7 @@ def test_warmup_value_is_none_and_column_flagged_invalid():
     res = _res()
     res["latest"]["values"]["RSI_14"] = None
     res["columns"][0]["valid_at_as_of"] = False
+    res["invalid_columns_at_as_of"] = ["RSI_14"]  # 1.2.0: None değerli kolonlar burada da listelenir
     _validate(res)  # tutarlı: değer None <-> valid_at_as_of False
 
 

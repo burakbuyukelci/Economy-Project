@@ -26,6 +26,25 @@ _STATS = {"n_events_complete": 10, "n_excluded_incomplete_horizon": 1, "n_succes
 _BASE = {"n_obs": 400, "mean_return_pct": 0.2, "median_return_pct": 0.1, "hit_rate_pct": 51.0}
 _BLOCK = {"horizon": 5, "full": _STATS, "in_sample": _STATS, "out_of_sample": _STATS, "baseline": _BASE,
           "mean_diff_vs_baseline_pct": 1.0, "median_diff_vs_baseline_pct": 0.8, "oos_degradation_flag": False}
+
+
+def _tstats(n: int, excl: int, ok: int) -> dict[str, Any]:
+    """Tek hissenin HorizonStats'ı (rank per_ticker örneği)."""
+    return {"n_events_complete": n, "n_excluded_incomplete_horizon": excl, "n_success": ok, "n_false_positive": n - ok,
+            "hit_rate_pct": round(100 * ok / n, 4), "false_positive_rate_pct": round(100 * (n - ok) / n, 4),
+            "mean_return_pct": 0.5, "median_return_pct": 0.3, "cost_adjusted_mean_return_pct": 0.0,
+            "mean_reversal_strength_pct": None, "median_reversal_strength_pct": None}
+
+
+def _ticker_catch_up(ticker: str, lag: float, laggard: bool, raw: int, n: int, excl: int, ok: int) -> dict[str, Any]:
+    """Havuzlu _BLOCK (ufuk 5) ile toplamı tutan tek hisse kırılımı; IS/OOS yok."""
+    block = {"horizon": 5, "full": _tstats(n, excl, ok), "in_sample": None, "out_of_sample": None, "baseline": _BASE,
+             "mean_diff_vs_baseline_pct": 0.3, "median_diff_vs_baseline_pct": 0.2, "oos_degradation_flag": None}
+    return {"ticker": ticker, "is_laggard": laggard, "lag_score_pp": lag, "n_raw_laggard_observations": raw,
+            "n_independent_events": n + excl, "n_excluded_incomplete_horizon": excl,
+            "per_horizon": [{"block": block, "median_catch_up_size_pp": 1.5}]}
+
+
 _MT = {"n_tests_declared": 1, "alpha": 0.05, "adjusted_alpha": 0.05, "method": "bonferroni",
        "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."}
 _ROW = {"date": "2026-09-10", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5, "adj_close": 10.4, "volume": 1000.0}
@@ -81,13 +100,13 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
         "index": "XU100", "yahoo_symbol": "XU100.IS", "requested_start": "2026-09-08",
         "requested_end": "2026-09-10", "effective_end": "2026-09-10", "first_date": "2026-09-10",
         "last_date": "2026-09-10", "n_rows": 1, "rows": [_ROW]},
+    # 1.2.0 hafif varsayılan: columns/recent_rows yok (include_columns_meta=False, last_n_rows=0). Tam varyant: example_envelope_indicators_full().
     ToolName.CALCULATE_INDICATORS: {
         "ticker": "THYAO", "price_adjustment": "adjusted", "state_date": "2026-09-10", "n_bars_used": 900,
         "history_first_date": "2023-01-02", "first_valid_date": "2023-01-23",
-        "columns": [{"name": "RSI_14", "indicator": "RSI", "warmup_bars": 14, "first_valid_date": "2023-01-23",
-                     "valid_at_as_of": True}],
+        "columns_meta_included": False, "columns": [], "invalid_columns_at_as_of": [],
         "latest": {"date": "2026-09-10", "close": 299.25, "values": {"RSI_14": 41.2}, "states": {}},
-        "recent_rows": [{"date": "2026-09-09", "close": 301.0, "values": {"RSI_14": 44.0}, "states": {}}]},
+        "recent_rows": []},
     ToolName.DETECT_REVERSAL_EVENTS: {
         "ticker": "ASELS", "event_family": "BB_LOWER_TOUCH", "touch_mode": "close", "expected_direction": "UP",
         "analysis_start": "2024-01-01", "analysis_end": "2026-09-10", "split_date": "2026-01-01",
@@ -121,8 +140,20 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
         "strength_thresholds": {"strong_min_vs_xu100_pp": 2.0, "weak_max_vs_xu100_pp": -2.0},
         "lag_threshold_pp": 3.0,
         "ranking": [{"rank": 1, "ticker": "BIMAS", "return_pct": 15.0, "lag_score_pp": 3.0,
-                     "return_vs_xu100_pp": 11.0, "is_laggard": False, "is_leader": True}],
+                     "return_vs_xu100_pp": 11.0, "is_laggard": False, "is_leader": True},
+                    {"rank": 2, "ticker": "MGROS", "return_pct": 12.0, "lag_score_pp": 0.0,
+                     "return_vs_xu100_pp": 8.0, "is_laggard": False, "is_leader": False},
+                    {"rank": 3, "ticker": "MAVI", "return_pct": 9.0, "lag_score_pp": -3.0,
+                     "return_vs_xu100_pp": 5.0, "is_laggard": True, "is_leader": False}],
         "historical_catch_up": [{"block": {**_BLOCK, "horizon": 5}, "median_catch_up_size_pp": 2.1}],
+        "n_raw_laggard_observations": 72, "cooldown_days": 20,
+        "outcome_benchmark_definition": {"type": "peer_median", "includes_subject_stock": False, "price_field": "adj_close",
+                                         "return_type": "simple", "peer_group": "retail",
+                                         "members": ["BIMAS", "MAVI", "MGROS"]},
+        # ticker sıralı; Σ ham 12+40+20, Σ tamamlanmış 4+3+3, Σ dışlanan 0+1+0, Σ başarı 3+2+1 = havuz
+        "per_ticker": [_ticker_catch_up("BIMAS", 3.0, False, 12, 4, 0, 3),
+                       _ticker_catch_up("MAVI", -3.0, True, 40, 3, 1, 2),
+                       _ticker_catch_up("MGROS", 0.0, False, 20, 3, 0, 1)],
         "cost_model": _COST, "structural_vs_temporary": None},
     ToolName.TEST_WEEKDAY_PATTERN: {
         "ticker": "THYAO", "pattern_label": "MON-DOWN | THU-UP", "conditioning": "NONE", "cost_model": _COST,
@@ -192,6 +223,7 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
                            "message": "Olası düzeltilmemiş bedelsiz", "ticker": "THYAO", "date": "2025-06-01",
                            "value": 25.0}],
         "checks_run": ["PRICE_JUMPS"], "price_jump_limit_pct": 10.0,
+        "issue_counts": {"PRICE_JUMP_OVER_LIMIT": 1},
         "ticker_reports": [{"ticker": "THYAO", "n_rows": 400, "first_date": "2024-01-02",
                             "last_date": "2026-09-10", "n_missing_trading_days": 0, "last_data_age_days": 0,
                             "max_abs_daily_return_pct": 25.0, "max_abs_daily_return_date": "2025-06-01",
@@ -208,6 +240,16 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
 }
 
 # Örnek zarflarda n_events (anlamlıysa)
+_INDICATORS_FULL_RESULT: dict[str, Any] = {
+    "ticker": "THYAO", "price_adjustment": "adjusted", "state_date": "2026-09-10", "n_bars_used": 900,
+    "history_first_date": "2023-01-02", "first_valid_date": "2023-01-23",
+    "columns_meta_included": True,
+    "columns": [{"name": "RSI_14", "indicator": "RSI", "warmup_bars": 14, "first_valid_date": "2023-01-23",
+                 "valid_at_as_of": True}],
+    "invalid_columns_at_as_of": [],
+    "latest": {"date": "2026-09-10", "close": 299.25, "values": {"RSI_14": 41.2}, "states": {}},
+    "recent_rows": [{"date": "2026-09-09", "close": 301.0, "values": {"RSI_14": 44.0}, "states": {}}]}
+
 _N_EVENTS = {ToolName.DETECT_REVERSAL_EVENTS: 11, ToolName.TEST_WEEKDAY_PATTERN: 4, ToolName.RUN_BACKTEST: 22,
              ToolName.CALCULATE_FUNDAMENTAL_CHANGE: 6, ToolName.RANK_SECTOR_RELATIVE_STRENGTH: 10,
              ToolName.GET_NEWS_EVENTS: 1}
@@ -236,6 +278,19 @@ def example_envelope(tool: ToolName | str) -> dict[str, Any]:
         "status": "OK",
         "error": None,
     }
+
+
+def example_envelope_indicators_full() -> dict[str, Any]:
+    """calculate_indicators, kolon meta'lı (include_columns_meta=True) ve 5 geçmiş satırlı (last_n_rows=5) örnek zarf.
+
+    Varsayılan örnek (example_envelope) hafiftir; kolon ısınma kuralları (1.1.0) bu varyant üzerinde sınanır."""
+    tool = ToolName.CALCULATE_INDICATORS
+    raw = {**copy.deepcopy(_PARAMS[tool]), "as_of": EXAMPLE_AS_OF, "include_columns_meta": True, "last_n_rows": 5}
+    params = validate_params(tool, raw).model_dump(mode="json")
+    env = example_envelope(tool)
+    env.update(params=params, input_hash=compute_input_hash(tool, params, EXAMPLE_DATA_VERSION),
+               results=copy.deepcopy(_INDICATORS_FULL_RESULT))
+    return env
 
 
 def example_error_envelope(tool: ToolName | str, code: str = "UNKNOWN_TICKER", message: str = "Bilinmeyen ticker") -> dict[str, Any]:

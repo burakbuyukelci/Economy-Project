@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from config.settings import SLIPPAGE_BPS_PER_SIDE, TRANSACTION_COST_BPS_PER_SIDE
 
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 # Ticker burada enum DEĞİL: bilinmeyen ticker -> araç status=ERROR döner (şema hatası değil).
 Ticker = Annotated[str, StringConstraints(pattern=r"^[A-Z0-9]{3,6}$")]
@@ -23,6 +23,8 @@ FiscalPeriod = Annotated[str, StringConstraints(pattern=r"^\d{4}Q[1-4]$")]
 DataVersion = Annotated[str, StringConstraints(pattern=r"^snap_\d{4}-\d{2}-\d{2}_v\d+$")]
 InputHash = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Horizon = Annotated[int, Field(ge=1, le=120)]
+# Gösterge kolon adı (ör. RSI_14, BB_LOWER_20_2.0); calculate_indicators params ve results ortak kullanır.
+ColumnName = Annotated[str, StringConstraints(pattern=r"^[A-Z0-9_.]+$")]
 
 
 class Strict(BaseModel):

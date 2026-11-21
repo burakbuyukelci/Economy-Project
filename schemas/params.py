@@ -21,6 +21,7 @@ from config.settings import (
 from schemas.common import (
     CostParams,
     FiscalPeriod,
+    ColumnName,
     Horizon,
     Strict,
     Ticker,
@@ -124,7 +125,10 @@ class CalculateIndicatorsParams(ToolParams):
     indicators: list[IndicatorName] = Field(min_length=1)
     config: IndicatorConfig = Field(default_factory=IndicatorConfig)
     price_adjustment: PriceAdjustment = PriceAdjustment.ADJUSTED
-    last_n_rows: int = Field(default=5, ge=0, le=30, description="latest'ten önceki kaç gün satırı dönsün (0 = yalnızca durum)")
+    last_n_rows: int = Field(default=0, ge=0, le=30, description="latest'ten önceki kaç gün satırı dönsün (0 = yalnızca durum; varsayılan hafif)")
+    include_columns_meta: bool = Field(default=False, description="True: sonuca kolon ısınma bilgisi (columns) eklenir; varsayılan False (hafif zarf)")
+    value_columns: list[ColumnName] | None = Field(
+        default=None, description="None = istenen göstergelerin tüm kolonları; verilirse values yalnızca bu kolon adlarını taşır (ör. RSI_14)")
     start: date = ANALYSIS_START_DEFAULT
     end: date
 
@@ -132,6 +136,15 @@ class CalculateIndicatorsParams(ToolParams):
     @classmethod
     def _uniq(cls, v: list[IndicatorName]) -> list[IndicatorName]:
         return sorted(set(v), key=lambda x: x.value)
+
+    @field_validator("value_columns")
+    @classmethod
+    def _cols(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        if not v:
+            raise ValueError("value_columns boş olamaz (hepsi için None verin)")
+        return sorted(set(v))
 
     @model_validator(mode="after")
     def _r(self):
@@ -385,6 +398,10 @@ class BundleItem(Strict):
     input_hash: InputHash
     n_events: int | None = None
     n_excluded_incomplete_horizon: int | None = None
+    # 1.2.0: kalite kapısı için (None = künyede yok; "geçti" sayılmaz, kapı çalışmadı der). `ge=1` KASITLI YOK:
+    # kapı 0'ı görüp HARD verebilsin (StrategySpec/RunBacktestResult içindeki ge=1 kalır).
+    signal_lag_days_applied: int | None = Field(default=None, description="Yalnız run_backtest: uygulanan sinyal gecikmesi (RunBacktestResult.signal_lag_days_applied)")
+    max_result_date: date | None = Field(default=None, description="Aracın sonuçlarındaki en geç tarih (schemas.registry.max_result_date); as_of'u aşıyorsa kapı HARD verir")
 
 
 class CheckDataQualityParams(ToolParams):
