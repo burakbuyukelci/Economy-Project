@@ -19,9 +19,9 @@ from schemas.examples import example_params
 
 QUESTION = ("Analiz tarihi: 10.09.2026\nPerakende sektöründe (BIMAS, MGROS, MAVI) son 20 işlem gününde "
             "sektör medyanının en çok gerisinde kalan hisse hangisi?")
-GOOD = ("Perakende grubunda sektör medyan getirisi %12,0, XU100 getirisi %4,0; fark 8,0 pp. BIMAS geride kalan eşiğinde değil.\n"
-        "EYLEM: HOLD")
-FABRICATED = "Sektör medyan getirisi %12,0, fark %300,0 oldu.\nEYLEM: HOLD"
+GOOD = ("Perakende grubunda sektör medyan getirisi %12,0, XU100 getirisi %4,0; fark 8,0 pp. Geride kalan hisse için tamamlanmış olay sayısı yetersiz.\n"
+        "EYLEM: INVESTIGATE")
+FABRICATED = "Sektör medyan getirisi %12,0, fark %300,0 oldu.\nEYLEM: INVESTIGATE"
 
 
 def call(tool: T, **over) -> ModelReply:
@@ -44,12 +44,12 @@ def roles(res: RunResult) -> list[str]:
 def test_d_happy_path_gate_tools_are_hidden_and_the_policy_block_arrives_before_the_final_text():
     res, backend = run([RANK, BACKTEST, "HAZIR", GOOD])
     assert res.status == "DELIVERED" and res.final.status == "ACCEPTED" and res.n_model_turns == 4
-    assert res.session.machine.state == S.LOG_AND_CLOSE and res.session.machine.action == A.HOLD
+    assert res.session.machine.state == S.LOG_AND_CLOSE and res.session.machine.action == A.INVESTIGATE
     first_tools = {t["name"] for t in backend.calls[0]["tools"]}
     assert len(first_tools) == 13 and "check_data_quality" not in first_tools and "build_evidence_bundle" not in first_tools
     assert backend.calls[3]["tools"] is None                                    # nihai aşamada araç yok
     last_user = backend.calls[3]["messages"][-1]
-    assert last_user["role"] == "user" and "EYLEM: HOLD" in last_user["content"] and "POLİTİKA KARARI" in last_user["content"]
+    assert last_user["role"] == "user" and "EYLEM: INVESTIGATE" in last_user["content"] and "POLİTİKA KARARI" in last_user["content"]
     assert not any("POLİTİKA KARARI" in m["content"] for m in backend.calls[2]["messages"])    # blok daha önce gösterilmedi
     assert backend.calls[0]["messages"][0]["role"] == "system" and backend.calls[0]["messages"][1] == {"role": "user", "content": QUESTION}
 
@@ -67,7 +67,7 @@ def test_failed_final_attempt_feedback_goes_back_to_the_model_and_it_can_recover
     res, backend = run([RANK, BACKTEST, "HAZIR", FABRICATED, GOOD])
     assert res.final.status == "ACCEPTED" and res.final.attempt == 2 and res.n_model_turns == 5
     fb = backend.calls[4]["messages"][-1]
-    assert fb["role"] == "user" and "%300,0" in fb["content"] and "EYLEM: HOLD" in fb["content"]
+    assert fb["role"] == "user" and "%300,0" in fb["content"] and "EYLEM: INVESTIGATE" in fb["content"]
     assert backend.calls[4]["messages"][-2] == {"role": "assistant", "content": FABRICATED}
     m = res.session.final_metrics()
     assert m["attempt_level"]["n_violations"] == 1 and m["delivered_level"]["n_violations"] == 0
@@ -118,6 +118,7 @@ def blocking_runner(tool, params):
         env["results"]["gate_status"] = "HARD_BLOCK"
         env["results"]["hard_blocks"] = [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "sızıntı"}]
         env["results"]["soft_warnings"] = []
+        env["results"]["issue_counts"] = {"AS_OF_VIOLATION": 1}   # 1.2.0: hard+soft listelerle birebir
     return env
 
 
@@ -131,7 +132,7 @@ def test_safe_failure_is_reported_to_the_model_and_the_required_action_is_analys
 
 # =============================== A–C ve D′ ===============================
 def test_a_has_no_tools_and_the_first_text_is_the_final_answer():
-    res, backend = run(["THYAO için %5 yükseliş bekliyorum.\nEYLEM: HOLD"], stage="A")
+    res, backend = run(["THYAO için %5 yükseliş bekliyorum.\nEYLEM: INVESTIGATE"], stage="A")
     assert backend.calls[0]["tools"] is None and res.final.status == "RECORDED" and res.n_model_turns == 1
     assert res.session.machine.state == S.LOG_AND_CLOSE
     assert res.session.final_metrics()["delivered_level"]["n_hallucinated"] == 1          # araç yok: her sayı uydurma

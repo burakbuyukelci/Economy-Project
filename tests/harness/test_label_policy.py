@@ -279,7 +279,8 @@ def test_subject_defaults_to_the_most_lagging_stock_and_can_be_overridden():
 
 @pytest.mark.parametrize("n,expected,rule", [(19, A.INVESTIGATE, "C3_FEW_EVENTS"), (20, CU, "C5_CANDIDATE")])
 def test_c3_event_count_boundary(n, expected, rule):
-    d = decide([rank_env(blocks=[block(5), block(10, n=n), block(20)]), backtest_env()])
+    # 1.2.0: havuzlu bloklarda n_events_complete + n_excluded ufuklar arasında sabit (bağımsız olay sayısı 40): fark "dışlanan" olarak yazılır
+    d = decide([rank_env(blocks=[block(5), block(10, n=n, excl=40 - n), block(20)]), backtest_env()])
     assert d.label == expected and rule_of(d) == rule
     assert d.scenarios[0].check("h10.n_events_complete").actual == n
 

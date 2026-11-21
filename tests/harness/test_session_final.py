@@ -21,10 +21,10 @@ from schemas.examples import example_params
 
 QUESTION = ("Analiz tarihi: 10.09.2026\nPerakende sektöründe (BIMAS, MGROS, MAVI) son 20 işlem gününde "
             "sektör medyanının en çok gerisinde kalan hisse hangisi?")
-GOOD = ("Perakende grubunda sektör medyan getirisi %12,0, XU100 getirisi %4,0; fark 8,0 pp. BIMAS geride kalan eşiğinde değil.\n"
+GOOD = ("Perakende grubunda sektör medyan getirisi %12,0, XU100 getirisi %4,0; fark 8,0 pp. Geride kalan hisse için tamamlanmış olay sayısı yetersiz.\n"
         "EYLEM: {label}")
-FABRICATED = "Sektör medyan getirisi %12,0, fark %300,0 oldu. BIMAS geride değil.\nEYLEM: HOLD"
-ADVICE = "BIMAS'ı alın, hedef fiyat 350 TL.\nEYLEM: HOLD"
+FABRICATED = "Sektör medyan getirisi %12,0, fark %300,0 oldu. Olay sayısı yetersiz.\nEYLEM: INVESTIGATE"
+ADVICE = "BIMAS'ı alın, hedef fiyat 350 TL.\nEYLEM: INVESTIGATE"
 WRONG_LABEL = GOOD.format(label="POTENTIAL_CATCH_UP_CANDIDATE")
 
 
@@ -47,8 +47,9 @@ def kinds(s, kind):
 def test_d_and_e_show_the_policy_block_but_d_prime_and_a_to_c_do_not():
     for stage, shown in (("D", True), ("E", True), ("D'", False), ("C", False), ("B", False)):
         s = started(stage)
-        expected = A.INVESTIGATE if stage == "B" else A.HOLD                       # B'de kapı çağrısı yok => G2 (güvenli varsayılan)
+        expected = A.INVESTIGATE        # mock rank örneği: özne MAVI geride, havuzlu olay 10 < MIN_EVENTS => C3_FEW_EVENTS (B'de kapı çağrısı yok => G2)
         assert s.policy is not None and s.policy.label == expected                # politika HER profilde hesaplanır (ölçüm)
+        assert s.policy.rule_id == ("G2_GATE_MISSING" if stage == "B" else "C3_FEW_EVENTS")
         assert bool(s.policy_text) is shown and (s.explanation_context() is not None) is shown, stage
         if shown:
             assert f"EYLEM: {expected.value}" in s.policy_text and s.policy.rule_id in s.policy_text
@@ -63,10 +64,10 @@ def test_explanation_context_is_stable_across_repeated_requests():
 # =============================== D: zorlama ===============================
 def test_clean_answer_is_accepted_on_the_first_attempt():
     s = started("D")
-    r = s.submit_final(GOOD.format(label="HOLD"))
+    r = s.submit_final(GOOD.format(label="INVESTIGATE"))
     assert isinstance(r, FinalResult) and r.status == "ACCEPTED" and r.attempt == 1 and r.max_attempts == 3
-    assert r.action == A.HOLD and r.feedback is None and r.report.ok
-    assert s.machine.state == S.HUMAN_REVIEW and s.machine.action == A.HOLD and s.machine.explanation == r.text
+    assert r.action == A.INVESTIGATE and r.feedback is None and r.report.ok
+    assert s.machine.state == S.HUMAN_REVIEW and s.machine.action == A.INVESTIGATE and s.machine.explanation == r.text
     m = s.final_metrics()
     assert m["attempt_level"]["n_violations"] == 0 and m["delivered_level"]["n_violations"] == 0
     assert m["delivered_level"]["fallback"] is False and m["delivered_level"]["policy_match"] is True
@@ -76,9 +77,9 @@ def test_clean_answer_is_accepted_on_the_first_attempt():
 def test_failed_attempt_returns_feedback_stays_in_generate_explanation_and_counts_the_violation():
     s = started("D")
     r1 = s.submit_final(FABRICATED)
-    assert r1.status == "RETRY" and r1.attempt == 1 and "%300,0" in r1.feedback and "EYLEM: HOLD" in r1.feedback
+    assert r1.status == "RETRY" and r1.attempt == 1 and "%300,0" in r1.feedback and "EYLEM: INVESTIGATE" in r1.feedback
     assert r1.text is None and s.machine.state == S.GENERATE_EXPLANATION and s.machine.action is None
-    r2 = s.submit_final(GOOD.format(label="HOLD"))
+    r2 = s.submit_final(GOOD.format(label="INVESTIGATE"))
     assert r2.status == "ACCEPTED" and r2.attempt == 2
     m = s.final_metrics()
     assert m["n_attempts"] == 2
@@ -94,7 +95,7 @@ def test_each_kind_of_bad_answer_is_retried_and_recovers(bad, code):
     s = started("D")
     r = s.submit_final(bad)
     assert r.status == "RETRY" and code in r.report.codes
-    assert s.submit_final(GOOD.format(label="HOLD")).status == "ACCEPTED"
+    assert s.submit_final(GOOD.format(label="INVESTIGATE")).status == "ACCEPTED"
     assert code in s.final_metrics()["attempt_level"]["by_code"]
 
 
@@ -102,17 +103,17 @@ def test_retries_are_bounded_then_the_safe_fallback_is_delivered():
     s = started("D")
     statuses = [s.submit_final(t).status for t in (FABRICATED, ADVICE, WRONG_LABEL)]
     assert statuses == ["RETRY", "RETRY", "FALLBACK"]                  # varsayılan: 2 yeniden deneme = 3 deneme
-    assert s.machine.state == S.HUMAN_REVIEW and s.machine.action == A.HOLD         # D/E'de politika etiketi
-    assert s.machine.explanation == fallback_text(A.HOLD)
+    assert s.machine.state == S.HUMAN_REVIEW and s.machine.action == A.INVESTIGATE         # D/E'de politika etiketi
+    assert s.machine.explanation == fallback_text(A.INVESTIGATE)
     m = s.final_metrics()
     assert m["n_attempts"] == 3 and m["attempt_level"]["n_attempts_with_violation"] == 3
     assert m["attempt_level"]["by_code"]["NUMBER_HALLUCINATION"] >= 1 and m["attempt_level"]["by_code"]["ADVICE_LANGUAGE"] >= 1
     assert m["attempt_level"]["by_code"]["ACTION_MISMATCH_REQUIRED"] >= 1
     d = m["delivered_level"]                                          # teslim edilen = geri çekilme metni: temiz
-    assert d["fallback"] is True and d["n_violations"] == 0 and d["action"] == "HOLD" and d["action_source"] == "fallback"
+    assert d["fallback"] is True and d["n_violations"] == 0 and d["action"] == "INVESTIGATE" and d["action_source"] == "fallback"
     assert len(kinds(s, "FINAL_FALLBACK")) == 1 and kinds(s, "FINAL_DELIVERED")[0]["metrics"]["delivered_level"]["fallback"] is True
     with pytest.raises(HarnessRuleViolation):                         # teslimden sonra yeni metin kabul edilmez
-        s.submit_final(GOOD.format(label="HOLD"))
+        s.submit_final(GOOD.format(label="INVESTIGATE"))
 
 
 def test_retry_budget_comes_from_settings_and_environment(monkeypatch):
@@ -135,7 +136,7 @@ def test_retry_budget_comes_from_settings_and_environment(monkeypatch):
 def test_d_prime_enforces_but_does_not_show_the_label():
     s = started("D'")
     assert s.policy_text == "" and s.submit_final(WRONG_LABEL).status == "RETRY"       # yine de zorlanır
-    assert s.submit_final(GOOD.format(label="HOLD")).status == "ACCEPTED"
+    assert s.submit_final(GOOD.format(label="INVESTIGATE")).status == "ACCEPTED"
 
 
 # =============================== güvenli hata yolu (kapı HARD_BLOCK) ===============================
@@ -145,6 +146,7 @@ def blocking_runner(tool, params):
         env["results"]["gate_status"] = "HARD_BLOCK"
         env["results"]["hard_blocks"] = [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "sızıntı"}]
         env["results"]["soft_warnings"] = []
+        env["results"]["issue_counts"] = {"AS_OF_VIOLATION": 1}   # 1.2.0: hard+soft listelerle birebir
     return env
 
 
@@ -204,7 +206,7 @@ def test_measure_only_without_an_action_line_defaults_the_machine_to_investigate
 def test_submit_final_before_the_explanation_stage_is_a_rule_violation():
     s = HarnessSession.from_question(QUESTION, profile="D")
     with pytest.raises(HarnessRuleViolation) as e:
-        s.submit_final(GOOD.format(label="HOLD"))
+        s.submit_final(GOOD.format(label="INVESTIGATE"))
     assert e.value.code == "EXPLANATION_NOT_ALLOWED" and s.final_metrics()["n_attempts"] == 0
 
 
@@ -229,7 +231,7 @@ def test_event_log_replays_without_reading_hashes_from_a_file(tmp_path):
         s.call_tool(t.value, example_params(t))
     s.request_explanation()
     s.submit_final(FABRICATED)
-    s.submit_final(GOOD.format(label="HOLD"))
+    s.submit_final(GOOD.format(label="INVESTIGATE"))
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     assert [r["code"] for r in rows if r["kind"] == "RULE_VIOLATION"] == ["NUMBER_HALLUCINATION"]
     delivered = [r for r in rows if r["kind"] == "FINAL_DELIVERED"][0]
@@ -240,7 +242,7 @@ def test_event_log_replays_without_reading_hashes_from_a_file(tmp_path):
 def test_deliver_fallback_is_for_enforcing_profiles_in_the_explanation_stage_only():
     s = started("D")
     r = s.deliver_fallback("TURN_LIMIT")
-    assert r.status == "FALLBACK" and s.machine.action == A.HOLD and s.machine.explanation == fallback_text(A.HOLD)
+    assert r.status == "FALLBACK" and s.machine.action == A.INVESTIGATE and s.machine.explanation == fallback_text(A.INVESTIGATE)
     m = s.final_metrics()
     assert m["n_attempts"] == 0 and m["delivered_level"]["fallback"] is True and m["delivered_level"]["n_violations"] == 0
     assert [e["reason"] for e in kinds(s, "FINAL_FALLBACK")] == ["TURN_LIMIT"]

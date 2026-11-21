@@ -170,7 +170,7 @@ def test_safe_failure_over_mcp_is_an_error_result_with_the_required_action():
     def runner(tool, params):
         env = run_mock_tool(tool, params)
         if tool == T.CHECK_DATA_QUALITY:
-            env["results"].update({"gate_status": "HARD_BLOCK", "soft_warnings": [],
+            env["results"].update({"gate_status": "HARD_BLOCK", "soft_warnings": [], "issue_counts": {"AS_OF_VIOLATION": 1},
                                    "hard_blocks": [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "x"}]})
         return env
 

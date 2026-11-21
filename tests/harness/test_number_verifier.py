@@ -552,7 +552,9 @@ def test_real_retail_historical_only_numbers_are_not_hallucinations(retail_rank_
             "Ortak panelden 3 işlem günü düşürüldü (2024-12-25).")
     rep = verify_numbers(text, envelopes=[retail_rank_split], question="Analiz tarihi: 10.09.2026")
     assert rep.n_hallucinated == 0, [(r.claim.raw, r.verdict) for r in rep.claims if r.verdict == "HALLUCINATION"]
-    assert rep.by_raw("398").sources[0].path == "warnings[3]"
+    # 1.2.0: ham sayılar artık TİPLİ alanlarda (metin ayrıştırma bağımlılığı yok); uyarı metni de havuzda kalır
+    assert rep.by_raw("398").sources[0].path == "n_raw_laggard_observations"
+    assert rep.by_raw("227").sources[0].path.startswith("per_ticker[")
     fake = verify_numbers("Toplam 399 laggard hisse-günü.", envelopes=[retail_rank_split], question="")
     assert fake.by_raw("399").verdict == "HALLUCINATION"        # uydurma sayı hâlâ yakalanır
 

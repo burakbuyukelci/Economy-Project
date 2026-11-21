@@ -26,10 +26,10 @@ def finish(env: dict[str, Any], tag: str) -> dict[str, Any]:
     return env
 
 
-def stats(n: int, hit: float | None, cost: float | None, mean: float | None = 1.0) -> dict[str, Any]:
+def stats(n: int, hit: float | None, cost: float | None, mean: float | None = 1.0, excl: int = 0) -> dict[str, Any]:
     d = copy.deepcopy(ex._STATS)
     succ = round(n * hit / 100) if hit is not None else 0
-    d.update(n_events_complete=n, n_excluded_incomplete_horizon=0, n_success=succ, n_false_positive=n - succ,
+    d.update(n_events_complete=n, n_excluded_incomplete_horizon=excl, n_success=succ, n_false_positive=n - succ,
              hit_rate_pct=hit, false_positive_rate_pct=None if hit is None else round(100 - hit, 4),
              mean_return_pct=None if n == 0 else mean, median_return_pct=None if n == 0 else d["median_return_pct"],
              cost_adjusted_mean_return_pct=cost, mean_reversal_strength_pct=None, median_reversal_strength_pct=None)
@@ -38,9 +38,10 @@ def stats(n: int, hit: float | None, cost: float | None, mean: float | None = 1.
 
 def block(h: int, *, n: int = 40, hit: float | None = 60.0, base: float = 50.0, cost: float | None = 0.8,
           is_: tuple[int, float, float] | None = (30, 60.0, 0.9), oos: tuple[int, float, float] | None = (10, 60.0, 0.7),
-          flag: bool | None = False) -> dict[str, Any]:
+          flag: bool | None = False, excl: int = 0) -> dict[str, Any]:
+    """excl: ufku as_of'u aşan dışlanan olay sayısı. Havuzlu rank bloklarında n + excl ufuklar arasında SABİT olmalı (şema 1.2.0)."""
     b = copy.deepcopy(ex._BLOCK)
-    b.update(horizon=h, full=stats(n, hit, cost), in_sample=stats(*is_) if is_ else None,
+    b.update(horizon=h, full=stats(n, hit, cost, excl=excl), in_sample=stats(*is_) if is_ else None,
              out_of_sample=stats(*oos) if oos else None, oos_degradation_flag=flag,
              baseline={"n_obs": 1000, "mean_return_pct": 0.0, "median_return_pct": 0.0, "hit_rate_pct": base},
              mean_diff_vs_baseline_pct=0.5, median_diff_vs_baseline_pct=0.4)
@@ -64,6 +65,8 @@ def rank_env(*, tag: str = "rank", peers: int = 3, insufficient: bool = False, s
     res.update(peer_group_size=peers, insufficient_peers=insufficient, sector_strength=strength, ranking=rows,
                historical_catch_up=[{"block": b, "median_catch_up_size_pp": 2.0}
                                     for b in (blocks if blocks is not None else [block(5), block(10), block(20)])])
+    # şema 1.2.0: per_ticker / n_raw / cooldown / benchmark tanımı TUTARLI üretilir (özne havuzlu blokları taşır, diğerleri n=0)
+    env["results"] = ex.example_rank_with_per_ticker(res, subject)
     return finish(env, tag)
 
 

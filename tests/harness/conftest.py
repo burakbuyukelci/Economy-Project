@@ -23,13 +23,13 @@ def thyao_history() -> dict:
 
 @pytest.fixture(scope="session")
 def thyao_indicators() -> dict:
-    """Gerçek calculate_indicators: THYAO RSI + Bollinger + Supertrend, as_of 10.09.2026."""
+    """Gerçek calculate_indicators: THYAO RSI + Bollinger + Supertrend, as_of 10.09.2026 (last_n_rows=5: 1.2.0 varsayılanı 0)."""
     if not (SNAPSHOT_ROOT / "LATEST").exists():
         pytest.skip("data/snapshots yok")
     from tools import calculate_indicators
 
     env = calculate_indicators.run({"ticker": "THYAO", "indicators": ["RSI", "BOLLINGER", "SUPERTREND"],
-                                    "end": AS_OF, "as_of": AS_OF})
+                                    "end": AS_OF, "as_of": AS_OF, "last_n_rows": 5})   # 1.2.0 varsayılanı 0; recent_rows testleri 5 ister
     assert env["status"] == "OK"
     return env
 
