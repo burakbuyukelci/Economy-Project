@@ -1,4 +1,4 @@
-# Şema 1.2.0 planı (ONAYLANDI; uygulama `schema-1.2.0` dalında)
+# Şema 1.2.0 planı (ONAYLANDI; `schema-1.2.0` dalında UYGULANDI, main'e birleştirme bekliyor)
 
 > Kaynak: `docs/schema_wishlist.md` §1–5. Onay: ekip, 2026-11-21. Bu dosya karar kaydıdır; ayrıntılı alan sözleşmesi uygulanınca
 > `schemas/schema_changelog.md` içindeki 1.2.0 girişi bağlayıcı olur.
@@ -108,3 +108,11 @@ sözleşmesidir. Sayılar makine okunur değil, kapı kanıt çıkarıcısında 
 ## 7. Uygulama sırası
 1. Dal `schema-1.2.0`; 1.1.0 fixture'ları + yeni testler (kırmızı). 2. `schemas/` tek commit. 3. Araçlar ayrı commit (rank, indicators, check_data_quality).
 4. data_dictionary + wishlist. 5. Tam `pytest`; kırılan harness testleri Bilgisayar 2'ye listelenir. Dal push öncesi insana sorulur; main'e Bilgisayar 2 uyarlaması + yeşil testler sonrası.
+
+## 8. Uygulama notları (plandan sapmalar ve ölçümler)
+- `schemas.registry.max_result_date(results)` tek argümanlıdır (plandaki `(tool, results)` yerine; araç bazlı özel kural gerekmedi). `run_backtest.last_exit_date` eklenince `_PAST_ONLY_KEYS`'e girer ve otomatik kapsanır.
+- **Bulgu (kapı):** `DQIssue.date` geçmiş-only anahtardır; `as_of` sonrası tarihli ihlali orada taşıyan zarf look-ahead taramasında REDDEDİLİYORDU (önceden `AS_OF_VIOLATION` için de geçerliydi,
+  sentetik testler zarfı doğrulamıyordu). Kural: `DQIssue.date` `as_of`'u aşmaz; ihlalin tarihi `message`'ta, `date` `None`. Dört saf kural fonksiyonu ve testleri güncellendi.
+- **Ölçüm:** `calculate_indicators` THYAO, 2026-09-10, 23 kolon: hafif varsayılan 2 226 karakter; 1.1.0 varsayılanı 9 124; yalnız RSI hafif 1 514.
+- **Rank:** gerçek retail `per_ticker` ham 43/227/128 (398), bağımsız 9/21/14 (44), ufku dolmamış 1 — `data_dictionary` §14.4 ile birebir.
+- Plan dışı eklenmedi: hisse bazlı `FEW_EVENTS` uyarısı (araç yalnızca havuzlu `n_events` için üretir; hisse bazlı değerlendirme harness etiket politikasında).

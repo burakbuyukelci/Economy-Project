@@ -1,6 +1,6 @@
 # Şema 1.2.0 istek listesi (ÖNERİ; uygulanmadı)
 
-> Durum: **hiçbiri uygulanmadı.** `schemas/` ortak sözleşmedir ve her değişiklik insan onayı gerektirir (`schemas/schema_changelog.md`).
+> Durum (2026-11-21): **§1, §2, §4, §5 `schema-1.2.0` dalında UYGULANDI** (`docs/schema_1_2_0_plan.md`, `schemas/schema_changelog.md` 1.2.0); main'e birleştirme Bilgisayar 2 uyarlaması sonrası. §3 → §6 (ayrı küçük sürüm), §7 araç yazılırken. Aşağıdaki metin ilk öneridir. Eski durum: **hiçbiri uygulanmadı.** `schemas/` ortak sözleşmedir ve her değişiklik insan onayı gerektirir (`schemas/schema_changelog.md`).
 > Bu dosya, araçları yazarken görülen eksikleri toplar; onaylananlar `schemas/schema_changelog.md` içine 1.2.0 olarak taşınır.
 > Hepsi **eklemelidir** (varsayılanlı yeni alanlar); kırıcı değişiklik önerilmiyor. Yine de `extra="forbid"` olduğu için her yeni alan
 > tüketicileri (harness mock araçları, sayı doğrulayıcı, eğitim verisi üreteci) etkiler ve `input_hash`'i (params genişlerse) değiştirir.
