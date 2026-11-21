@@ -46,7 +46,7 @@ TYPE_SHARES = {
 RECOVERY_SHARE = 0.10          # hata-kurtarma yörüngeleri (hatalı asistan turu kayıptan MASKELİ)
 TEST_TEMPLATE_MOD = 4          # şablon sırası % 4 == 3 olanlar yalnızca TEST'te kullanılır
 
-MAX_TOKENS = 6144              # Colab seq len; gerçek Gemma tokenizer ile Colab'da yeniden süzülür
+MAX_TOKENS = 8192              # Colab seq len (T4, batch 1 + grad accum); gerçek Gemma tokenizer ile Colab'da yeniden süzülür
 TOP_K_STATEMENTS = 4           # açıklamaya alınan en çok kanıt cümlesi
 
 

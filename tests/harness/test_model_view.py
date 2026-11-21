@@ -155,7 +155,7 @@ def test_reversal_events_and_backtest_trade_log_are_cut_to_the_last_records_and_
     rv = {"tool": "detect_reversal_events", "status": "OK", "results": {"groups": [{"label": "single_indicator", "n_events_detected": 20, "events": ev},
                                                                                   {"label": "c", "n_events_detected": 1, "events": ev[:1]}]}}
     v = model_view(rv, subject=None)
-    assert v["results"]["groups"][0]["events"] == ev[-LIST_KEEP:] and v["results"]["groups"][1]["events"] == ev[:1]
+    assert v["results"]["groups"][0]["events"] == [{"date": e["date"]} for e in ev[-LIST_KEEP:]] and v["results"]["groups"][1]["events"] == [{"date": ev[0]["date"]}]
     assert v["results"]["groups"][0]["n_events_detected"] == 20 and v["view_trimmed"] == ["groups[].events"]
     assert len(rv["results"]["groups"][0]["events"]) == 20                                      # girdi değişmez
     bt = {"tool": "run_backtest", "status": "OK", "results": {"trade_log": [{"n": i} for i in range(10)], "n_signals": 10}}
@@ -191,3 +191,36 @@ def test_history_rows_keep_only_the_first_two_and_last_three():
     assert v["results"]["n_rows"] == 20 and v["view_trimmed"] == ["rows"]
     short = {"tool": "get_stock_history", "status": "OK", "results": {"rows": rows[:4]}}
     assert "view_trimmed" not in model_view(short, subject=None)
+
+
+def test_history_rows_also_keep_the_highest_and_lowest_close_rows_the_evidence_quotes():
+    rows = [{"date": f"2026-09-{d:02d}", "close": c} for d, c in zip(range(1, 21), [5, 6, 7, 99, 8, 9, 10, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22])]
+    v = model_view({"tool": "get_stock_history", "status": "OK", "results": {"rows": rows}}, subject=None)
+    got = [r["date"] for r in v["results"]["rows"]]
+    assert got == ["2026-09-01", "2026-09-02", "2026-09-04", "2026-09-08", "2026-09-18", "2026-09-19", "2026-09-20"]       # sıra korunur; zirve (99) ve dip (1) var
+    assert max(r["close"] for r in v["results"]["rows"]) == 99 and min(r["close"] for r in v["results"]["rows"]) == 1
+
+
+def test_weekday_windows_keep_only_the_numbers_the_evidence_quotes():
+    w = {"window": {"start": "a", "end": "b"}, "n_weeks_total": 105, "n_weeks_complete": 85, "n_trigger_weeks": 18, "n_occurrences": 5, "per_day": [{"x": 1}],
+         "t_stat": 1.1, "hit_rate_pct": 27.0, "outcome_mean_return_pct": 1.3, "outcome_mean_diff_vs_unconditional_pct": 0.5,
+         "cost_adjusted_outcome_mean_return_pct": 0.8, "p_value_raw": 0.12, "p_value_adjusted": 0.12}
+    v = model_view({"tool": "test_weekday_pattern", "status": "OK", "results": {"stability_verdict": "UNSTABLE", "in_sample": dict(w), "out_of_sample": dict(w),
+                                                                              "cost_model": {"x": 1}, "multiple_testing": {"n_tests_declared": 1}}}, subject=None)
+    r = v["results"]
+    assert set(r["in_sample"]) == {"window", "n_weeks_complete", "n_trigger_weeks", "n_occurrences", "outcome_mean_return_pct",
+                                   "outcome_mean_diff_vs_unconditional_pct", "cost_adjusted_outcome_mean_return_pct", "p_value_raw", "p_value_adjusted"}
+    assert r["stability_verdict"] == "UNSTABLE" and r["multiple_testing"] == {"n_tests_declared": 1} and "cost_model" not in r
+    assert "weekday_window_stats" in v["view_trimmed"]
+
+
+def test_tight_mode_keeps_only_the_horizons_the_evidence_selects(monkeypatch):
+    from harness import settings
+
+    def rv():
+        return {"tool": "detect_reversal_events", "status": "OK", "results": {"groups": [{"label": "single_indicator", "n_events_detected": 3, "events": [],
+                "per_horizon": [{"horizon": h, "full": {"n_events_complete": 3, "hit_rate_pct": 50.0}} for h in (1, 3, 5, 10)]}]}}
+    assert [b["horizon"] for b in model_view(rv(), subject=None)["results"]["groups"][0]["per_horizon"]] == [1, 3, 5, 10]          # varsayılan: kapalı
+    monkeypatch.setattr(settings, "MODEL_VIEW_TIGHT", True)
+    v = model_view(rv(), subject=None)
+    assert [b["horizon"] for b in v["results"]["groups"][0]["per_horizon"]] == [5] and "tight_horizons" in v["view_trimmed"]

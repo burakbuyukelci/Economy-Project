@@ -15,6 +15,11 @@ Kurallar:
   * run_backtest: kanıtın alıntıladığı alanlar kalır (strateji özeti, net metrikler: getiri/Sharpe/düşüş/isabet/işlem, benchmark farkları, bölüm özetleri, bayraklar);
     brüt metrikler, maliyet/Sharpe tanımı ve benchmark ayrıntı metrikleri atılır. Tekrarlayan sabit uyarılar (`COST_ASSUMPTIONS`; sayısız `HISTORICAL_ONLY`) atılır: kural sistem isteminde.
   * get_stock_history / get_index_history: `rows` yalnızca İLK 2 ve SON 3 satır (kanıt dönem özetini zaten taşır).
+  * İLKE (8192 bağlam kararı): model yalnızca kanıtın ALINTILAYABİLDİĞİ (committed) alanları ve politikanın metinde anlattığı bayrakları görür; tam zarf doğrulayıcıda ve politikada kalır.
+    Bunun sınaması: nihai metinde alıntılanan her sayı/tarih modelin gördüğü görünümde bulunur (tests/training/test_view_visibility.py).
+  * haftalık örüntü pencereleri yalnızca kanıtın alıntıladığı alanlara iner (`per_day`, `t_stat`, doluluk oranları vb. atılır); reversal olayları yalnızca SON olayın tarihi;
+    geçmiş serilerinde ilk 2 + son 3 satırın yanında dönemin EN YÜKSEK ve EN DÜŞÜK kapanış satırları kalır (kanıt bunları alıntılar).
+  * SIKI MOD (`settings.MODEL_VIEW_TIGHT`, 6144 geri dönüşü): ufuk blokları yalnızca kanıtın seçtiği ufuklarla (reversal 5; rank 5 ve 20) sınırlanır.
 Özne: soruda tek hisse varsa o, aksi halde sıralamadaki en çok geride kalan (label_policy ile aynı kural).
 """
 from __future__ import annotations
@@ -82,11 +87,64 @@ def _slim_backtest(results: dict[str, Any]) -> list[str]:
 
 
 def _trim_rows(results: dict[str, Any]) -> list[str]:
+    """İlk 2 + son 3 satır + en yüksek/en düşük kapanış satırları (kanıt dönem özeti bunları alıntılar); sıra korunur."""
     rows = results.get("rows")
     if isinstance(rows, list) and len(rows) > ROWS_HEAD + ROWS_TAIL:
-        results["rows"] = rows[:ROWS_HEAD] + rows[-ROWS_TAIL:]
-        return ["rows"]
+        keep = set(range(ROWS_HEAD)) | set(range(len(rows) - ROWS_TAIL, len(rows)))
+        keep.add(max(range(len(rows)), key=lambda i: rows[i]["close"]))
+        keep.add(min(range(len(rows)), key=lambda i: rows[i]["close"]))
+        if len(keep) < len(rows):
+            results["rows"] = [rows[i] for i in sorted(keep)]
+            return ["rows"]
     return []
+
+
+_WEEKDAY_WINDOW_KEEP = ("window", "n_weeks_complete", "n_trigger_weeks", "n_occurrences", "outcome_mean_return_pct", "outcome_mean_diff_vs_unconditional_pct",
+                        "cost_adjusted_outcome_mean_return_pct", "p_value_raw", "p_value_adjusted")
+
+
+def _slim_weekday(results: dict[str, Any]) -> list[str]:
+    hit = False
+    for key in ("in_sample", "out_of_sample"):
+        w = results.get(key)
+        if isinstance(w, dict):
+            kept = {k: w[k] for k in _WEEKDAY_WINDOW_KEEP if k in w}
+            hit = hit or len(kept) != len(w)
+            results[key] = kept
+    results.pop("cost_model", None)
+    return ["weekday_window_stats"] if hit else []
+
+
+def _tight_horizons(tool: str, results: dict[str, Any]) -> list[str]:
+    """SIKI MOD: ufuk blokları yalnızca kanıtın seçtiği ufuklarla (reversal 5; rank 5 ve 20)."""
+    keep = {"detect_reversal_events": (5,), "rank_sector_relative_strength": (5, 20)}.get(tool)
+    if not keep:
+        return []
+    hit = False
+
+    def pick(blocks: list[Any], getter) -> list[Any]:
+        nonlocal hit
+        out = [b for b in blocks if getter(b) in keep] or blocks[:1]
+        hit = hit or len(out) != len(blocks)
+        return out
+
+    if tool == "detect_reversal_events":
+        for g in results.get("groups") or []:
+            if isinstance(g.get("per_horizon"), list):
+                g["per_horizon"] = pick(g["per_horizon"], lambda b: b.get("horizon"))
+    else:
+        if isinstance(results.get("historical_catch_up"), list):
+            results["historical_catch_up"] = pick(results["historical_catch_up"], lambda r: (r.get("block") or {}).get("horizon"))
+        for t in results.get("per_ticker") or []:
+            if isinstance(t.get("per_horizon"), list):
+                t["per_horizon"] = pick(t["per_horizon"], lambda r: (r.get("block") or {}).get("horizon"))
+    return ["tight_horizons"] if hit else []
+
+
+def _tight() -> bool:
+    from harness import settings
+
+    return bool(settings.MODEL_VIEW_TIGHT)
 
 
 def _is_boilerplate(w: str, tool: str) -> bool:
@@ -161,10 +219,13 @@ def _trim_long_lists(tool: str, results: dict[str, Any]) -> list[str]:
     trimmed: list[str] = []
     if tool == "detect_reversal_events":
         for g in results.get("groups") or []:
-            if isinstance(g.get("events"), list) and len(g["events"]) > LIST_KEEP:
-                g["events"] = g["events"][-LIST_KEEP:]
-                if "groups[].events" not in trimmed:
-                    trimmed.append("groups[].events")
+            if isinstance(g.get("events"), list) and g["events"]:
+                last = [{"date": e["date"]} for e in g["events"][-LIST_KEEP:] if "date" in e]
+                if last != g["events"]:
+                    g["events"] = last
+                    if "groups[].events" not in trimmed:
+                        trimmed.append("groups[].events")
+            g.pop("events_truncated", None)
     elif tool == "run_backtest":
         trimmed += _slim_backtest(results)
         if isinstance(results.get("trade_log"), list) and len(results["trade_log"]) > LIST_KEEP:
@@ -186,6 +247,10 @@ def model_view(envelope: dict[str, Any], *, subject: str | None) -> dict[str, An
         trimmed = _trim_rank(results, subject) if tool == "rank_sector_relative_strength" else []
         trimmed += _trim_long_lists(tool, results)
         trimmed += _slim_blocks(tool, results)
+        if tool == "test_weekday_pattern":
+            trimmed += _slim_weekday(results)
+        if _tight():
+            trimmed += _tight_horizons(tool, results)
         if tool in ("get_stock_history", "get_index_history"):
             trimmed += _trim_rows(results)
         if trimmed:

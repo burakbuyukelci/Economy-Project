@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-CODE = ["training/__init__.py", "training/colab/__init__.py", "training/colab/data.py", "training/colab/train_qlora.py",
+CODE = ["training/__init__.py", "training/colab/__init__.py", "training/colab/data.py", "training/colab/compat.py", "training/colab/train_qlora.py",
         "harness/__init__.py", "harness/text_protocol.py"]
 
 

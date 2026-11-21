@@ -68,11 +68,12 @@ def _select(recs: list[dict[str, Any]], qtype: str, n: int) -> list[dict[str, An
 
 
 def build(splits: tuple[str, ...], seed: int, *, progress: bool = False) -> dict[str, Any]:
-    out: dict[str, Any] = {"records": {}, "natural": {}, "drops": {}, "questions": []}
+    out: dict[str, Any] = {"records": {}, "natural": {}, "drops": {}, "questions": [], "candidates": {}}
     with real_tools():
         for split in splits:
             cands = _candidates(split, seed)
             out["questions"] += cands
+            out["candidates"][split] = dict(Counter(q.type for q in cands))
             ok_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
             natural: dict[str, Counter[str]] = defaultdict(Counter)
             drops: Counter[str] = Counter()
@@ -115,6 +116,9 @@ def report(built: dict[str, Any], splits: tuple[str, ...]) -> dict[str, Any]:
                           if sum(1 for r in rs if r["type"] == t) < spec.allocate(s)[t]},
             "natural_labels_before_selection": built["natural"][s],
             "dropped": built["drops"][s],
+            "candidates": built["candidates"][s],
+            "too_long_rate_by_type": {t: round(built["drops"][s].get(f"{t}:too_long", 0) / n, 4) for t, n in built["candidates"][s].items()},
+            "too_long_rate_overall": round(sum(v for k, v in built["drops"][s].items() if k.endswith(":too_long")) / max(1, sum(built["candidates"][s].values())), 4),
         }
     rep["overall_labels"] = dict(Counter(r["label"] for r in allr))
     top = Counter(r["label"] for r in allr).most_common(1)
@@ -140,8 +144,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="yazma; etiket dağılımını raporla")
     ap.add_argument("--splits", nargs="+", default=list(spec.SPLITS), choices=list(spec.SPLITS))
     ap.add_argument("--seed", type=int, default=spec.SEED)
+    ap.add_argument("--max-tokens", type=int, default=None, help=f"oturum token sınırı (varsayılan {spec.MAX_TOKENS})")
+    ap.add_argument("--tight", action="store_true", help="model görünümü SIKI MOD (6144 geri dönüşü; canlıda HARNESS_VIEW_TIGHT=1 ile aynı olmalı)")
     args = ap.parse_args(argv)
     spec.SEED = args.seed
+    if args.max_tokens:
+        spec.MAX_TOKENS = args.max_tokens
+    if args.tight:
+        from harness import settings
+
+        settings.MODEL_VIEW_TIGHT = True
     splits = tuple(args.splits)
     built = build(splits, args.seed, progress=True)
     rep = report(built, splits)

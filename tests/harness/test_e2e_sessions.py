@@ -304,13 +304,7 @@ def test_q2_is_fully_real_and_the_label_is_reject_signal_with_a_training_eligibl
     assert "FEW_EVENTS" in {w["code"] for w in gates[-1]["soft_warnings"]} and s.policy.gate_status == "INVESTIGATE"
 
 
-_OVER = "AÇIK: tepe tur ölçüldü > CONTEXT_TARGET_TOKENS (karakter/3). Eğitim üreticisi tam oturum token sayısını FİLTRELER (seq len 6144); harness_design 13.2."
-
-
-@pytest.mark.parametrize("q", [
-    "Q1",
-    pytest.param("Q2", marks=pytest.mark.xfail(strict=True, reason=_OVER + " Q2 ~6,3 bin (weekday zarfı ~5 bin karakter)")),
-    "Q3", "Q4", "Q5"])
+@pytest.mark.parametrize("q", ["Q1", "Q2", "Q3", "Q4", "Q5"])
 def test_each_sample_question_stays_within_the_context_budget(q):
     """Hedef: her model turunda istem ≤ CONTEXT_TARGET_TOKENS (karakter/3 tahmini; Ollama kurulunca prompt_eval_count ile doğrulanır)."""
     s = new_session(q)

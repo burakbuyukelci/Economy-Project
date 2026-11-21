@@ -113,7 +113,7 @@ LLM_MODEL = "gemma3:4b"
 LLM_MODEL_ENV = "HARNESS_MODEL"
 LLM_TEMPERATURE = 0.0              # determinizm (CLAUDE.md kural 8)
 LLM_TEMPERATURE_ENV = "HARNESS_TEMPERATURE"
-LLM_NUM_CTX = 16384                # bağlam sınırı (token); aşılırsa Ollama sessizce kırpar: istemci bunu hata sayar.
+LLM_NUM_CTX = 8192                # bağlam sınırı (token); aşılırsa Ollama sessizce kırpar: istemci bunu hata sayar.
                                    # ÖLÇÜM (Q1/Q3, 3 karakter/token yaklaşığı): 13 araç şeması ~23 bin karakter + bir oturumun mesajları 10-12 bin karakter
                                    # => ~11-12 bin token; 8192 yetmez. Gerçek tokenizer ile doğrulanmadı; VRAM'e göre env ile ezilir.
 LLM_NUM_CTX_ENV = "HARNESS_NUM_CTX"
@@ -172,6 +172,10 @@ def ollama_host() -> str:
 # None = profilin tüm araçları. Küme verilirse yalnızca bunlar modele görünür (harness-içi kapı/paket araçları yine hariç). v1 eğitim verisi ve canlı sistem
 # yalnızca GERÇEK araçları gösterir; yeni araç (bilanço, makro, haber) gerçek olunca buraya eklenir ve veri yeniden üretilir.
 EXPOSED_TOOLS: frozenset[ToolName] | None = None
+
+# Model görünümü SIKI MOD (docs/harness_design.md 14.3): ufuk blokları yalnızca kanıtın seçtiği ufuklarla. Varsayılan KAPALI; 8192 bağlam OOM verirse
+# 6144 geri dönüşünde (training/README.md) `python -m training.build_dataset --tight --max-tokens 6144` ile kullanılır; CANLIDA da aynı değer kullanılmalıdır (HARNESS_VIEW_TIGHT=1).
+MODEL_VIEW_TIGHT = os.environ.get("HARNESS_VIEW_TIGHT", "") == "1"
 
 # --- Orkestratör (harness/agent_loop.py) ---------------------------------------------------------------------------------
 AGENT_MAX_TURNS = 40               # bir oturumdaki en çok model turu (araç döngüsü + nihai deneme); aşılırsa LOOP_ABORTED

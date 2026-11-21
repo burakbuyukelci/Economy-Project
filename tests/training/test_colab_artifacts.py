@@ -23,7 +23,7 @@ def test_train_script_compiles_and_has_the_agreed_defaults():
     p = REPO / "training" / "colab" / "train_qlora.py"
     py_compile.compile(str(p), doraise=True)
     text = p.read_text(encoding="utf-8")
-    assert 'DEFAULT_MODEL = "unsloth/gemma-3-4b-it"' in text and "load_in_4bit=True" in text and "default=6144" in text
+    assert 'DEFAULT_MODEL = "unsloth/gemma-3-4b-it"' in text and "load_in_4bit=True" in text and "default=8192" in text
     assert "train_on_responses_only" not in text           # kayıp maskesi KENDİ mantığımız (hatalı turlar da maskelenir)
     assert "skip_prepare_dataset" in text and "PadCollator" in text and "save_pretrained_gguf" in text
 
@@ -57,5 +57,30 @@ def test_modelfile_template_matches_the_training_layout_and_stops():
 def test_readme_documents_every_command_it_relies_on():
     rd = (REPO / "training" / "README.md").read_text(encoding="utf-8")
     for needle in ("python -m training.build_dataset", "python -m training.colab.make_bundle", "train_qlora.ipynb", "ollama create gemma3-bist",
-                   "experiments.check_template", "experiments.eval_runner", "seq", "6144", "T4"):
+                   "experiments.check_template", "experiments.eval_runner", "seq", "8192", "6144", "T4", "--tight"):
         assert needle in rd, needle
+
+
+def test_version_dependent_arguments_are_detected_with_inspect_not_try_except():
+    text = (REPO / "training" / "colab" / "train_qlora.py").read_text(encoding="utf-8")
+    assert "first_supported(SFTConfig" in text and "first_supported(model.save_pretrained_gguf" in text
+    assert "except TypeError" not in text
+
+
+def test_first_supported_picks_the_argument_name_the_installed_version_has():
+    import dataclasses
+
+    from training.colab.compat import first_supported, kwargs_for, supported_names
+
+    def old(a, max_seq_length=1): ...
+    def new(a, *, max_length=1): ...
+    def neither(a, **kw): ...
+    assert first_supported(old, ("max_seq_length", "max_length")) == "max_seq_length"
+    assert first_supported(new, ("max_seq_length", "max_length")) == "max_length"
+    assert first_supported(neither, ("max_seq_length", "max_length")) is None and supported_names(neither)[1] is True
+
+    @dataclasses.dataclass
+    class Cfg:
+        max_length: int = 1
+    assert first_supported(Cfg, ("max_seq_length", "max_length")) == "max_length"
+    assert kwargs_for(Cfg, seq=("max_seq_length", "max_length"), x=("zzz",)) == {"seq": "max_length", "x": None}

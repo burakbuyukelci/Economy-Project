@@ -25,7 +25,7 @@ TEMPLATE """{{- range $i, $_ := .Messages }}
 PARAMETER stop "<end_of_turn>"
 PARAMETER stop "<tool_response name="
 
-# Determinizm ve bağlam (eğitim seq len 6144; canlıda biraz pay bırakılır).
+# Determinizm ve bağlam (eğitim seq len 8192; num_ctx eğitimle AYNI: istem + üretim bu sınır içinde kalmalı).
 PARAMETER temperature 0
 PARAMETER seed 42
 PARAMETER num_ctx 8192

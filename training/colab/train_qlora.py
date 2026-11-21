@@ -1,4 +1,4 @@
-"""Colab (T4 16 GB) QLoRA eğitimi: unsloth/gemma-3-4b-it, 4-bit, seq len <= 6144.
+"""Colab (T4 16 GB) QLoRA eğitimi: unsloth/gemma-3-4b-it, 4-bit, seq len <= 8192 (batch 1 + gradient accumulation; OOM ise README geri dönüşü).
 
 Girdi: `train.jsonl` / `val.jsonl` (python -m training.build_dataset çıktısı). Her kayıt `text_messages` (çıkarımdaki metnin BİREBİR aynısı) + `train_mask` taşır.
 KAYIP: yalnızca asistan turları (araç çağrıları + nihai metin) ve `<end_of_turn>`; system, soru, politika bloğu, geri bildirim, araç çıktıları ve MASKELİ hatalı
@@ -19,6 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))   # repo kökü (harness.text_protocol, training.colab.data); Colab paketinde de aynı düzen
 
+from training.colab.compat import first_supported  # noqa: E402
 from training.colab.data import IGNORE, build_examples, load_jsonl  # noqa: E402
 
 DEFAULT_MODEL = "unsloth/gemma-3-4b-it"
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--train", required=True)
     ap.add_argument("--val", required=True)
     ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--max-seq", type=int, default=6144)
+    ap.add_argument("--max-seq", type=int, default=8192)
     ap.add_argument("--epochs", type=float, default=2.0)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--rank", type=int, default=16)
@@ -123,10 +124,11 @@ def main(argv: list[str] | None = None) -> int:
         fp16=not bf16, bf16=bf16, report_to="none", remove_unused_columns=False,
         dataset_kwargs={"skip_prepare_dataset": True},   # veri zaten tokenlanmış ve maskelenmiş
     )
-    try:                                                 # TRL sürümüne göre: max_seq_length ya da max_length
-        cfg = SFTConfig(**base, max_seq_length=args.max_seq)
-    except TypeError:
-        cfg = SFTConfig(**base, max_length=args.max_seq)
+    seq_key = first_supported(SFTConfig, ("max_seq_length", "max_length"))          # TRL sürümüne göre; inspect ile saptanır
+    if seq_key is None:
+        raise RuntimeError("SFTConfig ne max_seq_length ne max_length kabul ediyor: TRL sürümünü kontrol edin (training/README.md sorun giderme)")
+    print(f"SFTConfig dizi uzunluğu alanı: {seq_key}")
+    cfg = SFTConfig(**base, **{seq_key: args.max_seq})
     trainer = SFTTrainer(model=model, tokenizer=tokenizer, train_dataset=train_ds, eval_dataset=val_ds, data_collator=PadCollator(pad_id), args=cfg)
     result = trainer.train()
     (out / "train_result.json").write_text(json.dumps(result.metrics, indent=2), encoding="utf-8")
@@ -141,10 +143,12 @@ def main(argv: list[str] | None = None) -> int:
 def export_gguf(model, tokenizer, dest: Path, method: str) -> None:
     """Birleştirilmiş modeli GGUF'a çevirir (Unsloth). API adı sürüme göre değişir: önce `quantization_method`, olmazsa `quantization_type`."""
     dest.mkdir(parents=True, exist_ok=True)
-    try:
-        model.save_pretrained_gguf(str(dest), tokenizer, quantization_method=method)
-    except TypeError:
-        model.save_pretrained_gguf(str(dest), tokenizer, quantization_type=method.upper())
+    key = first_supported(model.save_pretrained_gguf, ("quantization_method", "quantization_type"))   # sürüme göre; inspect ile saptanır
+    if key is None:
+        raise RuntimeError("save_pretrained_gguf quantization_method/quantization_type kabul etmiyor: training/README.md'deki elle dönüştürme adımlarını kullanın")
+    value = method if key == "quantization_method" else method.upper()
+    print(f"save_pretrained_gguf argümanı: {key}={value}")
+    model.save_pretrained_gguf(str(dest), tokenizer, **{key: value})
     print(f"GGUF yazıldı: {dest}")
 
 
