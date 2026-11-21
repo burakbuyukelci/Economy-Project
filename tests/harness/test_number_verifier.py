@@ -602,3 +602,25 @@ def test_policy_dates_are_allowlisted_too():
     rep = verify_numbers("Son kapı 08.09.2026'da çalıştı.", envelopes=[env({"x": 1})], question="",
                          policy_text="Kapı tarihi 2026-09-08")
     assert rep.claims[0].verdict == "ALLOWLISTED_POLICY"
+
+
+# =============================== şema 1.2.0: check_data_quality.issue_counts tipli alan ===============================
+def test_issue_counts_numbers_are_pooled_with_a_typed_path_not_parsed_from_gate_reason():
+    gate = env({"gate_status": "PASS_WITH_WARNINGS", "gate_reason": "uyarı var", "issue_counts": {"FEW_EVENTS": 7, "MISSING_TRADING_DAYS": 13},
+                "hard_blocks": [], "soft_warnings": []}, tool="check_data_quality")
+    rep = verify_numbers("Kapı 7 olay uyarısı ve 13 eksik gün uyarısı verdi; uydurma 8 uyarı da var.", envelopes=[gate], question="")
+    assert rep.by_raw("7").sources[0].path == "issue_counts.FEW_EVENTS" and rep.by_raw("13").sources[0].path == "issue_counts.MISSING_TRADING_DAYS"
+    assert rep.by_raw("8").verdict == "HALLUCINATION"
+
+
+def test_real_gate_issue_counts_are_quotable_and_sum_to_the_listed_issues():
+    from tools import check_data_quality
+
+    env_ = check_data_quality.run({"tickers": ["BIMAS", "MAVI", "MGROS"], "end": "2026-09-10", "as_of": "2026-09-10"})
+    res = env_["results"]
+    counts = res["issue_counts"]
+    assert counts and sum(counts.values()) == len(res["hard_blocks"]) + len(res["soft_warnings"])      # 1.2.0 doğrulayıcı kuralı
+    code, n = next(iter(sorted(counts.items())))
+    rep = verify_numbers(f"Kapı {code} için {n} bulgu raporladı.", envelopes=[env_], question="")
+    claim = rep.claims[0]
+    assert claim.verdict in ("SUPPORTED", "UNEVIDENCED") and rep.n_hallucinated == 0
