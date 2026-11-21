@@ -416,7 +416,7 @@ test şablonları (sıra % 4 == 3) eğitimde yok. Retail tek ≥3 üyeli grup: c
 **Hata-kurtarma (%10, deterministik):** `as_of` uyuşmazlığı, bozuk araç çağrısı biçimi, erken bitirme, nihai metin ihlali + geri besleme. Hatalı asistan turu `train_mask`'te False (bağlamda kalır, kayıpta değil).
 
 **Bağlam:** gerçek Gemma tokenizer ile ölçüldü (karakter/3 tahmini JSON ağırlıklı içerikte ~%12 eksik sayıyordu: ~2,7 karakter/token). Model görünümü (`model_view.py`) kanıtın alıntılamadığı uzun listeleri/alanları kırpar;
-araç tanımları (`tool_view.py`) 8 araç için ~1,7 bin token. Süzgeç: oturum > 6144 token ise elenir (rapor `dropped`/`shortfall`).
+araç tanımları (`tool_view.py`) 8 araç için ~1,7 bin token. Süzgeç: oturum > 8192 token ise elenir (rapor `dropped`, `too_long_rate_by_type`, `shortfall`).
 
 **Doğrulama hattı (`training/validate.py`) her kayıtta:** etiket = politika; sayı halüsinasyonu 0 ve kanıtsız sayı 0; eylem koruması ihlali 0; tüm zarflar `snap_*_v2` ve şema 1.3.0 (mock yok); geri çekilme yok;
 beklenmeyen hata zarfı yok; aday etiketlerde not; nihai metin ilk denemede kabul (kurtarma yörüngelerinde 2.). Veri kümesi: sızıntı 0, tek etiket payı <= %80, yinelenen kimlik yok.
@@ -443,4 +443,20 @@ Genel: tek etiket payı **%61,8** (INVESTIGATE) < %80 eşiği, devam edildi. **E
 `POTENTIAL_CATCH_UP_CANDIDATE` ve `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` verisi YOK (gerçek araçlarla CU adayı hiç oluşmadı; bilanço aracı yok): model bu iki etiketi bu veriden öğrenemez.
 `TECHNICAL_REVERSAL_CANDIDATE` yalnızca 7 eğitim örneği (taze sinyal günü hedeflemesine rağmen nadir); `WATCH` 12. Colab hattı doğrulaması (gerçek tokenizer): 0 elenen, eğitilen token payı ~%10.
 Eğitim hedefi büyük ölçüde protokol/biçim/ret davranışı (araç çağırma, sayı disiplini, tavsiye reddi, güvenli hata yolu); etiket dağılımı INVESTIGATE/REJECT ağırlıklıdır (negatifler güçlü, adaylar zayıf).
+
+### 14.3 Bağlam 8192 kararı, model görünümü ilkesi ve sınırlamalar
+* **Karar:** eğitim `max_seq` 8192, Modelfile `num_ctx` 8192, `LLM_NUM_CTX` 8192, `CONTEXT_TARGET_TOKENS` 8192 (T4 16 GB: batch 1 + gradient accumulation 8). 6144'te catch-up (Soru 1) ve reversal (Soru 3) oturumlarının büyük kısmı eleniyordu
+  (ölçüm: catch-up 69/100 ve reversal 46/200 oturum > 6144, hiçbiri > 8192). **OOM geri dönüşü:** 6144 + SIKI MOD (`--max-tokens 6144 --tight`, canlıda `HARNESS_VIEW_TIGHT=1`; training/README.md).
+* **Model görünümü ilkesi:** model yalnızca kanıtın ALINTILAYABİLDİĞİ (committed) alanları ve politikanın metinde anlattığı bayrakları görür; tam zarf doğrulayıcıda ve politikada kalır. Ek kırpmalar: haftalık örüntü pencereleri (yalnızca alıntılanan alanlar),
+  reversal olayları yalnızca son olay tarihi, geçmiş serilerinde ilk 2 + son 3 satır + en yüksek/en düşük kapanış satırları. **Sınama:** `tests/training/test_view_visibility.py` her tipte nihai metindeki her sayının modelin gördüğü görünümde bulunduğunu doğrular
+  (bu test, geçmiş satırı kırpmasının zirve/dip kapanışları gizlediği hatasını yakaladı: "doğru" etiketli ama modele sayı uydurtan örnek).
+* **SINIRLAMA — `POTENTIAL_CATCH_UP_CANDIDATE` eğitim verisinde YOKTUR:** gerçek `rank_sector_relative_strength` + `run_backtest` ile taramada (retail, 2025-09 → 2026-11 haftalık) C5 hiç oluşmadı (yalnızca C2 HOLD, C4 REJECT, C6 INVESTIGATE); `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` için bilanço aracı yok.
+  Bu etiketler yalnızca sentetik politika testlerinde sınanır. Model bu etiketleri bu veriden öğrenemez; D/E'de etiket harness'ten (politika bloğu) VERİLDİĞİ için canlı sistem bunları yine doğru etiketleyebilir,
+  ama bu **model başarısı sayılmaz** (bölüm 12 notu). `TECHNICAL_REVERSAL_CANDIDATE` ve `WATCH` az örnekle temsil edilir. Etiket politikasının kararlarını modelin kendisinin öğrenmesi (A–C) bu veriyle ölçülemez.
+* **Artımlı v2:** bilanço/makro/haber araçları gerçek olunca `training/spec.REAL_TOOLS` + `TYPE_SHARES` + `questions.BUILDERS` + `teacher.plan_calls` + `composer._pick` + (varsa) `LABEL_QUOTAS` eklenir; mevcut tiplerin soruları ve tohumları değişmez,
+  `GENERATOR_VERSION` artırılıp veri yeniden üretilir (`python -m training.build_dataset`); görünürlük testi yeni araçları da kapsayacak şekilde tip listesine eklenir.
+* **v1 yeniden üretim (8192; tohum 42):** 600 / 50 / 100 oturum, **bağlam nedeniyle elenen 0** (tüm tiplerde %0; en uzun 7053 token, p95 ~6,3 bin; Colab hattıyla doğrulandı). Etiketler (toplam 750): INVESTIGATE 460 (%61,3), REJECT_SIGNAL 159, ANALYSIS_UNSAFE 60, HOLD 39, WATCH 19, TECHNICAL_REVERSAL_CANDIDATE 13.
+  Eğitimde tip sayıları: Soru 1 tipi (catch-up) **60** (HOLD 31, REJECT_SIGNAL 21, INVESTIGATE 8), Soru 2 tipi (haftanın günü) **108** (REJECT_SIGNAL 59, INVESTIGATE 49), Soru 3 tipi (teknik dönüş) **120**
+  (INVESTIGATE 52, REJECT_SIGNAL 42, WATCH 17, TECHNICAL_REVERSAL_CANDIDATE **9**); ayrıca tavsiye 60, gösterge 72, destek/direnç 42, geçmiş 42, araçta olmayan veri 48, bayat veri 48. Doğrulama 50, test 100 (test: catch-up 10, haftanın günü 18, teknik dönüş 20; TR adayı 4).
+  Hata-kurtarma: eğitimde 49 oturum (%8,2), maskeli.
 
