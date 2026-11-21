@@ -39,10 +39,12 @@ STALE_GRACE_DAYS = 4          # VARSAYIM: Cuma-Pazartesi tatili dahil 4 takvim g
 STALE_WARN_MAX_DAYS = 10      # onaylı (kullanıcı kademesi)
 STALE_UNSAFE_DAYS = 30        # onaylı
 MIN_FUNDAMENTAL_QUARTERS = 4  # onaylı: temel veri için en az 4 çeyrek
-PEER_GROUP_MIN_SIZE = 3       # < 3 üye = küçük grup (rank aracı n==1 SOLO, n==2 SMALL der)
-MACRO_MAX_GAP_DAYS = 7        # VARSAYIM: günlük seri için; aylık seriler çağıran tarafından geniş eşikle sorulmalı
-NEWS_MIN_ITEMS = 3            # VARSAYIM: pencerede < 3 haber = seyrek
-TRANSCRIPT_MIN_QUALITY = 0.6  # VARSAYIM: 0-1 ölçeğinde (GetSpeechFeatures.transcript_quality)
+# GEÇİCİ eşikler (ekip onayı bekliyor; ilgili veri/araç gelince gerçek dağılıma göre yeniden belirlenecek):
+PEER_GROUP_MIN_SIZE = 3       # GEÇİCİ: < 3 üye = küçük grup (rank aracı n==1 SOLO, n==2 SMALL der)
+NEWS_MIN_ITEMS = 3            # GEÇİCİ: pencerede < 3 haber = seyrek
+TRANSCRIPT_MIN_QUALITY = 0.6  # GEÇİCİ: 0-1 ölçeğinde (GetSpeechFeatures.transcript_quality)
+# MACRO_GAP eşiği seri sıklığına bağlıdır (onaylı: günlük 7, aylık ~45 gün). Günlük: hafta sonu + tatil payı; aylık: ~1,5 ay.
+MACRO_MAX_GAP_DAYS_BY_FREQUENCY = {"daily": 7, "monthly": 45}
 
 
 # --- FEW_EVENTS: araç bazlı birim ve minimum ------------------------------------------------------------------------
@@ -193,9 +195,16 @@ def check_staleness(label: str, last_date: date, as_of: date) -> list[DQIssue]:
 
 
 def check_macro_coverage(
-    obs_dates: Sequence[date], start: date, end: date, max_gap_days: int = MACRO_MAX_GAP_DAYS,
+    obs_dates: Sequence[date], start: date, end: date, frequency: str = "daily", max_gap_days: int | None = None,
 ) -> list[DQIssue]:
-    """[start, end] içinde ardışık gözlemler (ve uçlar) arasında > max_gap_days boşluk -> MACRO_GAP. `end` sonrası gözlem yok sayılır."""
+    """[start, end] içinde ardışık gözlemler (ve uçlar) arasında > eşik gün boşluk -> MACRO_GAP. `end` sonrası gözlem yok sayılır.
+
+    Eşik: `max_gap_days` verilmişse o; yoksa `frequency`'ye göre MACRO_MAX_GAP_DAYS_BY_FREQUENCY ("daily" 7, "monthly" 45).
+    """
+    if max_gap_days is None:
+        if frequency not in MACRO_MAX_GAP_DAYS_BY_FREQUENCY:
+            raise ValueError(f"bilinmeyen seri sıklığı {frequency!r}; beklenen: {sorted(MACRO_MAX_GAP_DAYS_BY_FREQUENCY)}")
+        max_gap_days = MACRO_MAX_GAP_DAYS_BY_FREQUENCY[frequency]
     pts = sorted(d for d in obs_dates if start <= d <= end)
     if not pts:
         return [DQIssue(code=DQCode.MACRO_GAP, severity=DQSeverity.SOFT, value=float((end - start).days),

@@ -198,6 +198,24 @@ def test_macro_gap_is_soft_and_boundary_inclusive():
     assert [i.value for i in out] == [19, 11] and out[0].severity == DQSeverity.SOFT
 
 
+def test_macro_gap_threshold_depends_on_series_frequency():
+    assert cdq.MACRO_MAX_GAP_DAYS_BY_FREQUENCY == {"daily": 7, "monthly": 45}
+    start, end = date(2026, 1, 1), date(2026, 6, 30)
+    monthly = [date(2026, m, 15) for m in range(1, 7)]       # ay ortasında açıklanan aylık seri: boşluklar 31 gün
+    assert cdq.check_macro_coverage(monthly, start, end, frequency="monthly") == []
+    out = cdq.check_macro_coverage(monthly, start, end)      # varsayılan günlük: aynı seri 7 günü aşar -> uyarı
+    assert out and all(i.code == DQCode.MACRO_GAP for i in out)
+    skipped = [date(2026, 1, 15), date(2026, 4, 15), date(2026, 6, 15)]   # 90 günlük boşluk, aylık eşiği (45) aşar
+    gaps = cdq.check_macro_coverage(skipped, start, end, frequency="monthly")
+    assert [i.value for i in gaps] == [90, 61] and gaps[0].date == date(2026, 4, 15)
+    assert cdq.check_macro_coverage(skipped, start, end, max_gap_days=100) == []     # açık değer frekansı ezer
+
+
+def test_macro_unknown_frequency_is_rejected():
+    with pytest.raises(ValueError):
+        cdq.check_macro_coverage([date(2026, 1, 1)], date(2026, 1, 1), date(2026, 1, 2), frequency="weekly")
+
+
 def test_macro_series_empty_is_a_gap_and_observations_after_end_are_ignored():
     start, end = date(2026, 1, 1), date(2026, 1, 10)
     assert codes(cdq.check_macro_coverage([], start, end)) == [DQCode.MACRO_GAP]
