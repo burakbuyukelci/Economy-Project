@@ -201,6 +201,7 @@ def hard_block_runner(tool, params):
         env["results"]["gate_status"] = "HARD_BLOCK"
         env["results"]["hard_blocks"] = [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "sızıntı"}]
         env["results"]["soft_warnings"] = []
+        env["results"]["issue_counts"] = {"AS_OF_VIOLATION": 1}   # 1.2.0: hard+soft listelerle birebir
     return env
 
 

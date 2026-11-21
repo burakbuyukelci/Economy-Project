@@ -170,7 +170,7 @@ def test_safe_failure_over_mcp_is_an_error_result_with_the_required_action():
     def runner(tool, params):
         env = run_mock_tool(tool, params)
         if tool == T.CHECK_DATA_QUALITY:
-            env["results"].update({"gate_status": "HARD_BLOCK", "soft_warnings": [],
+            env["results"].update({"gate_status": "HARD_BLOCK", "soft_warnings": [], "issue_counts": {"AS_OF_VIOLATION": 1},
                                    "hard_blocks": [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "x"}]})
         return env
 
@@ -191,3 +191,12 @@ def test_oos_rule_is_part_of_the_descriptions_of_the_validation_tools_only():
     assert "strategy.train_end" in tools["run_backtest"].description
     for name in ("get_stock_history", "calculate_indicators", "get_macro_context"):
         assert "January 1" not in tools[name].description
+
+
+def test_calculate_indicators_schema_exposes_the_1_2_0_light_defaults():
+    """Şema 1.2.0: model yeni param'ları şemadan görür; varsayılanlar hafiftir (last_n_rows=0, kolon meta kapalı)."""
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
+    tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
+    props = tools["calculate_indicators"].input_schema["properties"]
+    assert props["include_columns_meta"]["default"] is False and props["last_n_rows"]["default"] == 0
+    assert "value_columns" in props

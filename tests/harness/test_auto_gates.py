@@ -203,6 +203,7 @@ def gate_runner(blocking_calls: set[int], status: str = "HARD_BLOCK"):
                 if status == "HARD_BLOCK":
                     env["results"]["hard_blocks"] = [{"code": "AS_OF_VIOLATION", "severity": "HARD", "message": "sızıntı"}]
                     env["results"]["soft_warnings"] = []
+                    env["results"]["issue_counts"] = {"AS_OF_VIOLATION": 1}   # 1.2.0: hard+soft listelerle birebir
         return env
 
     runner.executed = executed  # type: ignore[attr-defined]

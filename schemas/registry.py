@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, Iterator
 
 from pydantic import BaseModel
 
@@ -65,7 +65,35 @@ def validate_envelope(data: dict[str, Any]) -> ToolEnvelope:
     if env.status == ToolStatus.OK:
         res = spec.result_model.model_validate(env.results)
         _assert_no_dates_after(res.model_dump(mode="json"), env.as_of)
+        if _version(env.schema_version) >= (1, 2, 0):
+            _require_since_1_2_0(env.tool, res)
     return env
+
+
+def _version(v: str) -> tuple[int, int, int]:
+    major, minor, patch = (int(x) for x in v.split("."))
+    return major, minor, patch
+
+
+def _require_since_1_2_0(tool: ToolName, res: BaseModel) -> None:
+    """Sürüm koşullu zorunluluk (docs/schema_1_2_0_plan.md D1): 1.2.0 sonuç alanları modelde Optional'dır ki 1.1.0 zarfları
+    geçerli kalsın; fakat `schema_version >= 1.2.0` damgalı bir zarfta araç bunları DOLDURMAK zorundadır.
+    Tek hisseli rank grubu (`insufficient_peers`) tarihsel olay üretmediği için muaftır."""
+
+    def need(field: str) -> None:
+        if getattr(res, field) is None:
+            raise ValueError(f"schema_version >= 1.2.0: {tool.value} sonucunda {field} None olamaz")
+
+    if tool == ToolName.RANK_SECTOR_RELATIVE_STRENGTH:
+        if not res.insufficient_peers:  # type: ignore[attr-defined]
+            for f in ("n_raw_laggard_observations", "cooldown_days", "outcome_benchmark_definition"):
+                need(f)
+            if not res.per_ticker:  # type: ignore[attr-defined]
+                raise ValueError("schema_version >= 1.2.0: rank_sector_relative_strength sonucunda per_ticker boş olamaz (>= 2 üyeli grup)")
+    elif tool == ToolName.CALCULATE_INDICATORS:
+        need("invalid_columns_at_as_of")
+    elif tool == ToolName.CHECK_DATA_QUALITY:
+        need("issue_counts")
 
 
 # as_of sonrası olamayacak tarih alanları (anahtar adına göre). Gelecek tarih içerebilen alanlar
@@ -78,18 +106,33 @@ _PAST_ONLY_KEYS = {
 }
 
 
-def _assert_no_dates_after(obj: Any, as_of: date, path: str = "results") -> None:
+def _past_only_dates(obj: Any, path: str = "results") -> Iterator[tuple[str, date]]:
+    """results ağacındaki geçmiş-only tarih alanlarını (yol, tarih) olarak üretir (`_PAST_ONLY_KEYS`; tek tanım)."""
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if k in _PAST_ONLY_KEYS and isinstance(v, str):
+            if k in _PAST_ONLY_KEYS and isinstance(v, (str, date)):
                 try:
-                    d = date.fromisoformat(v)
+                    yield f"{path}.{k}", (v if isinstance(v, date) else date.fromisoformat(v))
                 except ValueError:
                     continue
-                if d > as_of:
-                    raise ValueError(f"{path}.{k}={v} as_of ({as_of}) sonrasında (look-ahead)")
             else:
-                _assert_no_dates_after(v, as_of, f"{path}.{k}")
+                yield from _past_only_dates(v, f"{path}.{k}")
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
-            _assert_no_dates_after(v, as_of, f"{path}[{i}]")
+            yield from _past_only_dates(v, f"{path}[{i}]")
+
+
+def _assert_no_dates_after(obj: Any, as_of: date, path: str = "results") -> None:
+    for where, d in _past_only_dates(obj, path):
+        if d > as_of:
+            raise ValueError(f"{where}={d.isoformat()} as_of ({as_of}) sonrasında (look-ahead)")
+
+
+def max_result_date(results: Any) -> date | None:
+    """Bir aracın `results`'ındaki EN GEÇ geçmiş-only tarih (yoksa None). Kalite kapısı `BundleItem.max_result_date` için kullanır
+    (harness `bundle_items` bunu çağırır). Saf ve belirlenimcidir; tarama `_assert_no_dates_after` ile aynı anahtar tablosunu paylaşır.
+
+    run_backtest için `trade_log` kısaltılsa bile en geç çıkışı korumak üzere `last_exit_date` alanı eklenecek (docs/schema_wishlist.md §7);
+    anahtar tabloya girince bu fonksiyon onu otomatik kapsar.
+    """
+    return max((d for _, d in _past_only_dates(results)), default=None)

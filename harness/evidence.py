@@ -166,6 +166,46 @@ def _rank_sector(res: dict[str, Any]) -> list[Candidate]:
                   _v("cost_adjusted_mean_return_pct", full.get("cost_adjusted_mean_return_pct"), "pct"),
                   _v("median_catch_up_size_pp", row.get("median_catch_up_size_pp"), "pp"), *extra_vals,
                   _v("oos_degradation_flag", blk.get("oos_degradation_flag"))), "historical_catch_up"))
+    out.extend(_rank_pooling(res))
+    out.extend(_rank_per_ticker(res))
+    return out
+
+
+def _rank_pooling(res: dict[str, Any]) -> list[Candidate]:
+    """Şema 1.2.0: havuzun tanımı (ham sayı, bekleme süresi, sonuç ölçütü). 1.1.0 / tek hisseli grupta alanlar None => madde yok."""
+    n_raw, cooldown, bench = res.get("n_raw_laggard_observations"), res.get("cooldown_days"), res.get("outcome_benchmark_definition")
+    if n_raw is None and cooldown is None and bench is None:
+        return []
+    bench = bench or {}
+    includes = bench.get("includes_subject_stock")
+    text = (f"Havuz tanımı: ham geride kalan hisse-günü {_fmt(n_raw)} (üyelerin toplamı), bağımsız olay için bekleme süresi {_fmt(cooldown)} gün, "
+            f"sonuç ölçütü {_fmt(bench.get('type'))} (değerlendirilen hisse medyana "
+            f"{'dahil' if includes else 'dahil değil'})")
+    return [Candidate(text, _vals(_v("n_raw_laggard_observations", n_raw), _v("cooldown_days", cooldown, "days"),
+                                  _v("outcome_benchmark_type", bench.get("type")),
+                                  _v("outcome_benchmark_includes_subject", includes)), "pooling")]
+
+
+def _rank_per_ticker(res: dict[str, Any]) -> list[Candidate]:
+    """Şema 1.2.0: hisse bazlı olay sayısı ve kendi geçmiş isabeti (havuzun parçaları; özne bazlı tutarlılık denetimi için)."""
+    out: list[Candidate] = []
+    for t in res.get("per_ticker") or []:
+        parts = [f"{t.get('ticker')}: ham geride kalan hisse-günü {_fmt(t.get('n_raw_laggard_observations'))}, "
+                 f"bağımsız olay {_fmt(t.get('n_independent_events'))}, ufku dolmamış dışlanan {_fmt(t.get('n_excluded_incomplete_horizon'))}"]
+        vals = [_v("ticker", t.get("ticker")), _v("ticker_n_raw_laggard_observations", t.get("n_raw_laggard_observations")),
+                _v("ticker_n_independent_events", t.get("n_independent_events")),
+                _v("ticker_n_excluded_incomplete_horizon", t.get("n_excluded_incomplete_horizon"))]
+        for row in t.get("per_horizon") or []:
+            blk = row.get("block") or {}
+            full = blk.get("full") or {}
+            h = blk.get("horizon")
+            base = (blk.get("baseline") or {}).get("hit_rate_pct")
+            parts.append(f"ufuk {_fmt(h)}: olay {_fmt(full.get('n_events_complete'))}, isabet %{_fmt(full.get('hit_rate_pct'))}, "
+                         f"taban isabet %{_fmt(base)}")
+            vals += [_v(f"ticker_h{h}_n_events_complete", full.get("n_events_complete")),
+                     _v(f"ticker_h{h}_hit_rate_pct", full.get("hit_rate_pct"), "pct"),
+                     _v(f"ticker_h{h}_baseline_hit_rate_pct", base, "pct")]
+        out.append(Candidate("; ".join(parts), _vals(*vals), "per_ticker"))
     return out
 
 

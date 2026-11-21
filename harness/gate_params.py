@@ -21,7 +21,7 @@ from config.settings import ANALYSIS_START_DEFAULT
 from config.universe import build_sector_peer_groups, load_universe
 from harness.evidence import Record
 from schemas.enums import ToolName as T
-from schemas.registry import validate_params
+from schemas.registry import max_result_date, validate_params
 
 _TICKER_RE = re.compile(r"^[A-Z0-9]{3,6}$")
 _START_KEYS = ("start", "analysis_start", "in_sample_start")
@@ -74,9 +74,15 @@ def bundle_items(records: Sequence[Record]) -> list[dict[str, Any]]:
         if env["input_hash"] in seen:
             continue
         seen.add(env["input_hash"])
+        results = env.get("results") if isinstance(env.get("results"), dict) else {}
+        # şema 1.2.0: kapının SIGNAL_SHIFT / LOOKAHEAD_SIGNAL / BACKTEST_FUTURE_INFO kontrolleri bu iki alana bakar; kopyalanmazsa "çalışmadı" derler
+        lag = results.get("signal_lag_days_applied") if rec.tool == T.RUN_BACKTEST else None
+        latest = max_result_date(results)
         items.append({"tool": env["tool"], "as_of": env["as_of"], "data_version": env["data_version"],
                       "input_hash": env["input_hash"], "n_events": env.get("n_events"),
-                      "n_excluded_incomplete_horizon": env.get("n_excluded_incomplete_horizon")})
+                      "n_excluded_incomplete_horizon": env.get("n_excluded_incomplete_horizon"),
+                      "signal_lag_days_applied": lag,
+                      "max_result_date": latest.isoformat() if latest is not None else None})
     return items
 
 

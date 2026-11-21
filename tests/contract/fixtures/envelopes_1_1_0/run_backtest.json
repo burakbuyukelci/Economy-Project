@@ -1,0 +1,153 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "48159e2571a7f552cbeae819d587f94e9f0775d4f0f57764c2342efe19696e04",
+ "n_events": 22,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "as_of": "2026-09-10",
+  "end": "2026-09-10",
+  "start": "2024-01-01",
+  "strategy": {
+   "benchmarks": [
+    "BUY_AND_HOLD",
+    "XU100"
+   ],
+   "holding_days": 5,
+   "signal_lag_days": 1,
+   "signal_params": {},
+   "signal_type": "CATCH_UP",
+   "slippage_bps": 5.0,
+   "train_end": null,
+   "transaction_cost_bps": 20.0,
+   "validation_end": null,
+   "variant": "B",
+   "walk_forward": false
+  },
+  "universe": [
+   "BIMAS",
+   "MAVI",
+   "MGROS"
+  ]
+ },
+ "results": {
+  "benchmarks": [
+   {
+    "cumulative_return_diff_pct": 1.5,
+    "metrics": {
+     "annualized_return_pct": 12.0,
+     "avg_trade_return_pct": 0.6,
+     "cumulative_return_pct": 10.0,
+     "exposure_pct": 30.0,
+     "max_drawdown_pct": -9.5,
+     "median_trade_return_pct": 0.4,
+     "n_trades": 22,
+     "sharpe_ratio": 0.8,
+     "win_rate_pct": 55.0
+    },
+    "name": "XU100",
+    "sharpe_diff": 0.1
+   }
+  ],
+  "cost_model": {
+   "round_trip_cost_pct": 0.5,
+   "slippage_bps_per_side": 5.0,
+   "transaction_cost_bps_per_side": 20.0
+  },
+  "low_signal_flag": false,
+  "n_excluded_incomplete_horizon": 1,
+  "n_losing_trades": 10,
+  "n_signals": 22,
+  "n_winning_trades": 12,
+  "oos_degradation_flag": false,
+  "period": {
+   "end": "2026-09-10",
+   "start": "2024-01-01"
+  },
+  "sharpe_definition": "günlük getiri, rf=0, yıllıklandırma sqrt(252)",
+  "signal_lag_days_applied": 1,
+  "splits": [
+   {
+    "benchmark_diff_pct": 0.5,
+    "n_signals": 5,
+    "name": "TEST",
+    "net_metrics": {
+     "annualized_return_pct": 12.0,
+     "avg_trade_return_pct": 0.6,
+     "cumulative_return_pct": 10.0,
+     "exposure_pct": 30.0,
+     "max_drawdown_pct": -9.5,
+     "median_trade_return_pct": 0.4,
+     "n_trades": 22,
+     "sharpe_ratio": 0.8,
+     "win_rate_pct": 55.0
+    },
+    "window": {
+     "end": "2026-09-10",
+     "start": "2026-01-01"
+    }
+   }
+  ],
+  "strategy": {
+   "benchmarks": [
+    "BUY_AND_HOLD",
+    "XU100"
+   ],
+   "holding_days": 5,
+   "signal_lag_days": 1,
+   "signal_params": {},
+   "signal_type": "CATCH_UP",
+   "slippage_bps": 5.0,
+   "train_end": null,
+   "transaction_cost_bps": 20.0,
+   "validation_end": null,
+   "variant": "B",
+   "walk_forward": false
+  },
+  "strategy_gross": {
+   "annualized_return_pct": 12.0,
+   "avg_trade_return_pct": 0.6,
+   "cumulative_return_pct": 10.0,
+   "exposure_pct": 30.0,
+   "max_drawdown_pct": -9.5,
+   "median_trade_return_pct": 0.4,
+   "n_trades": 22,
+   "sharpe_ratio": 0.8,
+   "win_rate_pct": 55.0
+  },
+  "strategy_net": {
+   "annualized_return_pct": 12.0,
+   "avg_trade_return_pct": 0.6,
+   "cumulative_return_pct": 10.0,
+   "exposure_pct": 30.0,
+   "max_drawdown_pct": -9.5,
+   "median_trade_return_pct": 0.4,
+   "n_trades": 22,
+   "sharpe_ratio": 0.8,
+   "win_rate_pct": 55.0
+  },
+  "trade_log": [
+   {
+    "entry_date": "2026-03-03",
+    "exit_date": "2026-03-10",
+    "gross_return_pct": 2.0,
+    "net_return_pct": 1.4,
+    "signal_date": "2026-03-02",
+    "ticker": "MAVI"
+   }
+  ],
+  "trade_log_truncated": false,
+  "universe": [
+   "BIMAS",
+   "MAVI",
+   "MGROS"
+  ]
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "run_backtest",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

@@ -1,7 +1,9 @@
 """calculate_indicators: ticker + göstergeler + config (+ as_of) -> as_of günü gösterge durumu ve en fazla son N satır.
 
-KOMPAKT zarf (schemas 1.1.0): tüm zaman serisi DEĞİL; `latest` (state_date günü) + `recent_rows` (önceki en fazla
-`last_n_rows` gün). Hesap, snapshot'ın başından as_of'a kadar KESİLMİŞ veri üzerinde yapılır (ısınma `start`'tan bağımsız);
+KOMPAKT zarf (schemas 1.1.0; 1.2.0'da daha hafif varsayılanlar): tüm zaman serisi DEĞİL; `latest` (state_date günü) +
+`recent_rows` (önceki en fazla `last_n_rows` gün; varsayılan 0). Kolon meta'sı (`columns`) yalnızca `include_columns_meta=True` ise
+döner; ısınmadaki kolonlar her durumda `invalid_columns_at_as_of` ile adıyla bildirilir. `value_columns` verilirse `values` yalnızca
+o kolonları taşır. Hesap, snapshot'ın başından as_of'a kadar KESİLMİŞ veri üzerinde yapılır (ısınma `start`'tan bağımsız);
 as_of sonrası satırlar hesaba hiç girmez. Ağ yok; yalnızca snapshot okur.
 """
 from __future__ import annotations
@@ -67,7 +69,16 @@ def _handler(p: CalculateIndicatorsParams, snap: Snapshot) -> ToolOutput:
     except ValueError as e:
         raise ToolFailure("INVALID_PARAMS", f"gösterge config geçersiz: {e}") from e
 
-    vals = pd.DataFrame({c.name: c.values for c in comp.columns}, index=px.index)
+    # value_columns: hesaplanan kolonlardan seçim (yalnızca DÖNEN değerleri sınırlar; hesap aynı). Bilinmeyen ad -> INVALID_PARAMS.
+    produced = [c.name for c in comp.columns]
+    if p.value_columns is not None:
+        unknown = sorted(set(p.value_columns) - set(produced))
+        if unknown:
+            raise ToolFailure("INVALID_PARAMS", f"value_columns bu çağrıda hesaplanmıyor: {unknown}; geçerli kolonlar: {produced}")
+        chosen = [c for c in comp.columns if c.name in set(p.value_columns)]
+    else:
+        chosen = list(comp.columns)
+    vals = pd.DataFrame({c.name: c.values for c in chosen}, index=px.index)
     upto = px.index[px.index <= pd.Timestamp(effective_end)]       # as_of durumu: start'tan bağımsız son işlem günü
     state_ts = upto[-1] if len(upto) else None
     window = upto[upto >= pd.Timestamp(p.start)]                     # dönen satırlar yalnızca [start, state_date]
@@ -82,7 +93,7 @@ def _handler(p: CalculateIndicatorsParams, snap: Snapshot) -> ToolOutput:
     recent = [row(ts) for ts in window[window < state_ts][-p.last_n_rows:]] if (state_ts is not None and p.last_n_rows) else []
 
     columns = []
-    for c in comp.columns:
+    for c in chosen:
         ok = vals[c.name].notna()
         columns.append(IndicatorColumn(
             name=c.name, indicator=c.indicator, warmup_bars=c.warmup_bars,
@@ -106,7 +117,9 @@ def _handler(p: CalculateIndicatorsParams, snap: Snapshot) -> ToolOutput:
         state_date=state_ts.date() if state_ts is not None else None,
         n_bars_used=len(px), history_first_date=px.index[0].date() if len(px) else None,
         first_valid_date=all_valid.idxmax().date() if all_valid.any() else None,
-        columns=columns, latest=latest, recent_rows=recent)
+        columns_meta_included=p.include_columns_meta, columns=columns if p.include_columns_meta else [],
+        invalid_columns_at_as_of=sorted(c.name for c in columns if latest is not None and not c.valid_at_as_of),
+        latest=latest, recent_rows=recent)
     return ToolOutput(results=res, warnings=warnings)
 
 

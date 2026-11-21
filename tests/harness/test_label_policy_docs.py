@@ -52,3 +52,9 @@ def test_split_date_rule_is_written_in_guide_training_rules_and_design_doc():
 
 def test_gate_investigate_assumption_and_pending_real_gate_test_are_documented():
     assert "aday eylem yasak" in DESIGN and "test_real_retail_with_the_real_gate_tool" in DESIGN
+
+
+def test_guide_documents_the_schema_1_2_0_behaviours():
+    """Şema 1.2.0: göstergelerde hafif varsayılanlar ve rank'te hisse bazlı kırılım (özne olay sayısı) kılavuzda yazılı."""
+    for phrase in ("last_n_rows", "include_columns_meta", "value_columns", "per_ticker", "n_independent_events", "n_raw_laggard_observations"):
+        assert phrase in GUIDE, phrase

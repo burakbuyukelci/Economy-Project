@@ -508,3 +508,109 @@ def test_real_results_have_no_negative_zero():
 @needs_snapshot
 def test_real_determinism():
     assert real() == real()
+
+
+# =====================================================================================================
+# (E) şema 1.2.0: per_ticker, ham sayı, cooldown_days, sonuç ölçütü (docs/schema_1_2_0_plan.md)
+# =====================================================================================================
+def _by_ticker(r: RankSectorRelativeStrengthResult) -> dict:
+    return {t.ticker: t for t in r.per_ticker}
+
+
+def test_per_ticker_counts_step_scenario_only_mavi_has_events(roots):
+    """MAVI 20 gün (t=40..59) geride: ham 20; cooldown 20 -> 1 bağımsız olay. Diğer iki hissede olay yok."""
+    env = call(roots["step"], d(70), forward_horizons=[5, 10, 20])
+    validate_envelope(env)
+    r = res(env)
+    assert env["schema_version"] == "1.2.0"
+    assert (r.cooldown_days, r.n_raw_laggard_observations) == (20, 20)
+    assert [t.ticker for t in r.per_ticker] == ["BIMAS", "MAVI", "MGROS"]  # ticker sıralı
+    assert [(t.n_raw_laggard_observations, t.n_independent_events, t.n_excluded_incomplete_horizon) for t in r.per_ticker] == [
+        (0, 0, 0), (20, 1, 0), (0, 0, 0)]
+    by = _by_ticker(r)
+    # yalnız MAVI olay verdiği için MAVI'nin blokları havuzlu bloklarla birebir aynı olmalı
+    for pooled, mine in zip(r.historical_catch_up, by["MAVI"].per_horizon):
+        assert mine.block.full == pooled.block.full and mine.median_catch_up_size_pp == pooled.median_catch_up_size_pp
+    empty = by["BIMAS"].per_horizon[2].block.full
+    assert (empty.n_events_complete, empty.hit_rate_pct, empty.mean_return_pct) == (0, None, None)
+
+
+def test_cooldown_days_field_follows_longest_forward_horizon(roots):
+    short = res(call(roots["step"], d(70), forward_horizons=[5]))
+    assert short.cooldown_days == 5
+    assert _by_ticker(short)["MAVI"].n_independent_events == 4 and short.n_raw_laggard_observations == 20
+
+
+def test_per_ticker_mirrors_ranking_rows(roots):
+    r = res(call(roots["jump"], d(59)))
+    rank = {x.ticker: x for x in r.ranking}
+    for t in r.per_ticker:
+        assert (t.is_laggard, t.lag_score_pp) == (rank[t.ticker].is_laggard, rank[t.ticker].lag_score_pp)
+    assert (_by_ticker(r)["MAVI"].is_laggard, _by_ticker(r)["MAVI"].lag_score_pp) == (True, -6.0)
+
+
+def test_outcome_benchmark_definition_excludes_subject_stock(roots):
+    r = res(call(roots["jump"], d(59)))
+    o, b = r.outcome_benchmark_definition, r.benchmark_definition
+    assert (o.type, o.includes_subject_stock, o.price_field, o.return_type, o.peer_group) == (
+        "peer_median", False, "adj_close", "simple", "retail")
+    assert o.members == b.members == ["BIMAS", "MAVI", "MGROS"] and b.includes_subject_stock is True
+
+
+def test_per_ticker_parts_sum_to_pool_on_random_walks_with_split(roots):
+    env = call(roots["rw"], RW_AS_OF, split_date=RW_DATES[700].date().isoformat())
+    validate_envelope(env)  # şema doğrulayıcısı toplamları zaten denetler; aşağıda açıkça da sayıyoruz
+    r = res(env)
+    assert r.n_raw_laggard_observations == sum(t.n_raw_laggard_observations for t in r.per_ticker) > 0
+    assert sum(t.n_independent_events for t in r.per_ticker) == env["n_events"] + env["n_excluded_incomplete_horizon"]
+    for i, pooled in enumerate(r.historical_catch_up):
+        parts = [t.per_horizon[i].block for t in r.per_ticker]
+        assert all(p.in_sample is None and p.out_of_sample is None for p in parts)
+        for attr in ("n_events_complete", "n_excluded_incomplete_horizon", "n_success", "n_false_positive"):
+            assert sum(getattr(p.full, attr) for p in parts) == getattr(pooled.block.full, attr)
+        assert sum(p.baseline.n_obs for p in parts) == pooled.block.baseline.n_obs  # baz da parçaların toplamı
+
+
+def test_per_ticker_baseline_is_that_tickers_own_unconditional_excess(roots):
+    r = res(call(roots["rw"], RW_AS_OF, forward_horizons=[5]))
+    pooled = r.historical_catch_up[0].block.baseline
+    parts = [t.per_horizon[0].block.baseline for t in r.per_ticker]
+    assert len(parts) == 3
+    # 3 üyede kendisi hariç medyan: Σ excess = 0 -> hisse baz ortalamalarının ağırlıklı toplamı havuz ortalamasına eşit (yuvarlama payı)
+    assert abs(sum(p.mean_return_pct * p.n_obs for p in parts) / pooled.n_obs - pooled.mean_return_pct) < 1e-3
+
+
+def test_solo_group_has_no_new_event_fields(tmp_path):
+    _snap(tmp_path, {"ASELS": walk(N, 5)}, FLAT)
+    env = call(tmp_path, d(59), group="solo_asels")
+    validate_envelope(env)
+    r = res(env)
+    assert (r.per_ticker, r.n_raw_laggard_observations, r.cooldown_days, r.outcome_benchmark_definition) == ([], None, None, None)
+
+
+def test_two_stock_group_has_per_ticker_for_both_members(tmp_path):
+    _snap(tmp_path, {"THYAO": walk(N, 6), "PGSUS": walk(N, 7)}, walk(N, 8))
+    env = call(tmp_path, d(59), group="airlines")
+    validate_envelope(env)
+    r = res(env)
+    assert [t.ticker for t in r.per_ticker] == ["PGSUS", "THYAO"] and r.cooldown_days == 20
+
+
+def test_historical_only_warning_text_still_has_counts_during_transition(roots):
+    (w,) = warn(call(roots["step"], d(70), forward_horizons=[5, 10, 20]), "HISTORICAL_ONLY")
+    assert "BIMAS 0, MAVI 20, MGROS 0 (toplam 20)" in w and "cooldown=20" in w
+
+
+@needs_snapshot
+def test_real_retail_per_ticker_matches_documented_counts():
+    """docs/data_dictionary 14.4: ham BIMAS 43, MAVI 227, MGROS 128 (398); bağımsız 9/21/14 (44), ufku dolmamış 1."""
+    env = real(split_date="2026-01-01")
+    validate_envelope(env)
+    r = res(env)
+    by = _by_ticker(r)
+    assert r.n_raw_laggard_observations == 398 and r.cooldown_days == 20
+    assert [(k, v.n_raw_laggard_observations, v.n_independent_events) for k, v in by.items()] == [
+        ("BIMAS", 43, 9), ("MAVI", 227, 21), ("MGROS", 128, 14)]
+    assert sum(v.n_excluded_incomplete_horizon for v in by.values()) == env["n_excluded_incomplete_horizon"] == 1
+    assert (by["MAVI"].is_laggard, by["MAVI"].lag_score_pp) == (True, -3.2452)
+    assert r.outcome_benchmark_definition.includes_subject_stock is False

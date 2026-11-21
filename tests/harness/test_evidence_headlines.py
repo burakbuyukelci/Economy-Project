@@ -93,3 +93,13 @@ def test_committed_is_a_subset_of_full_for_all_example_tools():
     full_ids = {e["evidence_id"] for e in res["full_evidence_set"]}
     committed_ids = {e["evidence_id"] for e in res["committed_evidence_set"]}
     assert committed_ids and committed_ids < full_ids   # bağlam kanıtı olduğu için kesin alt küme
+
+
+def test_rank_spec_version_and_new_sections_are_declared_headline():
+    """Şema 1.2.0: havuz tanımı (`pooling`) ve hisse bazlı kırılım (`per_ticker`) committed (başlık) bölümlerdir; etiket politikası bunları okuyacak."""
+    raw = json.loads(open(__import__("harness.evidence", fromlist=["x"]).__file__.replace("evidence.py", "evidence_headlines.json"), encoding="utf-8").read())
+    assert raw["version"] == 3
+    rank = SPEC["rank_sector_relative_strength"]
+    assert {"pooling", "per_ticker"} <= set(rank["headline"])
+    assert is_headline(T.RANK_SECTOR_RELATIVE_STRENGTH, "pooling") and is_headline(T.RANK_SECTOR_RELATIVE_STRENGTH, "per_ticker")
+    assert {"n_raw_laggard_observations", "cooldown_days", "ticker_n_independent_events"} <= set(rank["policy_values"])

@@ -32,3 +32,17 @@ Harness, kilitli kanıt paketi ve kapı sonucundan izinli etiketi hesaplar (`doc
 ## 4. Tavsiye isteyen sorular
 "Alayım mı?", "hedef fiyat ver", "kesin yükselir" gibi sorularda tavsiye verilmez; politika aday etiketleri `WATCH`'a indirir, senaryo aracı yoksa `INVESTIGATE` verir.
 Kullanıcının kesinlik iddiası ("kesin yükselir") araç çıktısıyla doğrulanamıyorsa bu açıkça söylenir.
+
+## 5. Göstergeler (`calculate_indicators`): hafif varsayılanlar (şema 1.2.0)
+Varsayılan çıktı küçüktür; bağlam penceresini ve hash'i gereksiz büyütmemek için **ihtiyacın kadarını iste**:
+* `last_n_rows` varsayılanı **0** (son satırlar gelmez). `latest` bölümü (as_of günü değerleri ve durumlar) her zaman gelir ve kanıtın başlığıdır. Son günlerin seyri gerekiyorsa `last_n_rows` ver (en çok 30; yalnızca gereken kadar); `recent_rows` kanıta girmez, yalnızca modele görünür.
+* `include_columns_meta` varsayılanı **False** (kolon açıklamaları yok). Kolon anlamı gerekmedikçe açma.
+* `value_columns` ile yalnızca gereken kolonları seç (örn. `["RSI_14", "BB_LOWER_20_2.0"]`); bilinmeyen ad `INVALID_PARAMS` verir ve mesajda geçerli adlar yazar.
+* `invalid_columns_at_as_of`: as_of gününde değeri hesaplanamayan (ısınma) kolonlar; bunlar için sayı yazma.
+
+## 6. `rank_sector_relative_strength`: havuz ve hisse bazlı kırılım (şema 1.2.0)
+Tarihsel catch-up sayıları iki düzeydedir ve karıştırılmamalıdır:
+* **Havuz** (`historical_catch_up`): grubun tüm üyelerinin bağımsız olayları birlikte. `n_raw_laggard_observations` = cooldown ÖNCESİ ham hisse-günü (örn. 398), `n_independent_events` = cooldown (`cooldown_days`) sonrası kabul edilen olay (örn. 44).
+* **Hisse bazlı** (`per_ticker`): her hissenin kendi payı (örn. BIMAS 9, MAVI 21, MGROS 14; toplam 44). Soruda tek bir hisse varsa o hissenin sayısı yazılır; havuz sayısı o hissenin olay sayısı diye sunulmaz.
+* Sonuç ölçütü (`outcome_benchmark_definition`): peer medyanı, değerlendirilen hisse HARİÇ. Hisse bazlı bloklarda IS/OOS yoktur (hisse başına 9–21 olay bölünemez); IS/OOS yalnızca havuz bloğundadır.
+* Sayıları aynen kullan: ham ve bağımsız sayıyı toplama/oranlama; türetilmiş sayı halüsinasyon sayılır.

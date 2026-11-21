@@ -1,0 +1,179 @@
+{
+ "as_of": "2026-09-10",
+ "data_version": "snap_2026-11-20_v1",
+ "error": null,
+ "input_hash": "b5a5c0e08d702e69f40d7393a2554f9c183ad979345faa90c038ec3dbbd3b1c9",
+ "n_events": 11,
+ "n_excluded_incomplete_horizon": 0,
+ "params": {
+  "analysis_start": "2024-01-01",
+  "as_of": "2026-09-10",
+  "condition_sets": [],
+  "event_family": "BB_LOWER_TOUCH",
+  "forward_horizons": [
+   1,
+   3,
+   5,
+   10
+  ],
+  "indicator_config": {
+   "atr_period": 14,
+   "bollinger_std": 2.0,
+   "bollinger_window": 20,
+   "ema_windows": [
+    12,
+    26
+   ],
+   "ichimoku_kijun": 26,
+   "ichimoku_senkou_b": 52,
+   "ichimoku_tenkan": 9,
+   "kama_er_window": 10,
+   "kama_fast": 2,
+   "kama_slow": 30,
+   "macd_fast": 12,
+   "macd_signal": 9,
+   "macd_slow": 26,
+   "rsi_period": 14,
+   "sma_windows": [
+    20,
+    50,
+    200
+   ],
+   "supertrend_atr_period": 10,
+   "supertrend_multiplier": 3.0,
+   "volume_zscore_window": 20
+  },
+  "n_tests_declared": 1,
+  "slippage_bps": 5.0,
+  "split_date": null,
+  "ticker": "ASELS",
+  "touch_mode": "close",
+  "transaction_cost_bps": 20.0
+ },
+ "results": {
+  "analysis_end": "2026-09-10",
+  "analysis_start": "2024-01-01",
+  "cost_model": {
+   "round_trip_cost_pct": 0.5,
+   "slippage_bps_per_side": 5.0,
+   "transaction_cost_bps_per_side": 20.0
+  },
+  "event_family": "BB_LOWER_TOUCH",
+  "expected_direction": "UP",
+  "groups": [
+   {
+    "conditions": null,
+    "events": [
+     {
+      "close": 100.0,
+      "date": "2026-09-01",
+      "forward_returns": [
+       {
+        "complete": true,
+        "horizon": 1,
+        "return_pct": 0.5,
+        "reversal_strength_pct": 1.0,
+        "reversal_success": true
+       },
+       {
+        "complete": false,
+        "horizon": 10,
+        "return_pct": null,
+        "reversal_strength_pct": null,
+        "reversal_success": null
+       }
+      ],
+      "states": {
+       "ichimoku": "BELOW_CLOUD",
+       "kama_slope": "FLATTENING",
+       "rsi": "LOCAL_LOW",
+       "supertrend": "BEARISH",
+       "volume": "HIGH"
+      }
+     }
+    ],
+    "events_truncated": false,
+    "label": "single_indicator",
+    "n_events_detected": 11,
+    "per_horizon": [
+     {
+      "baseline": {
+       "hit_rate_pct": 51.0,
+       "mean_return_pct": 0.2,
+       "median_return_pct": 0.1,
+       "n_obs": 400
+      },
+      "full": {
+       "cost_adjusted_mean_return_pct": 0.5,
+       "false_positive_rate_pct": 40.0,
+       "hit_rate_pct": 60.0,
+       "mean_return_pct": 1.2,
+       "mean_reversal_strength_pct": 2.0,
+       "median_return_pct": 0.9,
+       "median_reversal_strength_pct": 1.8,
+       "n_events_complete": 10,
+       "n_excluded_incomplete_horizon": 1,
+       "n_false_positive": 4,
+       "n_success": 6
+      },
+      "horizon": 5,
+      "in_sample": {
+       "cost_adjusted_mean_return_pct": 0.5,
+       "false_positive_rate_pct": 40.0,
+       "hit_rate_pct": 60.0,
+       "mean_return_pct": 1.2,
+       "mean_reversal_strength_pct": 2.0,
+       "median_return_pct": 0.9,
+       "median_reversal_strength_pct": 1.8,
+       "n_events_complete": 10,
+       "n_excluded_incomplete_horizon": 1,
+       "n_false_positive": 4,
+       "n_success": 6
+      },
+      "mean_diff_vs_baseline_pct": 1.0,
+      "median_diff_vs_baseline_pct": 0.8,
+      "oos_degradation_flag": false,
+      "out_of_sample": {
+       "cost_adjusted_mean_return_pct": 0.5,
+       "false_positive_rate_pct": 40.0,
+       "hit_rate_pct": 60.0,
+       "mean_return_pct": 1.2,
+       "mean_reversal_strength_pct": 2.0,
+       "median_return_pct": 0.9,
+       "median_reversal_strength_pct": 1.8,
+       "n_events_complete": 10,
+       "n_excluded_incomplete_horizon": 1,
+       "n_false_positive": 4,
+       "n_success": 6
+      }
+     }
+    ],
+    "regime_breakdown": [
+     {
+      "hit_rate_pct": 60.0,
+      "horizon": 10,
+      "mean_return_pct": 1.0,
+      "n_events": 5,
+      "regime": "XU100_UP"
+     }
+    ]
+   }
+  ],
+  "multiple_testing": {
+   "adjusted_alpha": 0.05,
+   "alpha": 0.05,
+   "method": "bonferroni",
+   "n_tests_declared": 1,
+   "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."
+  },
+  "split_date": "2026-01-01",
+  "ticker": "ASELS",
+  "touch_mode": "close"
+ },
+ "schema_version": "1.1.0",
+ "status": "OK",
+ "tool": "detect_reversal_events",
+ "warnings": [
+  "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir."
+ ]
+}

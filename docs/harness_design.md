@@ -58,7 +58,8 @@ Kapıyı modelin ilk analiz çağrısına bağlamak parametreleri o çağrıdan 
   Hiçbiri yoksa **soru metnindeki** evren hisse kodları (SELECT_UNIVERSE). Yine belirsizse çağrı `TICKER_UNDETERMINED` ile geçersiz olur
   (harness tahmin etmez; modele "ticker/sector verin" denir).
 * `end` = oturum `as_of`; `start` = `ANALYSIS_START_DEFAULT` ile modelin en erken başlangıcının küçüğü (pencere varsayılandan dar olmaz).
-* `analysis_bundle` = oturumdaki başarılı çıktıların künyesi (kapı ve kanıt zarfları hariç).
+* `analysis_bundle` = oturumdaki başarılı çıktıların künyesi (kapı ve kanıt zarfları hariç). **Şema 1.2.0:** künye ayrıca `signal_lag_days_applied` (yalnızca `run_backtest`'in `results`'ından) ve `max_result_date`
+  (`schemas.registry.max_result_date`) taşır; kopyalanmazsa kapının `SIGNAL_SHIFT` / `LOOKAHEAD_SIGNAL` / `BACKTEST_FUTURE_INFO` kontrolleri "çalışmadı" der (testle gerçek kapıya ulaştığı doğrulanır).
 * Bilinen boşluk: ilk kapı sonradan çıkan ticker'ları görmez; **son kapı tüm çağrıların ticker birleşimini** kontrol eder.
 
 ## 5. İki aşamalı kanıt paketi (§23 sırası ile §25 örneğini uzlaştırma)
@@ -80,6 +81,10 @@ Kurallar:
   Hangi bölümün başlık olduğu **veri**dir: `harness/evidence_headlines.json` (araç → `headline` / `context` / `excluded`). Çıkarıcılar her kanıt adayına bir bölüm adı verir;
   bildirilmemiş bölüm bağlam sayılır. `calculate_indicators` için başlık = `latest` (as_of günü değerleri ve durumları); `recent_rows` kasıtlı olarak kanıta HİÇ girmez.
   `tests/harness/test_evidence_headlines.py` çıkarıcı ↔ dosya tutarlılığını (bildirilmemiş ve bayat bölüm adı) denetler.
+* **Şema 1.2.0 (rank):** committed kanıta iki bölüm eklendi (`evidence_headlines.json` version 3): `pooling` (ham geride kalan hisse-günü, `cooldown_days`, sonuç ölçütü: peer medyanı, hisse hariç) ve `per_ticker` (her hisse için ham/bağımsız/dışlanan olay sayısı + ufuk bazında tamamlanmış olay, isabet, taban isabet).
+  Değer adları `ticker_*` önekli; hepsi `policy_values`'ta. Sayılar kaynak zarftan aynen kopyalanır (türetme yok). 1.1.0 zarfında ve tek hisseli grupta alanlar `None` olduğundan madde üretilmez.
+  `check_data_quality` için kanıt çıkarıcısı **eklenmedi** (öneri: eklenmesin): kapı kanıt değil denetimdir; sonucu `lock_hash`'e ve politika bloğuna girer. `issue_counts` sayıları sayı doğrulayıcı havuzunda tipli yolla (`issue_counts.FEW_EVENTS`) bulunur,
+  kilitli kanıtta olmadığından D/E'de `UNEVIDENCED` (not) çıkar; `gate_reason` metninden ayrıştırma bağımlılığı bu yüzden gereksizdir ama geçiş döneminde havuzda kalır.
 * **Kilit:** `lock_hash` = sha256(analysis_id, sürüm, committed kanıtlar, nihai kapı durumu). Kilitli pakete yazılamaz (`BUNDLE_LOCKED`).
 * Kaynaklardan biri mock ise paketin `data_version`'ı mock sentineli taşır (eğitim verisine girmez).
 * Neden harness'te: kanıt oturumdaki zarflardan kurulur (hash → zarf); `tools/` tek tek araç hesaplar, oturumu bilmez.
