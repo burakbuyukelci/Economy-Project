@@ -118,9 +118,9 @@ def test_single_setting_switches_one_tool_to_real(monkeypatch):
 
 
 def test_real_backend_missing_module_raises_clear_error(monkeypatch):
-    monkeypatch.setitem(settings.TOOL_BACKEND_OVERRIDES, ToolName.GET_FUNDAMENTAL_METRICS, "real")
+    monkeypatch.setitem(settings.TOOL_BACKEND_OVERRIDES, ToolName.GET_NEWS_EVENTS, "real")
     with pytest.raises(RealToolUnavailable):
-        run_tool(ToolName.GET_FUNDAMENTAL_METRICS, example_params(ToolName.GET_FUNDAMENTAL_METRICS))
+        run_tool(ToolName.GET_NEWS_EVENTS, example_params(ToolName.GET_NEWS_EVENTS))
 
 
 def test_unknown_backend_value_rejected(monkeypatch):
