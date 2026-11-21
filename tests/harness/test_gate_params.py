@@ -114,7 +114,40 @@ def test_bundle_items_come_from_ok_envelopes_without_gate_and_evidence_envelopes
     assert tools == ["get_stock_history", "rank_sector_relative_strength", "run_backtest"]
     bt = p["analysis_bundle"][-1]
     assert bt["n_events"] == 22 and bt["as_of"] == "2026-09-10" and bt["data_version"] == "snap_1900-01-01_v0"
-    assert set(bt) == {"tool", "as_of", "data_version", "input_hash", "n_events", "n_excluded_incomplete_horizon"}
+    assert set(bt) == {"tool", "as_of", "data_version", "input_hash", "n_events", "n_excluded_incomplete_horizon",
+                       "signal_lag_days_applied", "max_result_date"}                      # şema 1.2.0 künye alanları
+
+
+def test_bundle_items_copy_signal_lag_from_run_backtest_and_max_result_date_from_the_registry_helper():
+    from schemas.registry import max_result_date
+
+    recs = make_records()
+    p = derive(calls=[(T.GET_STOCK_HISTORY, {"ticker": "THYAO"})], records=recs)
+    by_tool = {i["tool"]: i for i in p["analysis_bundle"]}
+    bt_env = next(r.envelope for r in recs if r.tool == T.RUN_BACKTEST)
+    assert by_tool["run_backtest"]["signal_lag_days_applied"] == bt_env["results"]["signal_lag_days_applied"] >= 1
+    assert by_tool["rank_sector_relative_strength"]["signal_lag_days_applied"] is None      # yalnız run_backtest taşır
+    for r in recs:
+        if r.tool.value in by_tool:
+            expected = max_result_date(r.envelope["results"])
+            assert by_tool[r.tool.value]["max_result_date"] == (expected.isoformat() if expected else None)
+    assert by_tool["run_backtest"]["max_result_date"] is not None and by_tool["run_backtest"]["max_result_date"] <= "2026-09-10"
+
+
+def test_bundle_with_the_new_fields_is_accepted_by_the_schema_and_reaches_the_real_gate():
+    """Künye alanları kapıya ulaşır: signal_lag_days_applied dolu => SIGNAL_SHIFT çalıştı; 0 => HARD (kopyalanmasaydı 'çalışmadı' derdi)."""
+    from tools import check_data_quality
+
+    recs = make_records()
+    p = derive(calls=[(T.GET_STOCK_HISTORY, {"ticker": "THYAO"})], records=recs)
+    validate_params(T.CHECK_DATA_QUALITY, p)
+    env = check_data_quality.run(p)
+    assert env["status"] == "OK" and "SIGNAL_SHIFT" in env["results"]["checks_run"]
+    bad = {**p, "analysis_bundle": [{**i, "signal_lag_days_applied": 0} if i["tool"] == "run_backtest" else i for i in p["analysis_bundle"]]}
+    out = check_data_quality.run(bad)["results"]
+    assert out["gate_status"] in ("HARD_BLOCK", "ANALYSIS_UNSAFE") and "LOOKAHEAD_SIGNAL" in {h["code"] for h in out["hard_blocks"]}
+    stripped = {**p, "analysis_bundle": [{**i, "signal_lag_days_applied": None} if i["tool"] == "run_backtest" else i for i in p["analysis_bundle"]]}
+    assert "SIGNAL_SHIFT" not in check_data_quality.run(stripped)["results"]["checks_run"]      # kopyalanmazsa kontrol çalışmaz
 
 
 def test_derived_params_are_valid_check_data_quality_params_and_deterministic():
