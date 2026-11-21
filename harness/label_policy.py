@@ -46,7 +46,7 @@ VALID_GATES = CANDIDATE_GATES | UNSAFE_GATES | {"INVESTIGATE"}
 RULE_IDS = frozenset({
     "G1_GATE_UNSAFE", "G2_GATE_MISSING", "G3_GATE_INVESTIGATE", "G5_COMBINE", "G5_CANDIDATE_VS_REJECT",
     "G5_DIFFERENT_CANDIDATES", "G6_ADVICE_CAP", "G7_NO_SCENARIO", "G7_UNVERIFIED_CLAIM",
-    "C1_PEERS_OR_STRENGTH", "C2_NOT_LAGGARD", "C3_FEW_EVENTS", "C4_REJECT_HISTORY", "C5_CANDIDATE", "C6_VALIDATION_MISSING",
+    "C1_PEERS_OR_STRENGTH", "C2_NOT_LAGGARD", "C3_FEW_EVENTS", "C4_REJECT_HISTORY", "C5_CANDIDATE", "C5S_SUBJECT_CAP", "C6_VALIDATION_MISSING",
     "C7_WATCH",
     "W1_STABLE", "W2_INSUFFICIENT", "W3_UNSTABLE",
     "T0_NO_PRIMARY_GROUP", "T6_NO_EVENTS", "T1_FEW_EVENTS", "T2_REJECT_HISTORY", "T4_VALIDATION_MISSING", "T3_CANDIDATE", "T5_WATCH",
@@ -225,12 +225,18 @@ class _Ctx:
 
 
 def _finish(ctx: _Ctx, scenario: str, subject: str | None, label: A, rule: str, gate: str | None, *, provisional: bool = False,
-            candidate_note: bool = True) -> ScenarioDecision:
-    """G3 uygular (kapı INVESTIGATE: yalnızca adaylar düşer) ve zorunlu notları ekler."""
+            candidate_note: bool = True, cap: "_Cap | None" = None) -> ScenarioDecision:
+    """G3 uygular (kapı INVESTIGATE: yalnızca adaylar düşer), SONRA (hâlâ aday kaldıysa) özne sınırını, ve zorunlu notları ekler.
+
+    Sıra önemli: özne sınırı WATCH verir; G3'ten ÖNCE uygulansaydı kapı INVESTIGATE iken aday WATCH'a (daha az temkinli) inerdi."""
     raw, raw_rule, final_rule = label, rule, rule
     if gate == "INVESTIGATE" and label in CANDIDATE_LABELS:
         label, final_rule = A.INVESTIGATE, "G3_GATE_INVESTIGATE"
         ctx.why("GATE_INVESTIGATE_CAP", "kalite kapısı INVESTIGATE: aday etiket verilemez, INVESTIGATE'e indirildi")
+    if cap is not None and label in CANDIDATE_LABELS:
+        label, final_rule = A.WATCH, "C5S_SUBJECT_CAP"
+        for code, message in cap.reasons:
+            ctx.why(code, message)
     if provisional:
         ctx.why("THRESHOLDS_PROVISIONAL", "temel veri eşikleri GEÇİCİDİR; gerçek veri gelince gözden geçirilecek")
     if raw in CANDIDATE_LABELS and candidate_note:
@@ -240,6 +246,12 @@ def _finish(ctx: _Ctx, scenario: str, subject: str | None, label: A, rule: str, 
 
 
 # ---------------------------------------------------------------- ufuk bloklarının ortak değerlendirmesi
+@dataclass(frozen=True)
+class _Cap:
+    """Özne tutarlılık sınırı: aday etiketi WATCH'a indirmek için gerekçeler (kod, mesaj)."""
+    reasons: tuple[tuple[str, str], ...]
+
+
 @dataclass
 class _Horizon:
     h: int
@@ -372,6 +384,47 @@ def _history_flags(ctx: _Ctx, hz: list[_Horizon], bt: _Backtest) -> dict[str, An
     }
 
 
+def _subject_check(ctx: _Ctx, res: dict[str, Any], subject: str, th: PolicyThresholds) -> _Cap | None:
+    """Şema 1.2.0 `per_ticker`: havuzlu kanıt ANA kalır; özne bazlı veri yalnızca TUTARLILIK denetimidir (C5S_SUBJECT_CAP).
+
+    * ufuk bazında EN KÜÇÜK tamamlanmış olay sayısı < MIN_OOS_EVENTS (mevcut sabit; yeni eşik yok) -> sınır
+    * özne kendi isabeti kendi taban isabetinin altında olan ufuk sayısı çoğunlukta (below*2 > n, C4 ile aynı kural) -> sınır
+    * per_ticker yok / özne yok (1.1.0 zarfı): doğrulanamadı -> sınır
+    `SUBJECT_EVENT_COUNT` bilgisi her durumda (satır varsa) yazılır. Hisse bazlı bloklarda IS/OOS yoktur: yalnızca tüm örneklem."""
+    row = next((t for t in res.get("per_ticker") or [] if t.get("ticker") == subject), None)
+    if row is None:
+        ctx.chk("subject_breakdown_present", f"{subject} için hisse bazlı kırılım (per_ticker)", False, None, "var", "per_ticker")
+        return _Cap((("SUBJECT_BREAKDOWN_MISSING", f"özne {subject} için hisse bazlı kırılım yok: tutarlılık doğrulanamadı, aday etiket verilmez"),))
+    idx = res["per_ticker"].index(row)
+    base_path = f"per_ticker[{idx}]"
+    hz = row.get("per_horizon") or []
+    counts = [(x["block"]["horizon"], x["block"]["full"]["n_events_complete"]) for x in hz]
+    min_n = min((n for _, n in counts), default=0)
+    below = 0
+    for x in hz:
+        full, base = x["block"]["full"], (x["block"].get("baseline") or {}).get("hit_rate_pct")
+        hit = full.get("hit_rate_pct")
+        if hit is not None and base is not None and hit < base:
+            below += 1
+    n_h = len(hz)
+    few_ok = n_h > 0 and min_n >= th.min_oos_events
+    base_ok = below * 2 <= n_h
+    ctx.chk("subject_independent_events", f"{subject} bağımsız olay sayısı (bilgi)", None, row.get("n_independent_events"), None,
+            f"{base_path}.n_independent_events", info=True)
+    ctx.chk("subject_min_events_complete", f"{subject} ufuk bazında en küçük tamamlanmış olay sayısı", few_ok, min_n,
+            f">= {th.min_oos_events}", f"{base_path}.per_horizon[*].block.full.n_events_complete")
+    ctx.chk("subject_horizons_below_baseline", f"{subject} kendi isabeti kendi bazının ALTINDA olan ufuk sayısı", base_ok, below,
+            f"<= {n_h // 2} (çoğunluk değil)", f"{base_path}.per_horizon[*].block")
+    ctx.why("SUBJECT_EVENT_COUNT", f"özne {subject}: bağımsız olay {row.get('n_independent_events')} "
+                                   f"(ham geride kalan hisse-günü {row.get('n_raw_laggard_observations')}); ufuk bazında en küçük tamamlanmış olay {min_n}")
+    reasons: list[tuple[str, str]] = []
+    if not few_ok:
+        reasons.append(("SUBJECT_FEW_EVENTS", f"özne {subject}: ufuk bazında en küçük tamamlanmış olay {min_n}, alt sınır {th.min_oos_events}; aday etiket verilmez"))
+    if not base_ok:
+        reasons.append(("SUBJECT_BELOW_BASELINE", f"özne {subject}: {n_h} ufuktan {below}'inde kendi isabeti kendi bazının altında; aday etiket verilmez"))
+    return _Cap(tuple(reasons)) if reasons else None
+
+
 # =============================== senaryo: catch-up (C1–C7) ===============================
 def _catch_up(env: dict[str, Any], envs: list[dict[str, Any]], th: PolicyThresholds, gate: str | None,
               subject_hint: str | None) -> ScenarioDecision:
@@ -402,6 +455,7 @@ def _catch_up(env: dict[str, Any], envs: list[dict[str, Any]], th: PolicyThresho
         ctx.why("SMALL_PEER_GROUP" if (size is None or size < th.min_peers or insufficient) else "SECTOR_STRENGTH_MISSING",
                 "peer grubu yetersiz ya da sektör gücü hesaplanamadı")
         return _finish(ctx, "CATCH_UP", subject, A.INVESTIGATE, "C1_PEERS_OR_STRENGTH", gate)
+    cap = _subject_check(ctx, res, subject, th)
     if not row["is_laggard"]:
         ctx.why("NOT_LAGGARD", f"{subject} geride kalan eşiğinde değil: sinyal koşulu oluşmadı")
         return _finish(ctx, "CATCH_UP", subject, A.HOLD, "C2_NOT_LAGGARD", gate)
@@ -423,7 +477,7 @@ def _catch_up(env: dict[str, Any], envs: list[dict[str, Any]], th: PolicyThresho
     if f["missing"]:
         return _finish(ctx, "CATCH_UP", subject, A.INVESTIGATE, "C6_VALIDATION_MISSING", gate)
     if strength == "STRONG" and f["passing_ok"] and f["backtest_ok"]:
-        return _finish(ctx, "CATCH_UP", subject, CU, "C5_CANDIDATE", gate)
+        return _finish(ctx, "CATCH_UP", subject, CU, "C5_CANDIDATE", gate, cap=cap)
     ctx.why("EVIDENCE_MIXED", "kanıt karışık ya da aday koşulları sağlanmadı (sektör STRONG değil / yetersiz geçen ufuk / backtest)")
     return _finish(ctx, "CATCH_UP", subject, A.WATCH, "C7_WATCH", gate)
 

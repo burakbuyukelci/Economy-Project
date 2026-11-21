@@ -502,3 +502,52 @@ Birim, `schemas/envelope.py` içindeki `n_events` tanımından; minimum config s
 | THYAO, v2, `as_of = 2026-12-31` | ANALYSIS_UNSAFE | `STALE_DATA`: son satır 2026-11-20, 41 gün (THYAO ve XU100) |
 
 `issue_counts` çapaları (aynı çağrılar): CCOLA v1 `{WRONG_TICKER_OR_BROKEN_HISTORY: 1}`; CCOLA v2 `{}`; THYAO v2 `{MISSING_TRADING_DAYS: 1}`; 30 hisse 2023-01-02…2023-03-01 `{PRICE_JUMP_OVER_LIMIT: 30}`.
+
+## 17. Haftanın günü örüntüsü (`test_weekday_pattern`, `tools/test_weekday_pattern.py`)
+
+### 17.1 Hafta ve getiri tanımı
+- **Gün getirisi** = `adj_close[d] / adj_close[önceki hafta içi günü] − 1` (Pzt için önceki Cuma). İki gün de snapshot'ta olmalı; yoksa (tatil veya veri boşluğu) getiri tanımsızdır ve
+  o gün örüntüde ise **hafta dışlanır** (`n_excluded_holiday_weeks`, `HOLIDAY_WEEKS_EXCLUDED`). Tatilden sonraki günün getirisi iki günü kapsayacağı için kullanılmaz (bilinçli katılık).
+- **Pencere ataması:** hafta, İLK örüntü gününün tarihi `[start, min(end, as_of)]` içindeyse o pencereye atanır. Son örüntü günü pencere sonunu aşarsa: `as_of`'u da aşıyorsa
+  **ufku dolmamış** (`n_excluded_incomplete_horizon`, kural 2); aşmıyorsa (ör. IS bitişi Çarşamba) hafta **hiçbir pencereye girmez** (IS/OOS verisi karışmasın) ve `n_excluded_holiday_weeks`
+  içinde sayılır. **Varsayım:** şemada üçüncü bir dışlama alanı olmadığı için bu hafta türü tatil sayacına eklenir (alan açıklamasının hafif genişlemesi; `HOLIDAY_WEEKS_EXCLUDED` metni dökümü verir).
+  Örnek (Soru 2): `as_of = 2026-09-10` Perşembe; 7–11 Eylül haftasının Cuması 11.09 `as_of` sonrası → OOS'ta `n_excluded_incomplete_horizon = 1`.
+- **TRIGGER haftası:** tüm TRIGGER günleri beklenen yönde (`> 0` UP, `< 0` DOWN; sıfır eşleşmez) ve varsa conditioning koşulu. **OUTCOME getirisi** = OUTCOME günlerinin bileşik getirisi.
+  `n_occurrences` = tetik haftası **ve** her OUTCOME günü beklenen yönde. `hit_rate_pct = n_occurrences / n_trigger_weeks`.
+- **Koşulsuz taban** (`unconditional_*`): aynı OUTCOME günleri, pencerenin TÜM tam haftaları (tetik haftaları dahil). `per_day.unconditional_*` penceredeki TÜM işlem günlerinin ortalama/medyanıdır.
+- **`expected_occurrences_if_independent`** = `n_weeks_complete × Π (günün beklenen yönde olma oranı)` (tüm örüntü günleri, conditioning yok sayılır).
+- **Maliyet:** `cost_adjusted_outcome_mean_return_pct = yön × ort − tur maliyeti` (§5; UP: `ort − 0,5`, DOWN: `−ort − 0,5`). TRIGGER haftası başına tek tur.
+
+### 17.2 Anlamlılık testi: permütasyon (rastgeleleştirme)
+Tüm tam haftalardan rastgele `k` hafta (k = tetik haftası sayısı) iadesiz çekilir; istatistik `ort(k hafta) − ort(tüm haftalar)` (şemadaki `outcome_mean_diff_vs_unconditional_pct` ile **aynı fark, aynı baz**).
+Getiriler yönlüdür (DOWN çıktıda işaret çevrilir) ve test **tek yönlüdür** (beklenen yön). `p_value_raw = (sayım + 1) / (B + 1)`, `B = 10 000`, sabit seed (`PERMUTATION_SEED = 481`; modül sabitleri), böylece
+aynı girdi aynı p'yi verir. Gerekçe: k ≈ 10–20 ve getiriler kalın kuyruklu iken normallik varsayımı gerekmez; scipy bağımlılığı yoktur; "rastgele k hafta çeksek bu kadar iyi çıkar mıydı?" diye açıklanır.
+- **`t_stat`** = `fark / (s_tüm × √(1/k − 1/N))` (iadesiz örnekleme). **Yönlüdür: pozitif = beklenen yönde.** Bilgi amaçlıdır; karar `p_value_adjusted`'a dayanır.
+- **OOS:** `t_stat`/p yine hesaplanır (sayısal alanlar hep dolu) ama karar OOS p-değerini KULLANMAZ (§8).
+- **Çoklu test (kural 11):** örüntü (beş gün birlikte) **tek birleşik hipotezdir**: tek p. `per_day` satırları betimleyicidir, teste girmez. `p_value_adjusted = min(1, p_raw × n_tests_declared)` (Bonferroni; yuvarlanmış `p_raw`'dan türer).
+  `n_tests_declared` **çağıranın beyanıdır**; araç denenmiş diğer örüntüleri bilemez, bu yüzden her zarfta `MULTIPLE_TESTING_RISK` uyarısı vardır.
+- **Örtüşme:** her hafta tek gözlemdir; getiri aralıkları (Pzt–Cum) hiçbir haftada başka haftayla kesişmez. Kalan risk: haftalar arası otokorelasyon ve oynaklık kümelenmesi; permütasyon testi haftaların
+  değiştirilebilir olduğunu varsayar (bir sınırlamadır).
+
+### 17.3 Conditioning (`XU100_UP` / `XU100_DOWN`): look-ahead'siz tanım
+Şema yorumu "haftalık XU100 getirisi" der; haftanın tamamı Perş/Cum OUTCOME günlerini de kapsar ve koşula sızardı. Bu yüzden XU100 getirisi **önceki Cuma kapanışından (yoksa o güne kadarki son satır) son TRIGGER gününün
+kapanışına** ölçülür: tetik kararının verildiği ana kadar bilinen bilgi. Koşul yalnızca tetik tanımına eklenir; koşulsuz taban (tüm tam haftalar) ve hafta sayıları değişmez. Sapma `docs/schema_wishlist.md` §8'de.
+
+### 17.4 Desteklenmeyen örüntüler (`status = ERROR`, `error.code = UNSUPPORTED_PATTERN`)
+TRIGGER günü olmayan örüntü (tek gün etkisi: sıfıra karşı test henüz yok) ve karışık yönlü OUTCOME (yönlü maliyet tanımsız). Pencere `as_of` sonrasında başlıyorsa `INVALID_WINDOW`; hisse snapshot'ta yoksa `NO_DATA`.
+
+### 17.5 `oos_degradation_flag` karşılığı
+`TestWeekdayPatternResult`'ta `oos_degradation_flag` alanı yoktur; karşılığı §8'in kararıdır: (c) OOS maliyet sonrası ≤ 0 → `OOS_COST_ADJ_NOT_POSITIVE`, (d) OOS isabet < %50 → `OOS_HIT_RATE_TOO_LOW`
+(+ işaret/etki kodları). §9'daki "IS'ten 15 pp düşüş" kuralı bu araçta uygulanmaz.
+
+### 17.6 Gerçek değerler (v2, `as_of = 2026-09-10`; kalıp: MON-DOWN, TUE-DOWN, WED-DOWN | THU-UP, FRI-UP; IS 2024-01-01…2025-12-31, OOS 2026-01-01…2026-09-10; test: `tests/tools/test_weekday_pattern.py`)
+| Hisse | IS toplam / dışlanan(tatil) / tam | IS tetik / olay (hit) | IS ort. vs koşulsuz (%) | IS `p_raw` | OOS tetik / olay | Karar |
+|---|---|---|---|---|---|---|
+| THYAO | 105 / 20 / 85 | 18 / 5 (%27,8) | 1,3017 vs 0,7196 | 0,1205 | 3 / 0 | `UNSTABLE` (`IS_NOT_SIGNIFICANT`) |
+| EREGL | 105 / 20 / 85 | 11 / 3 (%27,3) | 0,8320 vs 0,4532 | 0,3152 | 3 / 0 | `UNSTABLE` (`IS_NOT_SIGNIFICANT`) |
+| ASELS | 105 / 20 / 85 | 4 / 3 | 2,0502 vs 1,1003 | 0,2602 | 4 / 1 | `INSUFFICIENT_DATA` (`IS_TOO_FEW`) |
+| BIMAS | 105 / 20 / 85 | 4 / 3 | 0,8966 vs −0,0321 | 0,2890 | 2 / 1 | `INSUFFICIENT_DATA` (`IS_TOO_FEW`) |
+
+OOS: 36 hafta, 9 dışlanan, 1 ufku dolmamış, 26 tam (dört hissede de aynı). Yapısal not: üç gün üst üste düşüş koşulu haftaların yaklaşık 1/8'idir; 26 tam OOS haftasından beklenen tetik ≈ 3, eşik 5'in altında.
+Bu örüntü için OOS'ta `STABLE` pratikte ulaşılamazdır (IS anlamlı çıksa bile `OOS_TOO_FEW`). Bu bir hata değil, kısa örneklemin dürüst sonucudur. Dışlanan hafta oranı yüksektir (IS'te 105'in 20'si, ~%19: BIST tatilleri,
+THYAO'da 2024-04-09 veri boşluğu, sınır haftası); `HOLIDAY_WEEKS_EXCLUDED` uyarısı verilir.

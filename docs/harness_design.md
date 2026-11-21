@@ -217,6 +217,19 @@ Senaryo, modelin BAŞARIYLA çağırdığı araçlardan türetilir (`routing.py`
 | 5 | `C6_VALIDATION_MISSING` | OOS yok / OOS olay < `MIN_OOS_EVENTS` ("OOS doğrulaması yapılmadı") **ya da** uygun backtest yok / TEST dilimi yok / `low_signal_flag` | `INVESTIGATE` |
 | 6 | `C5_CANDIDATE` | `STRONG` sektör, laggard, >= 2 ufuk geçti, backtest TEST dilimi net getiri - benchmark > 0, kapı `PASS`/`PASS_WITH_WARNINGS` | `POTENTIAL_CATCH_UP_CANDIDATE` |
 | 7 | `C7_WATCH` | diğer (karışık kanıt, sektör `STRONG` değil, yetersiz geçen ufuk, backtest benchmark'ı geçmiyor) | `WATCH` |
+| 6S | `C5S_SUBJECT_CAP` | `C5` aday oluştu **ve** G3'ten sonra hâlâ adaysa: özne bazlı tutarlılık denetimi başarısız (aşağıda) | `WATCH` |
+
+**Özne sınırı (şema 1.2.0 `per_ticker`; karar):** havuzlu kanıt ANA kalır (`C3`/`C4`/`C5` havuzlu bloklardan); hisse bazlı veri yalnızca **tutarlılık denetimidir**. Aday etiket `WATCH`'a iner (`raw_label` aday kalır, G6 ile aynı desen) eğer:
+* ufuk bazında **en küçük tamamlanmış olay sayısı** (`per_ticker[özne].per_horizon[*].block.full.n_events_complete`) < `MIN_OOS_EVENTS` (5; mevcut ortak sabit, yeni eşik yok) — `SUBJECT_FEW_EVENTS`. `n_independent_events` değil: isabet oranları tamamlanmış olaylardan hesaplanır;
+* özne kendi isabeti kendi taban isabetinin altında olan ufuklar **çoğunlukta** (`below*2 > n`, `C4` ile aynı kural; eşit ya da isabet `None` "altında" sayılmaz) — `SUBJECT_BELOW_BASELINE`;
+* `per_ticker` yok ya da özne içinde yok (1.1.0 zarfı) — `SUBJECT_BELOW_BASELINE` yerine `SUBJECT_BREAKDOWN_MISSING`: doğrulanamadı, aday verilmez.
+
+**Sıra:** `C3` → `C4` → `C6` → `C5` → G3 → özne sınırı. Sınır yalnızca G3'ten sonra hâlâ aday olan etikete uygulanır; aksi halde kapı `INVESTIGATE` iken aday `WATCH`'a (daha az temkinli) inerdi. `C2`, `C3`, `C4`, `C6`, `C7` ve G3 sonuçları DEĞİŞMEZ.
+`SUBJECT_EVENT_COUNT` (bağımsız olay, ham hisse-günü, en küçük tamamlanmış olay) kırılımı olan her özne için reasons'ta yazılır; checks: `subject_independent_events` (bilgi), `subject_min_events_complete`, `subject_horizons_below_baseline`.
+Hisse bazlı bloklarda IS/OOS yoktur (9–21 olay bölünemez): bu denetim yalnızca tüm örneklemdir; IS/OOS doğrulaması havuzlu blokta kalır. **Alternatif reddedildi:** özne sayısını ana kanıt yapmak (`MIN_EVENTS`=20) gerçek MAVI'de havuzlu OOS bozulmasından gelen `REJECT_SIGNAL`'i `INVESTIGATE`'e çevirirdi.
+
+**Gerçek retail (as_of 2026-09-10, `split_date=2026-01-01`, kapı `PASS_WITH_WARNINGS`):** etiketler değişmez: BIMAS `HOLD` (C2), MGROS `HOLD` (C2), MAVI `REJECT_SIGNAL` (C4). Özne sayıları (zarftan): BIMAS bağımsız 9 / ham 43, MAVI 21 / 227 (ufuk bazında tamamlanmış 20), MGROS 14 / 128.
+VARSAYIMSAL test (özne geride, havuz doğrulaması ve backtest geçmiş, sektör STRONG; özne sayıları gerçek): BIMAS aday kalır (0/3 ufukta bazın altında), MAVI aday kalır (1/3), MGROS `WATCH` (2/3: 10g ve 20g).
 
 ### 11.3 Haftanın günü (`test_weekday_pattern`)
 `AllowedAction`'da haftalık örüntü için aday etiketi yoktur; en olumlusu `WATCH`.

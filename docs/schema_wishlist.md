@@ -128,3 +128,12 @@ Sürüm koşullu zorunluluk (§1 / `docs/schema_1_2_0_plan.md` D1) ile birlikte 
 1. `schemas/` değişikliği tek commit, `SCHEMA_VERSION` → `1.2.0`, `schema_changelog.md` girişi, `schemas/examples.py` ve `tests/contract/` güncellemesi.
 2. Bilgisayar 2 (harness mock araçları, sayı doğrulayıcı, eğitim verisi) yeni alanlara uyum sağlar; `data_version` v2 kuralı (kural 12) değişmez.
 3. Bilgisayar 1 araçları yeni alanları doldurur; ham/bağımsız olay sayıları `HISTORICAL_ONLY` metninde de (geçiş dönemi için) kalabilir.
+
+## 8. `test_weekday_pattern`: şema yorumundan sapmalar ve isteğe bağlı genişleme (karar: 2026-11-21; schemas/ DEĞİŞMEDİ)
+- **Conditioning tanımı (uygulandı, sapma):** `Conditioning` enum yorumu "haftalık XU100 getirisi > 0 olan haftalar". Araç, OUTCOME günlerine sızmasın diye XU100 getirisini önceki Cuma kapanışından
+  **son TRIGGER gününün kapanışına** ölçer (`docs/data_dictionary.md` §17.3). Öneri (yalnızca açıklama): `Conditioning` yorumunu bu tanıma göre güncelle.
+- **`n_excluded_holiday_weeks` açıklaması:** pencere sınırını aşan haftalar (ör. IS bitişi hafta ortasında) ve takvimde olup hissede verisi olmayan günler de bu sayaca girer (şemada üçüncü sayaç yok). Öneri
+  (açıklama): "tatil, veri boşluğu veya pencere sınırını aşan hafta nedeniyle dışlanan haftalar".
+- **`t_stat` yönlüdür** (pozitif = beklenen yönde; permütasyon testinin standartlaştırılmış farkı). Öneri (açıklama): alan açıklamasına yaz.
+- **İsteğe bağlı: TRIGGER'sız gün etkisi desteği (drift düzeltmeli).** Bugün TRIGGER'sız örüntü `UNSUPPORTED_PATTERN` döner. Destek için hem anlamlılık hem etki ölçüsü "tüm günlerin ortalama (drift) getirisine
+  karşı" tanımlanmalı ve `tools/stability.py` (b) koşulu, `outcome_mean_diff_vs_unconditional_pct` TRIGGER'sızken 0 olacağı için buna uyarlanmalıdır. Şema değişikliği gerektirmeyebilir; sonuçları etkilediği için onay ister.
