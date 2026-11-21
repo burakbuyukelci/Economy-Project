@@ -146,6 +146,11 @@ dolu olmalı ve `validate_envelope` tarihin `as_of` sonrasına düşmediğini ay
   - **Her 25 Aralık** (2023, 2024, 2025): 30 hissede satır var, **XU100'de yok**. (BIST o gün açık.)
   - **2024-04-09:** XU100'de var, **21 hissede yok** (9 hissede var). Dini bayram arifesi yarım gün; veri boşluğu.
   - XU100 2023-02-08 satırı 2023-02-07 ile aynı kapanışı taşıyor (4505,30): bayat/kopya satır gibi görünüyor.
+- **VERİ SINIRLAMASI (Yahoo'da bilinen boşluk): XU100, 25 Aralık günlerinde satır üretmiyor** (BIST o gün açık, 30 hissede satır var).
+  Analiz penceresinde (2024-01-01 → `as_of = 2026-09-10`) bu **2024-12-25 ve 2025-12-25**'tir; `check_data_quality` XU100'ün bu iki günü için
+  `n_missing_trading_days = 2` raporlar ama **uyarı üretmez** (kapıyı etkilemez). Gerekçe: boşluk kaynağın bilinen davranışıdır, düzeltilemez ve göreli
+  getiriler zaten ortak günlerle hesaplanır (aşağıdaki madde). Bu bir veri doğruluğu iddiası değil, **kaynak sınırlamasının** kayda geçirilmesidir; XU100 üzerinden
+  hesaplanan tek günlük göreli ölçüler bu iki günde yoktur (doldurulmaz).
 - Araçlar, istenen aralıkta (as_of'a kadar) takvime göre eksik günü `MISSING_TRADING_DAYS` uyarısıyla bildirir.
   **Göreli getiri hesaplarında (hisse − XU100)** iki serinin ortak günleri kullanılmalıdır; ortak olmayan gün
   doldurulmaz.
@@ -407,7 +412,7 @@ En yüksek kademe kazanır: `HARD_BLOCK` > `ANALYSIS_UNSAFE` > `INVESTIGATE` > `
 | `signal_lag_days < 1` ya da `as_of` sonrası tarihli sonuç | `LOOKAHEAD_SIGNAL` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_lookahead`); `BundleItem` alanları şemada yok (`schema_wishlist.md` §4) |
 | Backtest girişi sinyal gününden sonra değil / çıkış `as_of` sonrası | `BACKTEST_FUTURE_INFO` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_backtest_information`) |
 | Bilanço açıklama tarihi kullanım tarihinden veya `as_of`'tan sonra | `FUTURE_FUNDAMENTAL_LEAK` | HARD | HARD_BLOCK | **saf fonksiyon** (`check_fundamental_alignment`); bilanço verisi henüz yok |
-| Bilanço açıklama tarihi dönem sonundan önce (dönem sonuna göre hizalama izi) | `PERIOD_MISMATCH` | HARD | HARD_BLOCK | **saf fonksiyon**; tanım bizim operasyonelleştirmemizdir (ekip teyidi gerekir) |
+| Bilanço açıklama tarihi dönem sonundan önce (dönem sonuna göre hizalama izi) | `PERIOD_MISMATCH` | HARD | HARD_BLOCK | **saf fonksiyon**; tanım **GEÇİCİ** (bizim operasyonelleştirmemiz; bilanço verisi gelince yeniden değerlendirilecek) |
 | Piyasa geneli sıçrama (hisselerin ≥ %50'si, ör. 2023-02-15) | `PRICE_JUMP_OVER_LIMIT` | SOFT | PASS_WITH_WARNINGS | `params` |
 | Hissede eksik işlem günü | `MISSING_TRADING_DAYS` | SOFT | PASS_WITH_WARNINGS | `params` |
 | Bayatlık 5–10 gün | `STALE_DATA` | SOFT | PASS_WITH_WARNINGS | `params` |
@@ -422,7 +427,10 @@ En yüksek kademe kazanır: `HARD_BLOCK` > `ANALYSIS_UNSAFE` > `INVESTIGATE` > `
 - **ANALYSIS_UNSAFE:** yalnızca veri `as_of`'u kapsamıyorsa. "Olay yok" (`n_events = 0`) **bir bulgudur, veri hatası değil** → INVESTIGATE.
 - Bayatlık = `as_of − (as_of'a kadarki son satır tarihi)`, takvim günü, her hisse ve XU100 için. Eşikler (`tools/check_data_quality.py`, `config/`'e konmadı):
   `STALE_GRACE_DAYS = 4` (**varsayım**: Cuma–Pazartesi tatili dahil normal; ≤ 4 gün uyarı yok), `STALE_WARN_MAX_DAYS = 10`, `STALE_UNSAFE_DAYS = 30` (ikisi onaylı).
-- Diğer **varsayım** eşikleri: `MACRO_MAX_GAP_DAYS = 7` (günlük seri), `NEWS_MIN_ITEMS = 3`, `TRANSCRIPT_MIN_QUALITY = 0.6`, `PEER_GROUP_MIN_SIZE = 3`.
+- **MACRO_GAP eşiği seri sıklığına bağlıdır (onaylı):** `MACRO_MAX_GAP_DAYS_BY_FREQUENCY = {"daily": 7, "monthly": 45}` gün; `check_macro_coverage(..., frequency="daily"|"monthly", max_gap_days=None)`.
+  Açık `max_gap_days` sıklığı ezer; bilinmeyen sıklık hata verir. Boşluk, ardışık gözlemler ve `[start, end]` uçları arasında ölçülür.
+- **GEÇİCİ** eşikler (ekip onayı bekliyor; ilgili veri/araç gelince gerçek dağılıma göre yeniden belirlenecek): `NEWS_MIN_ITEMS = 3`, `TRANSCRIPT_MIN_QUALITY = 0.6`,
+  `PEER_GROUP_MIN_SIZE = 3` ve `PERIOD_MISMATCH` tanımı (tablo).
 
 ### 15.3 Hangi kontrol ne zaman `checks_run`'a girer
 Her zaman: `PRICE_JUMPS`, `MISSING_DAYS`, `STALENESS`, `AS_OF_CONSISTENCY`, `TICKER_IDENTITY` (boş bundle'da bile; harness'ın ilk kapısı budur).
@@ -457,7 +465,7 @@ Birim, `schemas/envelope.py` içindeki `n_events` tanımından; minimum config s
 - **`TickerQuality.n_price_jumps_over_limit`** şema açıklamasındaki "limitin üstü" yerine sınıflandırmayla **aynı** kuralı kullanır: mutlak `adj_close` getirisi `> limit + PRICE_JUMP_TOLERANCE_PP`, pencere `[start, min(end, as_of)]`.
 - **`last_date`** pencerenin son satırıdır; **`last_data_age_days`** ise `as_of − (as_of'a kadarki son satır)` (pencere `end < as_of` ise erken bitebilir, bayatlık yine `as_of`'a göre ölçülür).
 - **Eksik gün:** birleşik takvim (§11.4), `as_of`'a kesilmiş, hissenin **kendi ilk satırından** sonraki günler. **XU100'ün eksik günü raporlanır (`n_missing_trading_days`) ama uyarı üretmez**: v2'de 2 gün (2024-12-25, 2025-12-25)
-  Yahoo'nun bilinen 25 Aralık boşluğudur ve göreli getiriler ortak günlerle hesaplanır. Hissedeki aynı boşluk uyarıdır: 2024-04-09'da 30 hissenin yalnızca 9'unda veri var (THYAO ve MGROS dahil).
+  Yahoo'da bilinen bir **veri sınırlamasıdır** (§11.4) ve göreli getiriler ortak günlerle hesaplanır. Hissedeki aynı boşluk uyarıdır: 2024-04-09'da 30 hissenin yalnızca 9'unda veri var (THYAO ve MGROS dahil).
 - **Kimlik:** ticker snapshot'ta yoksa, `as_of`'a kadar satırı yoksa ya da istenen pencerede satırı yoksa `WRONG_TICKER_OR_BROKEN_HISTORY` (HARD). XU100 `include_index` iken aynı kuralla.
 
 ### 15.7 Gerçek değerler (v1 / v2, `as_of = 2026-09-10`, `start = 2024-01-01`; testler: `tests/tools/test_check_data_quality_real.py`)
