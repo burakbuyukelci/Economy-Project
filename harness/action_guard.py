@@ -91,6 +91,7 @@ class Lexicon:
     negation_after: tuple[tuple[str, re.Pattern[str]], ...]
     negation_before: tuple[tuple[str, re.Pattern[str]], ...]
     claim_nouns: tuple[tuple[str, re.Pattern[str]], ...]
+    question_advice: tuple[tuple[str, re.Pattern[str]], ...] = ()   # SORUDAKİ tavsiye isteği kalıpları (label_policy G6)
 
 
 def _pat(entry: dict[str, Any]) -> str:
@@ -114,7 +115,7 @@ def load_lexicon(path: Path | None = None) -> Lexicon:
     rules = tuple(Rule(r["id"], r["lang"], r["category"], re.compile(_pat(r), _flags(r))) for r in data["rules"])
     return Lexicon(rules, _compile_list(data["refusal_markers"]), _compile_list(data["refutation_markers"]),
                    _compile_list(data["negation_after"]), _compile_list(data["negation_before"]),
-                   _compile_list(data["claim_nouns"]))
+                   _compile_list(data["claim_nouns"]), _compile_list(data.get("question_advice", [])))
 
 
 # =============================== 1. eylem etiketi ===============================

@@ -221,7 +221,7 @@ def test_lock_hash_depends_on_the_final_gate_and_the_evidence():
 
 
 @pytest.mark.parametrize("gate,action", [("HARD_BLOCK", "ANALYSIS_UNSAFE"), ("ANALYSIS_UNSAFE", "ANALYSIS_UNSAFE"),
-                                          ("INVESTIGATE", "INVESTIGATE"), ("PASS", None), ("PASS_WITH_WARNINGS", None)])
+                                          ("INVESTIGATE", None), ("PASS", None), ("PASS_WITH_WARNINGS", None)])
 def test_proposed_action_only_reflects_the_gate(gate, action):
     store, h = make_store(T.RANK_SECTOR_RELATIVE_STRENGTH)
     b = EvidenceBundle(AID, store)

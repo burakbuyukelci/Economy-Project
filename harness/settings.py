@@ -84,3 +84,13 @@ def state_order_mode() -> str:
     if mode not in _ORDER_MODES:
         raise ValueError(f"STATE_ORDER_MODE {mode!r} geçersiz; geçerli: {_ORDER_MODES}")
     return mode
+
+# --- Etiket politikası eşikleri (harness/label_policy.py; docs/harness_design.md bölüm 11) ----------------------------
+# Eşikler getiriye bakılmadan seçildi (retail örneği +0,12 pp'de bile her marjda aynı sonucu verir) ve sonradan sonuçlara
+# bakılarak DEĞİŞTİRİLMEZ. MIN_EVENTS / MIN_OOS_EVENTS / OOS_DEGRADATION_* config.settings'ten (ORTAK) çağrı anında okunur.
+POLICY_HIT_MARGIN_PP = 5.0               # isabet oranı, bazı en az bu kadar yüzde puan aşmalı (aday için)
+POLICY_MIN_PASSING_HORIZONS = 2          # aday için "geçen ufuk" sayısı alt sınırı (5/10/20 ya da 1/3/5/10 içinden)
+POLICY_MIN_PEERS = 3                     # catch-up için peer grubu alt sınırı
+POLICY_SIGNAL_RECENCY_TRADING_DAYS = 3   # teknik dönüşte "güncel sinyal": son olay as_of'tan en çok bu kadar iş günü önce
+                                         # (hafta sonları hariç; resmi tatiller sayılmaz: yaklaşıklık)
+POLICY_MIN_QUARTERS = 4                  # GEÇİCİ (temel veri): açıklanmış çeyrek alt sınırı; gerçek veri gelince gözden geçirilecek

@@ -335,11 +335,12 @@ EXTRACTORS: dict[T, Callable[[dict[str, Any]], list[Candidate]]] = {
 
 # =============================== paket ======================================================
 def _action_for_gate(gate: str | None) -> str | None:
-    """Kapıdan çıkan EN AZ önerilen eylem; asıl eylemi model seçer, action_guard denetler."""
+    """Kapının TEK BAŞINA zorladığı eylem: yalnızca güvenli hata yolu (HARD_BLOCK/ANALYSIS_UNSAFE -> ANALYSIS_UNSAFE).
+
+    Kapı INVESTIGATE ise eylem ZORLANMAZ (None): politika (harness/label_policy.py, G3) yalnızca ADAY etiketleri INVESTIGATE'e düşürür;
+    HOLD/WATCH/REJECT_SIGNAL aynen geçer. Asıl etiketi label_policy hesaplar, action_guard modelin etiketini denetler."""
     if gate in (GateStatus.HARD_BLOCK.value, GateStatus.ANALYSIS_UNSAFE.value):
         return AllowedAction.ANALYSIS_UNSAFE.value
-    if gate == GateStatus.INVESTIGATE.value:
-        return AllowedAction.INVESTIGATE.value
     return None
 
 

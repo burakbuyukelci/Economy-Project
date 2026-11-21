@@ -32,3 +32,28 @@ def thyao_indicators() -> dict:
                                     "end": AS_OF, "as_of": AS_OF})
     assert env["status"] == "OK"
     return env
+
+
+@pytest.fixture(scope="session")
+def retail_rank() -> dict:
+    """Gerçek rank_sector_relative_strength: retail, as_of 10.09.2026, split_date YOK (IS/OOS ve OOS bayrağı None)."""
+    if not (SNAPSHOT_ROOT / "LATEST").exists():
+        pytest.skip("data/snapshots yok")
+    from tools import rank_sector_relative_strength
+
+    env = rank_sector_relative_strength.run({"sector": "retail", "horizon": 20, "as_of": AS_OF})
+    assert env["status"] == "OK"
+    return env
+
+
+@pytest.fixture(scope="session")
+def retail_rank_split() -> dict:
+    """Aynı çağrı, split_date=2026-01-01 (as_of yılının başı): IS/OOS dolu, 20g'de OOS_DEGRADATION."""
+    if not (SNAPSHOT_ROOT / "LATEST").exists():
+        pytest.skip("data/snapshots yok")
+    from tools import rank_sector_relative_strength
+
+    env = rank_sector_relative_strength.run({"sector": "retail", "horizon": 20, "as_of": AS_OF,
+                                             "split_date": "2026-01-01"})
+    assert env["status"] == "OK"
+    return env

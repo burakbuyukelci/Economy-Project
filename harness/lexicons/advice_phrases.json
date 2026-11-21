@@ -103,5 +103,17 @@
      "examples": ["beklentisi", "varsayımı"]},
     {"lang": "en", "pattern": "\\b(?:claims?|assertions?|statements?|assumptions?)\\b",
      "examples": ["claim", "claims", "assertion", "statement", "assumption"]}
+  ],
+  "question_advice": [
+    {"lang": "tr", "pattern": "(?<!\\w)(?:alayım|satayım|alsam|satsam)(?!\\w)",
+     "examples": ["Yarın EREGL alayım mı?", "THYAO'yu satayım mı?", "Alsam mı?"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:almalı|satmalı)\\s+mı(?:yım|yız)?(?!\\w)",
+     "examples": ["THYAO'yu almalı mıyım?", "Satmalı mıyım?"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:alınır|satılır|alınmalı|satılmalı)\\s+mı(?!\\w)",
+     "examples": ["Bu hisse alınır mı?", "Satılır mı?"]},
+    {"lang": "tr", "pattern": "(?<!\\w)(?:yatırım\\s+)?tavsiye\\w*",
+     "examples": ["Bana yatırım tavsiyesi verir misin?", "Tavsiye ver."]},
+    {"lang": "en", "pattern": "\\bshould\\s+i\\s+(?:buy|sell|hold)\\b|\\b(?:buy|sell)\\s+or\\s+(?:buy|sell|hold)\\b|\\bworth\\s+buying\\b|\\binvestment\\s+advice\\b",
+     "examples": ["Should I buy THYAO now?", "Buy or sell?", "Is it worth buying?", "Give me investment advice."]}
   ]
 }
