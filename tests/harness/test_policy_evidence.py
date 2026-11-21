@@ -148,3 +148,76 @@ def test_backtest_policy_facts_are_committed():
     flags = next(i for i in items if value_of(i, "low_signal_flag") is not None)
     assert value_of(flags, "low_signal_flag") == "false" and value_of(flags, "oos_degradation_flag") == "false"
     assert value_of(flags, "n_signals") == 30
+
+
+# =============================== şema 1.2.0: havuz tanımı ve hisse bazlı kırılım kanıtta ===============================
+def test_rank_evidence_carries_the_pooling_definition_and_the_benchmark():
+    env = rank_env()
+    committed = items_for(locked_committed(env), env)
+    pool = [i for i in committed if value_of(i, "n_raw_laggard_observations") is not None and value_of(i, "ticker") is None]
+    assert len(pool) == 1
+    res = env["results"]
+    assert value_of(pool[0], "n_raw_laggard_observations") == res["n_raw_laggard_observations"]
+    assert value_of(pool[0], "cooldown_days") == res["cooldown_days"]
+    assert value_of(pool[0], "outcome_benchmark_type") == "peer_median" and value_of(pool[0], "outcome_benchmark_includes_subject") == "false"
+    assert str(res["n_raw_laggard_observations"]) in pool[0]["statement"] and "peer_median" in pool[0]["statement"]
+
+
+def test_rank_evidence_has_one_item_per_ticker_with_subject_level_counts_and_horizon_hit_rates():
+    env = rank_env()
+    committed = items_for(locked_committed(env), env)
+    per_ticker = [i for i in committed if value_of(i, "ticker") is not None and value_of(i, "ticker_n_independent_events") is not None]
+    rows = {t["ticker"]: t for t in env["results"]["per_ticker"]}
+    assert sorted(value_of(i, "ticker") for i in per_ticker) == sorted(rows)
+    for item in per_ticker:
+        t = rows[value_of(item, "ticker")]
+        assert value_of(item, "ticker_n_raw_laggard_observations") == t["n_raw_laggard_observations"]
+        assert value_of(item, "ticker_n_independent_events") == t["n_independent_events"]
+        assert value_of(item, "ticker_n_excluded_incomplete_horizon") == t["n_excluded_incomplete_horizon"]
+        for row in t["per_horizon"]:                       # ufuk başına: tamamlanmış olay, isabet, taban isabet (özne kendi geçmişi)
+            h = row["block"]["horizon"]
+            assert value_of(item, f"ticker_h{h}_n_events_complete") == row["block"]["full"]["n_events_complete"]
+            assert value_of(item, f"ticker_h{h}_hit_rate_pct") == row["block"]["full"].get("hit_rate_pct")
+            assert value_of(item, f"ticker_h{h}_baseline_hit_rate_pct") == row["block"]["baseline"].get("hit_rate_pct")
+
+
+def test_rank_evidence_numbers_are_copied_not_derived():
+    """Harness yeni sayı türetmez (CLAUDE.md kural 6): kanıt cümlelerindeki her sayı kaynak zarfta birebir var."""
+    from harness.number_verifier import verify_numbers
+
+    env = rank_env()
+    for item in items_for(locked_committed(env), env):
+        rep = verify_numbers(item["statement"], envelopes=[env], question="Analiz tarihi: 10.09.2026")
+        assert rep.n_hallucinated == 0, (item["statement"], [(r.claim.raw, r.verdict) for r in rep.claims if r.verdict == "HALLUCINATION"])
+
+
+def test_a_1_1_0_rank_envelope_without_the_new_fields_still_extracts_without_the_new_items():
+    env = rank_env()
+    for k in ("n_raw_laggard_observations", "cooldown_days", "outcome_benchmark_definition"):
+        env["results"][k] = None
+    env["results"]["per_ticker"] = []
+    committed = items_for(locked_committed(env), env)
+    assert committed and all(value_of(i, "ticker_n_independent_events") is None and value_of(i, "cooldown_days") is None for i in committed)
+
+
+def test_single_stock_group_has_no_pooling_or_per_ticker_items():
+    env = rank_env(peers=1, insufficient=True, strength=None)
+    committed = items_for(locked_committed(env), env)
+    assert all(value_of(i, "ticker_n_independent_events") is None and value_of(i, "cooldown_days") is None for i in committed)
+
+
+def test_real_retail_per_ticker_evidence_matches_the_tool_output(retail_rank_split):
+    """GERÇEK retail (as_of 2026-09-10): hisse bazlı sayılar kanıtta aynen; havuz = parçaların toplamı. Beklenen değerler zarftan okunur (hash/sayı donmuş dosya yok)."""
+    from harness.number_verifier import verify_numbers
+
+    env = retail_rank_split
+    committed = items_for(locked_committed(env), env)
+    by_ticker = {value_of(i, "ticker"): i for i in committed if value_of(i, "ticker_n_independent_events") is not None}
+    rows = {t["ticker"]: t for t in env["results"]["per_ticker"]}
+    assert set(by_ticker) == set(rows) == {"BIMAS", "MAVI", "MGROS"}
+    assert sum(value_of(i, "ticker_n_independent_events") for i in by_ticker.values()) == 44
+    assert sum(value_of(i, "ticker_n_raw_laggard_observations") for i in by_ticker.values()) == 398 == env["results"]["n_raw_laggard_observations"]
+    for t, item in by_ticker.items():
+        assert value_of(item, "ticker_n_independent_events") == rows[t]["n_independent_events"]
+        rep = verify_numbers(item["statement"], envelopes=[env], question="Analiz tarihi: 10.09.2026")
+        assert rep.n_hallucinated == 0

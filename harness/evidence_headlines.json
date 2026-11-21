@@ -1,12 +1,14 @@
 {
   "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). 'policy_values': harness/label_policy.py'nin etiketi belirlerken OKUDUĞU alanların committed kanıttaki DEĞER ADLARI; model yalnızca committed kanıta dayanarak açıklayacağı için etiketin dayanağı da orada bulunmalıdır (tests/harness/test_policy_evidence.py denetler). Yeni bölüm/değer eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
-  "version": 2,
+  "version": 3,
   "tools": {
     "rank_sector_relative_strength": {
-      "headline": ["sector", "laggard", "historical_catch_up"], "context": [], "excluded": [],
+      "headline": ["sector", "laggard", "historical_catch_up", "pooling", "per_ticker"], "context": [], "excluded": [],
       "policy_values": ["peer_group_size", "sector_strength", "is_laggard", "lag_score_pp", "horizon", "n_events_complete", "hit_rate_pct",
                         "baseline_hit_rate_pct", "cost_adjusted_mean_return_pct", "in_sample_cost_adjusted_mean_return_pct",
-                        "out_of_sample_n_events_complete", "out_of_sample_cost_adjusted_mean_return_pct", "oos_degradation_flag"]},
+                        "out_of_sample_n_events_complete", "out_of_sample_cost_adjusted_mean_return_pct", "oos_degradation_flag",
+                        "n_raw_laggard_observations", "cooldown_days", "ticker", "ticker_n_raw_laggard_observations", "ticker_n_independent_events",
+                        "ticker_n_excluded_incomplete_horizon"]},
     "detect_reversal_events": {
       "headline": ["group_count", "per_horizon"], "context": ["regime_breakdown"], "excluded": ["events"],
       "policy_values": ["n_events_detected", "last_event_date", "horizon", "n_events_complete", "hit_rate_pct", "baseline_hit_rate_pct",
