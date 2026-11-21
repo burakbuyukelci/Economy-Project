@@ -20,7 +20,9 @@ Ağ yok; as_of sonrası satır hiçbir hesaba girmez.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -135,10 +137,57 @@ def _diff(a: float | None, b: float | None) -> float | None:
     return None if a is None or b is None else _r(a - b)
 
 
-def _matches(cond: ConditionSet, st: dict[str, object]) -> bool:
+def matches_condition(cond: ConditionSet, st: dict[str, object]) -> bool:
     pairs = ((cond.rsi_state, st["rsi"]), (cond.supertrend_state, st["supertrend"]), (cond.ichimoku_state, st["ichimoku"]),
              (cond.volume_regime, st["volume"]), (cond.kama_slope, st["kama_slope"]))
     return all(want is None or want == have for want, have in pairs)
+
+
+@dataclass
+class EventSet:
+    """Bir hissede (as_of'a kesilmiş) olay tespiti sonucu; run_backtest REVERSAL sinyali de bunu kullanır."""
+    a_start: int                       # analysis_start'tan sonraki ilk bar indeksi
+    ev_idx: list[int]                  # olay (ardışık serinin ilk günü) bar indeksleri, artan
+    ln_of: dict[int, int]              # olay indeksi -> ait olduğu ham serinin uzunluğu
+    states_at: Callable[[int], dict]   # bar -> {rsi, supertrend, kama_slope, ichimoku, volume}
+
+
+def build_events(px: pd.DataFrame, cfg, family: EventFamily, touch_mode: str, analysis_start) -> EventSet:
+    """px: tarih indeksli adjusted open/high/low/close/volume (as_of'a kesilmiş). Nedensel: t günü yalnızca <= t verisi."""
+    n = len(px)
+    dates = px.index
+    close = px["close"].to_numpy(float)
+    try:
+        comp = compute(px, cfg, _ALL_IND, kama_flat_pct=KAMA_FLAT_SLOPE_PCT, volume_high_z=VOLUME_HIGH_Z, volume_low_z=VOLUME_LOW_Z)
+    except ValueError as e:
+        raise ToolFailure("INVALID_PARAMS", f"gösterge config geçersiz: {e}") from e
+    col = {c.name: c.values.to_numpy(float) for c in comp.columns}
+
+    def pick(prefix: str) -> np.ndarray:
+        return col[next(k for k in col if k.startswith(prefix))]
+
+    lower, upper, rsi = pick("BB_LOWER_"), pick("BB_UPPER_"), pick("RSI_")
+    rsi_state = rsi_local_state(rsi)
+    st = {k: v.tolist() for k, v in comp.states.items()}
+    low, high = px["low"].to_numpy(float), px["high"].to_numpy(float)
+    with np.errstate(invalid="ignore"):
+        if family == EventFamily.BB_LOWER_TOUCH:
+            raw = (close if touch_mode == "close" else low) <= lower
+        elif family == EventFamily.BB_UPPER_TOUCH:
+            raw = (close if touch_mode == "close" else high) >= upper
+        elif family == EventFamily.RSI_LOCAL_TROUGH:
+            raw = np.array([s == RsiState.LOCAL_LOW for s in rsi_state])
+        else:
+            raw = np.array([s == RsiState.LOCAL_HIGH for s in rsi_state])
+    raw = np.asarray(raw, bool)
+    a_start = int(np.searchsorted(dates.to_numpy(), np.datetime64(analysis_start), side="left"))
+    series = [(i, ln) for i, ln in series_starts(raw) if i >= a_start]
+
+    def states_at(i: int) -> dict[str, object]:
+        return {"rsi": rsi_state[i], "supertrend": st.get("supertrend", [None] * n)[i], "kama_slope": st.get("kama_slope", [None] * n)[i],
+                "ichimoku": st.get("ichimoku_position", [None] * n)[i], "volume": st.get("volume_regime", [None] * n)[i]}
+
+    return EventSet(a_start, [i for i, _ in series], dict(series), states_at)
 
 
 # =====================================================================================================
@@ -166,41 +215,8 @@ def _handler(p: DetectReversalEventsParams, snap: Snapshot) -> ToolOutput:
     n = len(px)
     dates = px.index
     close = px["close"].to_numpy(float)
-    try:
-        comp = compute(px, p.indicator_config, _ALL_IND, kama_flat_pct=KAMA_FLAT_SLOPE_PCT,
-                       volume_high_z=VOLUME_HIGH_Z, volume_low_z=VOLUME_LOW_Z)
-    except ValueError as e:
-        raise ToolFailure("INVALID_PARAMS", f"gösterge config geçersiz: {e}") from e
-    col = {c.name: c.values.to_numpy(float) for c in comp.columns}
-
-    def pick(prefix: str) -> np.ndarray:
-        return col[next(k for k in col if k.startswith(prefix))]
-
-    lower, upper, rsi = pick("BB_LOWER_"), pick("BB_UPPER_"), pick(f"RSI_")
-    rsi_state = rsi_local_state(rsi)
-    st = {k: v.tolist() for k, v in comp.states.items()}
-
-    # ham olay günleri
-    low, high = px["low"].to_numpy(float), px["high"].to_numpy(float)
-    with np.errstate(invalid="ignore"):
-        if p.event_family == EventFamily.BB_LOWER_TOUCH:
-            raw = (close if p.touch_mode.value == "close" else low) <= lower
-        elif p.event_family == EventFamily.BB_UPPER_TOUCH:
-            raw = (close if p.touch_mode.value == "close" else high) >= upper
-        elif p.event_family == EventFamily.RSI_LOCAL_TROUGH:
-            raw = np.array([s == RsiState.LOCAL_LOW for s in rsi_state])
-        else:
-            raw = np.array([s == RsiState.LOCAL_HIGH for s in rsi_state])
-    raw = np.asarray(raw, bool) & ~np.isnan(lower) if p.event_family in (EventFamily.BB_LOWER_TOUCH, EventFamily.BB_UPPER_TOUCH) else raw
-
-    a_start = int(np.searchsorted(dates.to_numpy(), np.datetime64(p.analysis_start), side="left"))
-    series = [(i, ln) for i, ln in series_starts(raw) if i >= a_start]
-    ev_idx = [i for i, _ in series]
-    ln_of = dict(series)
-
-    def states_at(i: int) -> dict[str, object]:
-        return {"rsi": rsi_state[i], "supertrend": st.get("supertrend", [None] * n)[i], "kama_slope": st.get("kama_slope", [None] * n)[i],
-                "ichimoku": st.get("ichimoku_position", [None] * n)[i], "volume": st.get("volume_regime", [None] * n)[i]}
+    es = build_events(px, p.indicator_config, p.event_family, p.touch_mode.value, p.analysis_start)
+    a_start, ev_idx, ln_of, states_at = es.a_start, es.ev_idx, es.ln_of, es.states_at
 
     # rejim bayrakları (nedensel)
     xu = enforce_as_of(snap.index, p.as_of).set_index("date")["adj_close"].sort_index()
@@ -231,7 +247,7 @@ def _handler(p: DetectReversalEventsParams, snap: Snapshot) -> ToolOutput:
     groups: list[ReversalGroup] = []
     candidates: list[tuple[str, ConditionSet | None, list[int]]] = [(SINGLE_LABEL, None, ev_idx)]
     for c in p.condition_sets:
-        candidates.append((c.label, c, [i for i in ev_idx if _matches(c, states_at(i))]))
+        candidates.append((c.label, c, [i for i in ev_idx if matches_condition(c, states_at(i))]))
 
     for label, cond, idxs in candidates:
         fwd = {i: {h: forward(close, i, h, sign) for h in horizons} for i in idxs}
