@@ -75,6 +75,22 @@ ilkesini ihlal eder.
 **Gerekçe.** "Kesin yükselir" gibi nedensellik iddiasının doğrulanmadığını araç çıktısıyla göstermek için ilişki, `n_obs`, örneklem dışı kararlılık ve çoklu test uyarısı birlikte
 gelmelidir. Seri hizalama tarafı (yayın tarihi, gecikme) araçta deterministik yapılmalı; model hizalamayı yeniden yapmamalıdır.
 
+## 4. `BundleItem`: kalite kapısı için iki alan (check_data_quality)
+**Sorun.** `check_data_quality` HARD kuralları (proje dokümanı §26) `analysis_bundle` künyesinden değerlendirilir, fakat `BundleItem`
+yalnızca `tool, as_of, data_version, input_hash, n_events, n_excluded_incomplete_horizon` taşır. Bu yüzden iki kural şema üzerinden **kurulamıyor**:
+- `LOOKAHEAD_SIGNAL`: `signal_lag_days < 1` (şema `StrategySpec` içinde 0'ı reddeder, ama künyede lag yok; kapı bağımsız doğrulayamaz).
+- `BACKTEST_FUTURE_INFO` / "`as_of` sonrası tarihli sonuç": künyede aracın ürettiği en geç tarih yok.
+`extra="forbid"` olduğu için bu alanlar şemaya eklenmeden bundle'a konamaz.
+
+**Öneri (ikisi de varsayılanı `None`, geriye uyumlu):**
+- `signal_lag_days_applied: int | None = None` — yalnızca `run_backtest` künyesinde dolu (`RunBacktestResult.signal_lag_days_applied`'ten).
+- `max_result_date: date | None = None` — aracın sonuçlarındaki en geç tarih (backtest: son `exit_date`; olay araçları: son olay/ufuk tarihi). Kapı `max_result_date > as_of` ise HARD verir.
+
+**Geçici durum.** Kapı mantığı (`tools/check_data_quality.py`) bu iki kuralı **saf fonksiyon** olarak içerir ve sentetik girdiyle test edilir;
+`params` üzerinden çalışmadığı için `checks_run`'a girmez ve `gate_reason` bunu yazar. Şema onaylanınca yalnızca bağlama eklenir.
+`harness/gate_params.py::bundle_items` (Bilgisayar 2) yeni alanları zarftan/`results`'tan kopyalayacak şekilde güncellenmelidir.
+`input_hash`'i etkilemez (`analysis_bundle` params içinde olduğundan çağrıların hash'i değişir; yalnızca yeni çağrılar etkilenir).
+
 ## Uygulama notu (onay sonrası)
 1. `schemas/` değişikliği tek commit, `SCHEMA_VERSION` → `1.2.0`, `schema_changelog.md` girişi, `schemas/examples.py` ve `tests/contract/` güncellemesi.
 2. Bilgisayar 2 (harness mock araçları, sayı doğrulayıcı, eğitim verisi) yeni alanlara uyum sağlar; `data_version` v2 kuralı (kural 12) değişmez.
