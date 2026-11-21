@@ -6,6 +6,10 @@
                        kanıt paketi ve kalite KAPISI (güvenli hata yolu) yok
   D C + Evidence/Gate  kalite kapısı ve kanıt paketi HARNESS tarafından çalıştırılır (otomatik kapılar)
   E D + Memory/Review  D + insan incelemesi/hafıza (deney iskeleti madde 7'de bağlanacak)
+  D′ (EXTRA_PROFILES)  D, ama politika etiketi/gerekçesi modele GÖSTERİLMEZ (yalnızca denetlenir + yeniden deneme); A–E'ye girmez
+
+Nihai çıktı ÖLÇÜMÜ (sayı + eylem + politika karşılaştırması) her profilde yapılır ve raporlanır; ZORLAMA (yeniden deneme,
+güvenli geri çekilme, required_action) yalnızca `enforce_final_check` açıksa. Etiket/gerekçenin modele verilmesi `show_policy_label`.
 
 Aşama `settings.EXPERIMENT_STAGE` ile seçilir. Bu dosya yalnızca bayrak tablosu ve bayraklardan
 Routing/araç görünürlüğü türetir; kural mantığı state_machine.py / session.py içindedir.
@@ -26,6 +30,8 @@ class StageProfile:
     auto_gates: bool      # CHECK_DATA_QUALITY / BUILD_EVIDENCE / RISK_GATE'i harness çalıştırır
     evidence: bool        # kanıt paketi + kalite kapısı (güvenli hata yolu) var mı
     human_review: bool    # insan incelemesi/hafıza (experiments iskeletinde kullanılır)
+    enforce_final_check: bool = False  # nihai çıktı ihlalinde yeniden deneme + güvenli geri çekilme + politika etiketi zorunlu
+    show_policy_label: bool = False    # GENERATE_EXPLANATION'da izinli etiket + gerekçe modele verilir
 
     def __post_init__(self) -> None:
         if self.enforce_states and not self.tools_enabled:
@@ -34,22 +40,32 @@ class StageProfile:
             raise ValueError("auto_gates için enforce_states ve evidence gerekir")
         if self.evidence and not self.enforce_states:
             raise ValueError("evidence için enforce_states gerekir")
+        if (self.enforce_final_check or self.show_policy_label) and not self.evidence:
+            raise ValueError("enforce_final_check/show_policy_label için evidence gerekir (politika etiketi kapı + kanıttan gelir)")
 
 
 PROFILES: dict[str, StageProfile] = {
     "A": StageProfile("A", tools_enabled=False, enforce_states=False, auto_gates=False, evidence=False, human_review=False),
     "B": StageProfile("B", tools_enabled=True, enforce_states=False, auto_gates=False, evidence=False, human_review=False),
     "C": StageProfile("C", tools_enabled=True, enforce_states=True, auto_gates=False, evidence=False, human_review=False),
-    "D": StageProfile("D", tools_enabled=True, enforce_states=True, auto_gates=True, evidence=True, human_review=False),
-    "E": StageProfile("E", tools_enabled=True, enforce_states=True, auto_gates=True, evidence=True, human_review=True),
+    "D": StageProfile("D", tools_enabled=True, enforce_states=True, auto_gates=True, evidence=True, human_review=False,
+                      enforce_final_check=True, show_policy_label=True),
+    "E": StageProfile("E", tools_enabled=True, enforce_states=True, auto_gates=True, evidence=True, human_review=True,
+                      enforce_final_check=True, show_policy_label=True),
+}
+# A–E karşılaştırmasının dışındaki ek deney profilleri (deney şimdilik KOŞULMAZ; bayrak hazır).
+EXTRA_PROFILES: dict[str, StageProfile] = {
+    "D'": replace(PROFILES["D"], name="D'", show_policy_label=False),
 }
 
 
 def get_profile(name: str) -> StageProfile:
-    try:
-        return PROFILES[name.upper()]
-    except KeyError:
-        raise ValueError(f"bilinmeyen deney aşaması {name!r}; geçerli: {', '.join(PROFILES)}") from None
+    key = name.upper()
+    if key in PROFILES:
+        return PROFILES[key]
+    if key in EXTRA_PROFILES:
+        return EXTRA_PROFILES[key]
+    raise ValueError(f"bilinmeyen deney aşaması {name!r}; geçerli: {', '.join([*PROFILES, *EXTRA_PROFILES])}")
 
 
 def routing_for(profile: StageProfile) -> Routing:
