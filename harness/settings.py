@@ -154,6 +154,9 @@ def llm_num_ctx() -> int:
 def ollama_host() -> str:
     return os.environ.get(OLLAMA_HOST_ENV, "").strip() or OLLAMA_HOST
 
+# --- Orkestratör (harness/agent_loop.py) ---------------------------------------------------------------------------------
+AGENT_MAX_TURNS = 40               # bir oturumdaki en çok model turu (araç döngüsü + nihai deneme); aşılırsa LOOP_ABORTED
+
 # --- Etiket politikası eşikleri (harness/label_policy.py; docs/harness_design.md bölüm 11) ----------------------------
 # Eşikler getiriye bakılmadan seçildi (retail örneği +0,12 pp'de bile her marjda aynı sonucu verir) ve sonradan sonuçlara
 # bakılarak DEĞİŞTİRİLMEZ. MIN_EVENTS / MIN_OOS_EVENTS / OOS_DEGRADATION_* config.settings'ten (ORTAK) çağrı anında okunur.

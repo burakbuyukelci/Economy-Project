@@ -211,13 +211,31 @@ class HarnessSession:
         if attempt < max_attempts:
             return FinalResult("RETRY", attempt, max_attempts, report,
                                feedback=build_feedback(report, attempt=attempt, max_attempts=max_attempts))
+        return self._fallback(report, attempt, max_attempts, "deneme hakkı bitti")
+
+    def deliver_fallback(self, reason: str) -> FinalResult:
+        """Orkestratör: döngü nihai metne ulaşamadan durdu (tur sınırı, model hatası). Yalnızca zorlama açık profilde (D/E) ve
+        açıklama aşamasında; güvenli metin teslim edilir (etiket = politika etiketi)."""
+        if not self.profile.enforce_final_check:
+            raise HarnessRuleViolation("FALLBACK_NOT_ENABLED", f"{self.profile.name} profilinde güvenli geri çekilme yok (yalnızca ölçüm)")
+        if self.machine.state != State.GENERATE_EXPLANATION:
+            msg = f"geri çekilme yalnızca açıklama aşamasında teslim edilir; şimdiki durum {self.machine.state.value}"
+            self.machine.reject(None, "EXPLANATION_NOT_ALLOWED", msg)
+            raise HarnessRuleViolation("EXPLANATION_NOT_ALLOWED", msg)
+        if self.policy is None:
+            self._prepare_policy()
+        if self._max_final_attempts is None:
+            self._max_final_attempts = 1 + settings.final_max_retries()
+        return self._fallback(None, len(self._final_reports), self._max_final_attempts, reason)
+
+    def _fallback(self, failed: FinalReport | None, attempt: int, max_attempts: int, reason: str) -> FinalResult:
         assert self.policy is not None
         action = self.policy.label            # güvenli hata yolunda politika zaten ANALYSIS_UNSAFE'tir (G1)
         fb_text = fallback_text(action)
-        self.log.append("FINAL_FALLBACK", action=action.value, attempts=attempt, reason="deneme hakkı bitti")
+        self.log.append("FINAL_FALLBACK", action=action.value, attempts=attempt, reason=reason)
         delivered_report = check_final(self, fb_text, policy=self.policy)
         self._deliver(fb_text, action, delivered_report, status="FALLBACK", source="fallback", fallback=True)
-        return FinalResult("FALLBACK", attempt, max_attempts, report, fb_text, action)
+        return FinalResult("FALLBACK", attempt, max_attempts, failed or delivered_report, fb_text, action)
 
     def final_metrics(self) -> dict[str, Any]:
         """İhlaller İKİ düzeyde: deneme düzeyi (her denemedeki ihlaller) ve teslim düzeyi (teslim edilen metin)."""

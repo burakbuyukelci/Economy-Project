@@ -234,3 +234,29 @@ def test_event_log_replays_without_reading_hashes_from_a_file(tmp_path):
     assert [r["code"] for r in rows if r["kind"] == "RULE_VIOLATION"] == ["NUMBER_HALLUCINATION"]
     delivered = [r for r in rows if r["kind"] == "FINAL_DELIVERED"][0]
     assert delivered["metrics"] == s.final_metrics()          # JSON gidiş-dönüşünde değişmez (yalnızca str anahtar, int, bool, list)
+
+
+# =============================== orkestratör: döngü durunca güvenli geri çekilme ===============================
+def test_deliver_fallback_is_for_enforcing_profiles_in_the_explanation_stage_only():
+    s = started("D")
+    r = s.deliver_fallback("TURN_LIMIT")
+    assert r.status == "FALLBACK" and s.machine.action == A.HOLD and s.machine.explanation == fallback_text(A.HOLD)
+    m = s.final_metrics()
+    assert m["n_attempts"] == 0 and m["delivered_level"]["fallback"] is True and m["delivered_level"]["n_violations"] == 0
+    assert [e["reason"] for e in kinds(s, "FINAL_FALLBACK")] == ["TURN_LIMIT"]
+    with pytest.raises(HarnessRuleViolation):
+        started("B").deliver_fallback("TURN_LIMIT")                      # A–C: zorlama yok, geri çekilme yok
+    with pytest.raises(HarnessRuleViolation):
+        HarnessSession.from_question(QUESTION, profile="D").deliver_fallback("x")     # açıklama aşamasında değil
+
+
+def test_peek_explanation_does_not_count_an_invalid_call():
+    s = HarnessSession.from_question(QUESTION, profile="D")
+    before = s.machine.n_invalid_calls
+    d = s.machine.peek_explanation()
+    assert not d.allowed and s.machine.n_invalid_calls == before and not [e for e in s.events if e["kind"] == "INVALID_TOOL_CALL"]
+    assert not s.request_explanation().allowed and s.machine.n_invalid_calls == before + 1     # gerçek istek sayılır
+    s2 = HarnessSession.from_question(QUESTION, profile="D")
+    for t in (T.RANK_SECTOR_RELATIVE_STRENGTH, T.RUN_BACKTEST):
+        s2.call_tool(t.value, example_params(t))
+    assert s2.machine.peek_explanation().allowed and s2.machine.state != S.GENERATE_EXPLANATION   # yalnızca bakar

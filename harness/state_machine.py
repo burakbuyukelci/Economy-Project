@@ -209,9 +209,9 @@ class StateMachine:
                         mode=self.order_mode)
 
     # ---- açıklama / insan incelemesi / kapanış (orkestratör tarafı) -----------------
-    def request_explanation(self) -> Decision:
-        """Model açıklama yazmak istiyor. Saf karar: zorunlu MANUEL durumlar tamam mı, harness'in
-        çalıştıracağı adımlar (auto_before) neler? Geçiş için `begin_explanation()` çağrılır."""
+    def peek_explanation(self) -> Decision:
+        """`request_explanation` ile AYNI karar, ama YAN ETKİSİZ: geçersiz çağrı sayılmaz, log yazılmaz.
+        Orkestratör (döngü durduğunda geri çekilme mümkün mü?) sayacı şişirmeden bakmak için kullanır."""
         if self.state == State.GENERATE_EXPLANATION:
             return Decision(True, target=State.GENERATE_EXPLANATION)
         if self.state in self.routing.post_analysis:
@@ -223,13 +223,20 @@ class StateMachine:
         auto = [s for s in pending if s in self.routing.auto_states]
         if manual:
             msg = "açıklamadan önce zorunlu durum(lar) tamamlanmalı: " + ", ".join(s.value for s in manual)
-            self.reject(None, "MANDATORY_STATE_NOT_REACHED", msg)
             return Decision(False, code="MANDATORY_STATE_NOT_REACHED", message=msg)
         if auto and not self.has_evidence_source():
             msg = "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
-            self.reject(None, "PRECONDITION_FAILED", msg)
             return Decision(False, code="PRECONDITION_FAILED", message=msg)
         return Decision(True, target=State.GENERATE_EXPLANATION, auto_before=tuple(auto))
+
+    def request_explanation(self) -> Decision:
+        """Model açıklama yazmak istiyor. Saf karar: zorunlu MANUEL durumlar tamam mı, harness'in
+        çalıştıracağı adımlar (auto_before) neler? Geçiş için `begin_explanation()` çağrılır.
+        Reddedilen istek geçersiz çağrı olarak sayılır ve loglanır (`peek_explanation` saymaz)."""
+        d = self.peek_explanation()
+        if not d.allowed and d.code in ("MANDATORY_STATE_NOT_REACHED", "PRECONDITION_FAILED"):
+            self.reject(None, d.code, d.message or "")
+        return d
 
     def begin_explanation(self) -> None:
         """Zorunlu adımlar (auto olanlar dahil) bittikten sonra GENERATE_EXPLANATION'a geç."""
