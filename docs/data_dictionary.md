@@ -598,3 +598,48 @@ Tek yönlü dört aile: `BB_LOWER_TOUCH` (UP), `BB_UPPER_TOUCH` (DOWN), `RSI_LOC
 - **Birleşik (Soru 3):** `rsi_trough_high_volume` (RSI `LOCAL_LOW` + hacim `HIGH` aynı gün): **0 olay**; `supertrend_bearish_below_cloud` (Supertrend `BEARISH` + Ichimoku `BELOW_CLOUD`): **5 olay**.
 - **Yorum sınırları:** ASELS'in analiz dönemi yukarı eğilimlidir (baz isabet %52–62), 10 günde olay isabeti bazın altındadır; olay sayısı `MIN_EVENTS`'in (20) altındadır (`FEW_EVENTS`), OOS 3 olaydır (`OOS_TOO_SMALL`). Hiçbiri kesin sonuç değildir (`HISTORICAL_ONLY`).
 - **Not (RSI koşulu):** RSI durumu olay GÜNÜNDE değerlendirilir. Bollinger teması fiyat düşerken oluştuğundan, aynı gün RSI'ın yukarı dönmesi (teyit) nadirdir; bu yüzden "RSI dibi + yüksek hacim" birleşik koşulu çoğu hissede 0–birkaç olay verir. "Son k günde RSI dibi" gibi geriye bakan bir koşul ayrı bir tasarım kararıdır (şimdilik yok).
+
+## 20. Backtest (`run_backtest`, `tools/run_backtest.py`)
+### 20.1 Kapsam (onaylı plan) ve sınırlar
+- **Varyant:** `A` (yalnızca teknik/sinyal), `B` (+ sektör filtresi: sektör gücü `WEAK` olan sinyaller elenir). `C/D/E` → `UNSUPPORTED_VARIANT` (bilanço, makro, haber verisi gerekir).
+- **Sinyal:** `CATCH_UP`, `WEEKDAY`, `REVERSAL` (yalnız UZUN yön: `BB_LOWER_TOUCH`, `RSI_LOCAL_TROUGH`; `BB_UPPER_TOUCH`/`RSI_LOCAL_PEAK` → `UNSUPPORTED_DIRECTION`, karışık aileler → `UNSUPPORTED_EVENT_FAMILY`). `FUNDAMENTAL` → `UNSUPPORTED_SIGNAL_TYPE`.
+  WEEKDAY'de OUTCOME günleri UP olmalıdır; OUTCOME günleri sinyal ÜRETMEZ (yalnızca yön), sinyali TRIGGER günleri verir. **Yalnızca uzun yön** (borç/kısa satış maliyeti modellenmez). Hepsi `signal_params` ile: bilinmeyen anahtar `INVALID_PARAMS`.
+- **Optimizasyon yok:** araç parametre taraması yapmaz; parametreler çağırandan gelir. Aynı veride çok strateji denemek seçim yanlılığı üretir (`MULTIPLE_TESTING_RISK` uyarısı; bu araçta `n_tests_declared` yoktur).
+
+### 20.2 Zamanlama (signal shifting) ve işlem tanımı
+- Sinyal `t` kapanışında yalnızca `≤ t` verisiyle üretilir. **Giriş = `t + signal_lag_days` kapanışı, çıkış = giriş + `holding_days` kapanışı** (adjusted, hissenin kendi barları). `signal_lag_days ≥ 1` (şema); `signal_date < entry_date ≤ exit_date`.
+  WEEKDAY'de bunun anlamı: tetik, haftanın son TRIGGER gününde tamamlanır (örn. Çarşamba), giriş en erken ertesi gün kapanışıdır; o günün getirisi (örn. Perşembe) yakalanamaz.
+- **Çakışmasız işlem:** aynı hissede önceki işlemin çıkış gününden ÖNCE gelen sinyal alınmaz (`n_signals` kabul edilen sinyaldir; alınmayanlar `HISTORICAL_ONLY` uyarısında sayılır). Hisseler arası ilişki yoktur.
+- **Ufku dolmamış (kural 2):** çıkışı dönem sonunu (`min(end, as_of)`) aşan sinyal SAYILIR (`n_signals`) ama işlem yoktur; `n_excluded_incomplete_horizon`; metrik, `trade_log`, `n_winning/losing_trades` ve `last_exit_date`'e girmez. Açık pozisyon `as_of`'ta mark-to-market EDİLMEZ.
+  Veri dönem sonunda kesilir: dönem sonrası bar hiçbir hesaba girmez.
+- **Maliyet:** işlem `net = brüt − tur maliyeti` (§5, varsayılan 0,5 pp). Portföy eğrisinde maliyet işlemin İLK ve SON tutma gününe yarı yarıya düşülür (tek günlükte tamamı); bu yüzden eğri kümülatifi `brüt − 0,5`'ten az sapar.
+- **`n_losing_trades`** = net getirisi `≤ 0` işlem (yanlış pozitif). `low_signal_flag = n_signals < MIN_EVENTS` (+ `LOW_SIGNAL_COUNT`).
+
+### 20.3 Portföy ve metrikler
+- **Günlük strateji getirisi** = o gün açık pozisyonların (giriş gününden SONRAKİ barlar, çıkış günü dahil) eşit ağırlıklı ortalaması; pozisyon yoksa 0 (nakit, `rf = 0`). Takvim: evrendeki hisselerin işlem günlerinin birleşimi, `start`'tan itibaren.
+- `cumulative_return_pct` = `Π(1+r) − 1`; `annualized_return_pct` = `(1+kümülatif)^(252/gün) − 1`; `sharpe_ratio` = `ort/std(ddof=1)·√252` (`std = 0` → `null`); `max_drawdown_pct` = özsermaye eğrisinin tepeden en büyük düşüşü (≤ 0);
+  `win_rate_pct`, `avg/median_trade_return_pct` = işlem net getirileri (brüt metrikte brüt); `exposure_pct` = en az bir pozisyonun açık olduğu gün oranı.
+- **Benchmark'lar** (günlük, aynı takvim): `BUY_AND_HOLD` = evrenin eşit ağırlıklı günlük ortalaması; `XU100`; `SECTOR` = evrenin peer grubunun TÜM üyelerinin günlük medyanı (evren tek peer grubunda olmalı, aksi `INVALID_PARAMS`; ≤ 2 üyeli grupta `SMALL_PEER_GROUP`/`SOLO_PEER_GROUP`).
+  `cumulative_return_diff_pct = strateji net − benchmark`, `sharpe_diff` aynı şekilde. İşlem istatistiği benchmark'ta yoktur (`n_trades = 0`).
+- **Varyant B sektör gücü:** üyelerin `sector_window` (varsayılan 20 bar) getirisi medyanı − XU100 aynı pencere getirisi; `≥ +2 pp` STRONG, `≤ −2 pp` WEAK, arası NEUTRAL (`config` eşikleri §6). STRONG/NEUTRAL korunur; WEAK veya hesaplanamayan elenir; tek hisseli grupta filtre uygulanmaz (`SOLO_PEER_GROUP`).
+- **CATCH_UP:** `lag_window` (varsayılan 20) getirisi − (kendisi DAHİL) evren medyanı `≤ −lag_threshold_pp` (varsayılan 3,0) → sinyal. Evren ≥ 2 hisse; ortak günler (rank ile aynı kural).
+
+### 20.4 Bölünmeler ve `oos_degradation_flag`
+- `strategy.train_end` verilirse `TRAIN = [start, train_end]`, `validation_end` ile `VALIDATION`, sonrası `TEST` (OOS). `walk_forward = true` (train_end şart): TEST yerine `wf_test_days` (varsayılan 126) işlem günlük ardışık `WALK_FORWARD` blokları (son blok kısmi).
+  **Hiçbir parametre eğitim diliminde ayarlanmaz**; bölünme yalnızca dönemler arası kararlılığı gösterir.
+- Dilim `n_signals` = sinyal tarihi dilimde olan kabul edilmiş sinyaller (dolmamışlar dahil; toplamları `n_signals`). Dilim getiri/Sharpe/drawdown/maruziyet = o tarihlerdeki küresel günlük strateji getirisi dilimi; işlem istatistikleri (`n_trades`, kazanma oranı) = sinyal tarihi dilimde olan işlemler.
+  `benchmark_diff_pct` = dilim net kümülatifi − ilk benchmark'ın (sıralı ad) aynı dilim kümülatifi.
+- **`oos_degradation_flag`** §9 kuralı (`tools/stability.py`): IS = sinyal tarihi `≤ validation_end ya da train_end` olan işlemler, OOS = sonrası; OOS işlem `< MIN_OOS_EVENTS` → `false` + `OOS_TOO_SMALL`. `train_end` yoksa `null`.
+- **`last_exit_date`** (şema 1.3.0): TÜM işlemlerin en geç `exit_date`'i; `trade_log` en çok `BACKTEST_TRADE_LOG_MAX` (200) son işlemdir (`trade_log_truncated`), `last_exit_date` kısaltmadan etkilenmez.
+
+### 20.5 Gerçek örnekler (v2, `as_of = 2026-09-10`, `start = 2024-01-01`, `train_end = 2025-12-31`, tur maliyeti 0,5 pp; test: `tests/tools/test_run_backtest.py`)
+| | Retail (BIMAS, MAVI, MGROS) `CATCH_UP`, lag 20, eşik 3 pp, tut 10, gecikme 1 | THYAO `WEEKDAY` (Pzt-Sal-Çar düşüş → Per-Cum yükseliş), tut 2, gecikme 1 |
+|---|---|---|
+| Sinyal / dolmamış / işlem | 65 / 2 / 63 (39 kazanan, 24 kaybeden) | 24 / 0 / 24 (10 / 14) |
+| Brüt kümülatif | %112,29 | %−12,36 |
+| Net kümülatif (Sharpe, maks. düşüş) | %62,08 (0,7253; −%36,20) | %−22,31 (−0,7922; −%27,94) |
+| Benchmark kümülatif | AL-TUT %104,24; SECTOR %63,03; XU100 %92,69 | AL-TUT %34,00; XU100 %91,56 |
+| TRAIN / TEST sinyal | 48 / 17 | 19 / 5 |
+| `oos_degradation_flag` | `true` | `true` |
+- **Yorum sınırları:** retail net getirisi AL-TUT'un 42,2 pp, XU100'ün 30,6 pp altındadır; yalnızca peer medyanına yakındır (−0,9 pp). Maruziyet %84 olduğundan strateji büyük ölçüde sürekli açık pozisyondur. THYAO örüntü stratejisi negatiftir
+  ve OOS 5 işlemdir (eşik sınırında). Hiçbiri kanıt değil, geçmiş gözlemdir (`HISTORICAL_ONLY`).
