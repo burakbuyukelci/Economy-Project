@@ -178,3 +178,16 @@ def test_safe_failure_over_mcp_is_an_error_result_with_the_required_action():
     res = with_client(session, lambda c: c.call_tool("test_weekday_pattern", example_params(T.TEST_WEEKDAY_PATTERN)))
     body = json.loads(res.content[0].text)
     assert res.is_error and body["type"] == "SAFE_FAILURE" and body["required_action"] == "ANALYSIS_UNSAFE"
+
+
+def test_oos_rule_is_part_of_the_descriptions_of_the_validation_tools_only():
+    """Karar: split_date her zaman as_of yılının başı ya da sorudaki OOS başlangıcı (label_policy OOS ister)."""
+    session = HarnessSession.from_question(QUESTION, profile=MANUAL)
+    tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
+    for name in ("rank_sector_relative_strength", "detect_reversal_events", "test_weekday_pattern", "run_backtest"):
+        d = tools[name].description
+        assert "January 1 of the as_of year" in d and "out-of-sample start stated in the question" in d, name
+    assert "split_date" in tools["rank_sector_relative_strength"].description
+    assert "strategy.train_end" in tools["run_backtest"].description
+    for name in ("get_stock_history", "calculate_indicators", "get_macro_context"):
+        assert "January 1" not in tools[name].description

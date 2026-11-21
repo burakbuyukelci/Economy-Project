@@ -54,12 +54,24 @@ TOOL_DESCRIPTIONS: dict[ToolName, str] = {
 }
 
 
+# Etiket politikası (harness/label_policy.py) IS/OOS doğrulaması ister: OOS yoksa aday etiket verilemez (INVESTIGATE).
+# docs/tool_usage_guide.md ve training/RULES.md ile aynı kural.
+_OOS_RULE = ("Always set the out-of-sample start to January 1 of the as_of year, or to the out-of-sample start stated in the question; "
+             "without it no out-of-sample validation is performed and the analysis stays INVESTIGATE.")
+_TOOL_NOTES: dict[ToolName, str] = {
+    ToolName.RANK_SECTOR_RELATIVE_STRENGTH: " Set `split_date`. " + _OOS_RULE,
+    ToolName.DETECT_REVERSAL_EVENTS: " Set `split_date`. " + _OOS_RULE,
+    ToolName.TEST_WEEKDAY_PATTERN: " Set `out_of_sample_start`. " + _OOS_RULE,
+    ToolName.RUN_BACKTEST: " Set `strategy.train_end` to the day before the out-of-sample start. " + _OOS_RULE,
+}
+
+
 def _tool_list(visible: list[ToolName]) -> list[types.Tool]:
     """Yalnızca oturum profilinin MODELE gösterdiği araçlar (harness-içi kapı araçları listelenmez)."""
     return [
         types.Tool(
             name=spec.name.value,
-            description=TOOL_DESCRIPTIONS[spec.name] + _AS_OF_NOTE,
+            description=TOOL_DESCRIPTIONS[spec.name] + _AS_OF_NOTE + _TOOL_NOTES.get(spec.name, ""),
             input_schema=spec.params_model.model_json_schema(),
         )
         for spec in TOOL_REGISTRY.values()

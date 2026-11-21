@@ -158,3 +158,109 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
   `hard_blocks` alanlarının davranışı yeniden test edilmeli.
 * **Karar (2026-11-21, kodlanmadı):** `find_support_resistance` gerçek araç olunca seviye alanları (en yakın destek/direnç ve mesafeleri) `evidence_headlines.json`'da **başlık** (committed) olacak;
   kalan seviye listesi bağlamda kalır. O zamana dek araç mock olduğundan `levels` bağlamdadır.
+* **Kapı `INVESTIGATE` tanımı:** `tools/check_data_quality.py` henüz yok ve `docs/data_dictionary.md`'de `INVESTIGATE` kapı sonucunun tanımı yok
+  (`tools/price_quality.py::gate_from_issues` yalnızca PASS/PASS_WITH_WARNINGS/HARD_BLOCK üretir; "INVESTIGATE/ANALYSIS_UNSAFE ayrımını tam araç ekleyecek" notu var).
+  Politika (G3) şu varsayımla yazıldı: kapı INVESTIGATE = **aday eylem yasak**. Bilgisayar 1 farklı tanımlarsa G3 yeniden gözden geçirilir.
+
+## 11. Etiket politikası (`harness/label_policy.py`)
+**İlke:** kural kodda, model açıklar. Harness, kilitli kanıt paketinin kaynak zarflarından ve kapı sonucundan izinli etiketi **deterministik** hesaplar (`decide_label`, oturum için `decide_session`);
+eylem koruması modelin etiketini politikanınkiyle karşılaştırır (`check_final_output(metin, required_action=decision.label)` -> `ACTION_MISMATCH_REQUIRED`).
+Eğitim verisi, değerlendirme ve canlı test AYNI politikayı kullanır. Politika model çağırmaz, ağ kullanmaz, girdiyi değiştirmez; aynı girdi aynı çıktıyı (sıra bağımsız) verir.
+Çıktı (`PolicyDecision`): `label`, `rule_id`, senaryo kararları, `reasons[]` (kod + mesaj), `checks[]` (her kural kontrolünün gerçek değeri, eşiği, kaynak araç/hash/alan yolu) ve `trace`.
+Eşikler `harness/settings.py` (`POLICY_*`) ve `config.settings` (`MIN_EVENTS`, `MIN_OOS_EVENTS`) içindedir; getiriye bakılmadan seçildi, sonradan sonuçlara bakılarak değiştirilmez.
+
+| Eşik | Değer | Kaynak |
+|---|---|---|
+| İsabet oranı marjı (bazın üstü) | +5,0 pp | `POLICY_HIT_MARGIN_PP` |
+| Geçen ufuk sayısı (aday için) | en az 2 | `POLICY_MIN_PASSING_HORIZONS` |
+| Peer grubu | >= 3 | `POLICY_MIN_PEERS` |
+| Tamamlanmış olay | >= `MIN_EVENTS` (20) | `config.settings` (çağrı anında okunur) |
+| OOS olay sayısı | >= `MIN_OOS_EVENTS` (5) | `config.settings` |
+| Güncel sinyal (teknik) | son olay <= 3 iş günü önce (hafta sonu hariç, resmi tatiller sayılmaz) | `POLICY_SIGNAL_RECENCY_TRADING_DAYS` |
+| Açıklanmış çeyrek (temel) | >= 4, **GEÇİCİ** | `POLICY_MIN_QUARTERS` |
+
+### 11.1 Genel öncelik
+| Kural | Koşul | Etiket |
+|---|---|---|
+| `G1_GATE_UNSAFE` | kapı `HARD_BLOCK` / `ANALYSIS_UNSAFE` | `ANALYSIS_UNSAFE` |
+| `G2_GATE_MISSING` | kapı sonucu yok / bilinmiyor | `INVESTIGATE` (güvenli varsayılan) |
+| `G3_GATE_INVESTIGATE` | kapı `INVESTIGATE`: **yalnızca aday etiketler** (`POTENTIAL_CATCH_UP_CANDIDATE`, `TECHNICAL_REVERSAL_CANDIDATE`, `FUNDAMENTAL_IMPROVEMENT_CANDIDATE`) `INVESTIGATE`'e düşer; `HOLD`/`WATCH`/`REJECT_SIGNAL` aynen geçer. Senaryo bazında, birleştirmeden ÖNCE uygulanır | `INVESTIGATE` |
+| `G5_COMBINE` | senaryo etiketlerinin birleşimi: **en temkinli kazanır** `ANALYSIS_UNSAFE > INVESTIGATE > REJECT_SIGNAL > WATCH > HOLD > aday etiketler` | en temkinli |
+| `G5_CANDIDATE_VS_REJECT` | aynı (bilinen) özne için aday ile `REJECT_SIGNAL` çelişiyor | `INVESTIGATE` |
+| `G5_DIFFERENT_CANDIDATES` | yalnızca aday etiketler kaldı ve birden çok FARKLI aday var | `WATCH` |
+| `G6_ADVICE_CAP` | soruda al/sat/hedef fiyat isteği (tavsiye niyeti): aday etiketler ve `HOLD` -> `WATCH`. `ANALYSIS_UNSAFE`, `INVESTIGATE`, `REJECT_SIGNAL`, `WATCH` aynen geçer | `WATCH` |
+| `G7_NO_SCENARIO` | senaryo aracı çıktısı yok (örn. yalnızca makro/veri) | `INVESTIGATE` |
+| `G7_UNVERIFIED_CLAIM` | senaryo yok ve soruda doğrulanmamış kesinlik iddiası var ("kesin yükselir", garanti) | `INVESTIGATE` |
+
+Senaryo, modelin BAŞARIYLA çağırdığı araçlardan türetilir (`routing.py` ile aynı ilke). Aynı araçtan birden çok zarf varsa her biri ayrı senaryodur.
+**Aday etiketlerde** `reasons` içinde `CANDIDATE_CAVEAT` ("tarihsel gözlem, örnek küçük, belirsizlik var; gelecek getiri garantisi değil") **zorunludur**.
+İsabet oranının standart hatası `100*sqrt(p(1-p)/n)` yalnızca **bilgi** olarak `checks`'e yazılır (`h<ufuk>.hit_rate_se_pp`), kural değildir.
+
+### 11.2 Catch-up (`rank_sector_relative_strength` + `run_backtest`)
+Özne: soruda TEK hisse varsa o, aksi halde sıralamadaki en çok geride kalan. Ufuk bazında "geçti": olay >= `MIN_EVENTS` **ve** isabet - baz >= +5 pp **ve** maliyet sonrası ortalama > 0
+(tüm örneklem, IS ve OOS) **ve** IS/OOS dolu (OOS olay >= `MIN_OOS_EVENTS`) **ve** `oos_degradation_flag` True değil. Backtest: aynı sinyal türü (`CATCH_UP`) ve evrende özne; birden çok varsa EN TEMKİNLİ birleşim.
+| Sıra | Kural | Koşul | Etiket |
+|---|---|---|---|
+| 1 | `C1_PEERS_OR_STRENGTH` | `insufficient_peers`, peer < 3, `sector_strength` None ya da özne sıralamada yok | `INVESTIGATE` |
+| 2 | `C2_NOT_LAGGARD` | özne `is_laggard` değil (sinyal koşulu oluşmadı) | `HOLD` |
+| 3 | `C3_FEW_EVENTS` | herhangi bir ufukta tamamlanmış olay < `MIN_EVENTS` (ya da ufuk bloğu yok) | `INVESTIGATE` |
+| 4 | `C4_REJECT_HISTORY` | ufukların ÇOĞUNDA isabet bazın altında **ya da** herhangi bir `oos_degradation_flag` True **ya da** backtest `oos_degradation_flag` True | `REJECT_SIGNAL` |
+| 5 | `C6_VALIDATION_MISSING` | OOS yok / OOS olay < `MIN_OOS_EVENTS` ("OOS doğrulaması yapılmadı") **ya da** uygun backtest yok / TEST dilimi yok / `low_signal_flag` | `INVESTIGATE` |
+| 6 | `C5_CANDIDATE` | `STRONG` sektör, laggard, >= 2 ufuk geçti, backtest TEST dilimi net getiri - benchmark > 0, kapı `PASS`/`PASS_WITH_WARNINGS` | `POTENTIAL_CATCH_UP_CANDIDATE` |
+| 7 | `C7_WATCH` | diğer (karışık kanıt, sektör `STRONG` değil, yetersiz geçen ufuk, backtest benchmark'ı geçmiyor) | `WATCH` |
+
+### 11.3 Haftanın günü (`test_weekday_pattern`)
+`AllowedAction`'da haftalık örüntü için aday etiketi yoktur; en olumlusu `WATCH`.
+| Kural | `stability_verdict` | Etiket |
+|---|---|---|
+| `W1_STABLE` | `STABLE` | `WATCH` |
+| `W2_INSUFFICIENT` | `INSUFFICIENT_DATA` | `INVESTIGATE` |
+| `W3_UNSTABLE` | `UNSTABLE` (IS anlamsız, OOS işaret dönüşü, maliyet sonrası <= 0, isabet düşük, etki küçük) | `REJECT_SIGNAL` |
+
+### 11.4 Teknik dönüş (`detect_reversal_events` + `run_backtest`)
+Birincil grup koşulsuz `single_indicator`; birleşik gruplar yalnızca betimseldir (çoklu test riski), etiketi belirlemez. Ufuk/backtest koşulları catch-up ile aynı (`REVERSAL` sinyal türü).
+| Sıra | Kural | Koşul | Etiket |
+|---|---|---|---|
+| 1 | `T0_NO_PRIMARY_GROUP` | koşulsuz grup yok | `INVESTIGATE` |
+| 2 | `T6_NO_EVENTS` | geçerli taramada hiç olay yok (`n_events_detected = 0`); `T1`'in ÖNÜNDE (olay yoksa "az olay" değil "sinyal yok") | `HOLD` |
+| 3 | `T1_FEW_EVENTS` | herhangi bir ufukta tamamlanmış olay < `MIN_EVENTS` | `INVESTIGATE` |
+| 4 | `T2_REJECT_HISTORY` | ufukların çoğunda isabet bazın altında ya da OOS bozulması (tarama ya da backtest) | `REJECT_SIGNAL` |
+| 5 | `T4_VALIDATION_MISSING` | OOS / backtest eksik (C6 ile aynı) | `INVESTIGATE` |
+| 6 | `T3_CANDIDATE` | güncel sinyal (son olay <= 3 iş günü) **ve** >= 2 ufuk geçti **ve** backtest TEST farkı > 0 | `TECHNICAL_REVERSAL_CANDIDATE` |
+| 7 | `T5_WATCH` | diğer (güncel sinyal yok / karışık) | `WATCH` |
+
+### 11.5 Temel veri (`calculate_fundamental_change`) — GEÇİCİ eşikler
+> **F1–F4 ve `POLICY_MIN_QUARTERS` geçicidir.** Çeyreklik veri azdır (2025 sonrası ~6 çeyrek; `MIN_EVENTS=20` ulaşılamaz). Gerçek bilanço verisi gelince eşikler gözden geçirilecek;
+> kararlar `ScenarioDecision.provisional=True` ve `THRESHOLDS_PROVISIONAL` gerekçesiyle işaretlenir.
+
+İyileşme metriği ve baz (`YOY`/`QOQ`) araç çıktısından gelir; ikinci ana metrik `NET_DEBT_EBITDA` (varsa). Fiyat tepkisi (`reaction_summary`) yalnızca bilgidir, kural DEĞİLDİR (nedensellik iddiasından kaçınmak için; dok. §14).
+| Kural | Koşul | Etiket |
+|---|---|---|
+| `F1_INSUFFICIENT` | açıklanmış çeyrek < 4, son çeyrek TMS 29 karşılaştırılabilir değil, iyileşme metriği son çeyrekte yok | `INVESTIGATE` |
+| `F2_REJECT` | iyileşme metriği `DETERIORATED` ve ikinci metrik yok ya da `DETERIORATED` | `REJECT_SIGNAL` |
+| `F3_CANDIDATE` | iyileşme metriği `IMPROVED` ve ikinci metrik `DETERIORATED` değil, kapı geçer | `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` |
+| `F4_WATCH` | diğer (düz/belirsiz yön, metrikler çelişiyor) | `WATCH` |
+
+### 11.6 `split_date` kuralı (araç kullanımı ve eğitim verisi)
+Aday etiket IS+OOS doğrulaması ister. Model çağrılarında OOS başlangıcı HER ZAMAN **as_of yılının 1 Ocak'ı** ya da **sorudaki OOS başlangıcı**dır (`split_date`; haftalık örüntüde `out_of_sample_start`; backtest'te
+`strategy.train_end` = OOS başlangıcından bir gün önce). Eksikse politika `INVESTIGATE` verir ve gerekçe "OOS doğrulaması yapılmadı"dır. Kural MCP araç açıklamalarına, `docs/tool_usage_guide.md`'ye ve
+`training/RULES.md`'ye yazıldı.
+
+### 11.7 Gerçek örnek: retail, as_of 2026-09-10 (kapı `PASS_WITH_WARNINGS` varsayımı)
+Gerçek `tools.rank_sector_relative_strength` çıktısı. MAVI geride kalan (`lag_score_pp` -3,2452 <= -3,0), peer 3, sektör -1,81% vs XU100 +1,85% = -3,66 pp -> `WEAK`; tamamlanmış olay 43.
+| Ufuk | isabet | baz | fark | maliyet sonrası ort. (tümü) |
+|---|---|---|---|---|
+| 5g | 46,51 | 49,67 | **-3,16** | -0,68 |
+| 10g | 48,84 | 50,56 | **-1,72** | -0,89 |
+| 20g | 48,84 | 48,72 | **+0,12** (marj +5 pp değil) | +0,66 |
+
+* `split_date` YOK: IS/OOS ve `oos_degradation_flag` None. Etiket **`REJECT_SIGNAL`** (`C4_REJECT_HISTORY`): 3 ufkun 2'sinde isabet bazın altında. `C4`, `C6`'dan ÖNCE geldiği için OOS eksikliği reddi engellemez.
+* `split_date=2026-01-01`: OOS isabet %40,0 (5/10/20g), OOS maliyet sonrası ort. -1,34 / -2,09 / -0,88, 20g'de `oos_degradation_flag=True`. Etiket yine **`REJECT_SIGNAL`**, iki bağımsız gerekçeyle.
+* Gerçek kapı aracı (`tools/check_data_quality.py`, Bilgisayar 1) gelince bu örnek yeniden koşulmalı: `tests/harness/test_label_policy.py::test_real_retail_with_the_real_gate_tool` şimdilik atlanır (dosya yok), araç gelince otomatik çalışır.
+
+### 11.8 Bilinen sınırlar
+* Catch-up istatistikleri peer havuzludur (hisse bazlı kırılım `docs/schema_wishlist.md` §1.1); politika havuzlu `n_events_complete`/isabet ile karar verir, özne hissenin kendi olayı daha azdır.
+* Özne `decide_session`'da yalnızca soruda tek evren hissesi varsa belirlenir; kanıt paketi yalnızca en çok geride kalan hisseyi (`laggard`) taşır, özne açıkça başka bir hisseyse onun `is_laggard`/lag değeri committed kanıtta bulunmaz (politika zarftan okur).
+* Güncel sinyal için resmi tatiller sayılmaz (iş günü = hafta içi).
+* Birden çok backtest uygulanabilirse en temkinli birleşim kullanılır (TEST farkı en küçük, bayraklardan herhangi biri).
+* `proposed_action` (kanıt paketi): kapı `INVESTIGATE` iken artık eylem ZORLANMAZ (`None`); yalnızca `HARD_BLOCK`/`ANALYSIS_UNSAFE` -> `ANALYSIS_UNSAFE`. Asıl etiket politikadandır.
