@@ -57,3 +57,35 @@ def retail_rank_split() -> dict:
                                              "split_date": "2026-01-01"})
     assert env["status"] == "OK"
     return env
+
+
+WEEKDAY_PATTERN = ([{"weekday": d, "direction": "DOWN", "role": "TRIGGER"} for d in ("MON", "TUE", "WED")]
+                   + [{"weekday": d, "direction": "UP", "role": "OUTCOME"} for d in ("THU", "FRI")])
+
+
+def weekday_params(ticker: str, **over) -> dict:
+    """Örnek soru 2'nin örüntüsü: Pzt-Sal-Çar düşüş, ardından Per-Cum yükseliş; IS 2024-2025, OOS 2026 (split 2026-01-01)."""
+    return {"as_of": AS_OF, "ticker": ticker, "pattern": WEEKDAY_PATTERN, "in_sample_start": "2024-01-01", "in_sample_end": "2025-12-31",
+            "out_of_sample_start": "2026-01-01", "out_of_sample_end": AS_OF, **over}
+
+
+def _real_weekday(ticker: str) -> dict:
+    if not (SNAPSHOT_ROOT / "LATEST").exists():
+        pytest.skip("data/snapshots yok")
+    from tools import test_weekday_pattern
+
+    env = test_weekday_pattern.run(weekday_params(ticker))
+    assert env["status"] == "OK"
+    return env
+
+
+@pytest.fixture(scope="session")
+def thyao_weekday() -> dict:
+    """Gerçek test_weekday_pattern THYAO (karar UNSTABLE: IS_NOT_SIGNIFICANT)."""
+    return _real_weekday("THYAO")
+
+
+@pytest.fixture(scope="session")
+def asels_weekday() -> dict:
+    """Gerçek test_weekday_pattern ASELS (karar INSUFFICIENT_DATA: IS_TOO_FEW)."""
+    return _real_weekday("ASELS")

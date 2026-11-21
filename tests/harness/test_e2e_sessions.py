@@ -22,7 +22,7 @@ from harness.session import HarnessSession
 from harness.tool_runner import run_tool
 from schemas.enums import AllowedAction as A, ToolName as T
 from schemas.examples import example_params
-from tests.harness.conftest import SNAPSHOT_ROOT
+from tests.harness.conftest import SNAPSHOT_ROOT, weekday_params
 
 Q1 = ("Analiz tarihi: 10.09.2026\nPerakende sektöründe (BIMAS, MGROS, MAVI) 10.09.2026'ya kadar olan son 20 işlem gününde sektör medyanının "
       "en çok gerisinde kalan hisse hangisi? 01.01.2024 – 10.09.2026 döneminde benzer geride kalmalar 5, 10 ve 20 gün içinde kapanmış mı? "
@@ -42,7 +42,8 @@ def real_tools(monkeypatch):
     """Gerçek v2 araçları aç (snapshot yoksa atla)."""
     if not (SNAPSHOT_ROOT / "LATEST").exists():
         pytest.skip("data/snapshots yok")
-    for t in (T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CALCULATE_INDICATORS, T.RANK_SECTOR_RELATIVE_STRENGTH, T.CHECK_DATA_QUALITY):
+    for t in (T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CALCULATE_INDICATORS, T.RANK_SECTOR_RELATIVE_STRENGTH, T.CHECK_DATA_QUALITY,
+              T.TEST_WEEKDAY_PATTERN):
         monkeypatch.setitem(settings.TOOL_BACKEND_OVERRIDES, t, "real")
 
 
@@ -53,7 +54,7 @@ def tc(tool: T, **over) -> ModelReply:
 # soru -> araç çağrı betiği (gerçek ve mock karışık)
 SCRIPTS = {
     "Q1": (Q1, [tc(T.RANK_SECTOR_RELATIVE_STRENGTH, split_date="2026-01-01"), tc(T.RUN_BACKTEST)]),
-    "Q2": (Q2, [tc(T.GET_STOCK_HISTORY, ticker="THYAO", start="2026-09-01", end="2026-09-10"), tc(T.TEST_WEEKDAY_PATTERN, ticker="THYAO")]),
+    "Q2": (Q2, [tc(T.GET_STOCK_HISTORY, ticker="THYAO", start="2026-09-01", end="2026-09-10"), tc(T.TEST_WEEKDAY_PATTERN, **weekday_params("THYAO"))]),
     "Q3": (Q3, [tc(T.CALCULATE_INDICATORS, ticker="ASELS", indicators=["RSI", "BOLLINGER", "SUPERTREND"], last_n_rows=5),
                 tc(T.DETECT_REVERSAL_EVENTS, ticker="ASELS", split_date="2026-01-01")]),
     "Q4": (Q4, [tc(T.GET_FUNDAMENTAL_METRICS, ticker="TUPRS"), tc(T.CALCULATE_FUNDAMENTAL_CHANGE, ticker="TUPRS")]),
@@ -284,3 +285,20 @@ def test_event_log_file_replays_to_the_same_counts_without_any_stored_hash_fixtu
     delivered = [r for r in rows if r["kind"] == "FINAL_DELIVERED"][0]
     assert delivered["metrics"] == s.final_metrics()
     assert delivered["metrics"]["attempt_level"]["by_code"] == {"NUMBER_HALLUCINATION": 2}      # FABRICATED metninde iki uydurma sayı var (%77,7 ve %123,4)
+
+
+def test_q2_is_fully_real_and_the_label_is_reject_signal_with_a_training_eligible_bundle():
+    """Q2: get_stock_history + test_weekday_pattern + kapı HEPSİ gerçek v2 (mock yok): THYAO örüntüsü UNSTABLE -> REJECT_SIGNAL; paket eğitime uygun."""
+    from harness.mock_tools import is_training_eligible
+
+    s = new_session("Q2")
+    res, _ = run_q("Q2", [oracle_final(s, "Q2")], session=s)
+    assert res.final.status == "ACCEPTED" and s.policy.label == A.REJECT_SIGNAL and s.policy.scenarios[0].rule_id == "W3_UNSTABLE"
+    assert {r.envelope["data_version"] for r in s.store.records} == {"snap_2026-11-20_v2"}
+    assert all(is_training_eligible(r.envelope) for r in s.store.records)
+    # gerçek kapı: ilk kapı PASS_WITH_WARNINGS; SON kapı haftalık örüntünün az olayını (n_events=5 < 15) FEW_EVENTS (SOFT) ile bildirir => INVESTIGATE.
+    # G3 yalnızca ADAYLARI düşürür: REJECT_SIGNAL değişmez.
+    gates = [r.envelope["results"] for r in s.store.records if r.tool == T.CHECK_DATA_QUALITY]
+    assert gates[0]["gate_status"] == "PASS_WITH_WARNINGS" and gates[-1]["gate_status"] == "INVESTIGATE"
+    assert "FEW_EVENTS" in {w["code"] for w in gates[-1]["soft_warnings"]} and s.policy.gate_status == "INVESTIGATE"
+

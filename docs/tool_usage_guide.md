@@ -46,3 +46,7 @@ Tarihsel catch-up sayıları iki düzeydedir ve karıştırılmamalıdır:
 * **Hisse bazlı** (`per_ticker`): her hissenin kendi payı (örn. BIMAS 9, MAVI 21, MGROS 14; toplam 44). Soruda tek bir hisse varsa o hissenin sayısı yazılır; havuz sayısı o hissenin olay sayısı diye sunulmaz.
 * Sonuç ölçütü (`outcome_benchmark_definition`): peer medyanı, değerlendirilen hisse HARİÇ. Hisse bazlı bloklarda IS/OOS yoktur (hisse başına 9–21 olay bölünemez); IS/OOS yalnızca havuz bloğundadır.
 * Sayıları aynen kullan: ham ve bağımsız sayıyı toplama/oranlama; türetilmiş sayı halüsinasyon sayılır.
+
+## 7. `test_weekday_pattern` ve çoklu test
+Örüntü (kaç gün içerirse içersin) tek bir hipotezdir ve tek bir p-değeri üretir; `n_tests_declared` varsayılanı 1'dir. Aynı oturumda aynı hisse/dönem için başka örüntüler de denendiyse (farklı gün kombinasyonları, farklı yönler, conditioning varyantları) `n_tests_declared` denenen toplam örüntü sayısına ayarlanmalıdır; araç önceki denemeleri bilemez. `p_value_adjusted = min(1, p_value_raw × n_tests_declared)` ve karar bu değere dayanır. Her zarfta `MULTIPLE_TESTING_RISK` uyarısı bulunur; açıklamada bu risk anılmalıdır.
+

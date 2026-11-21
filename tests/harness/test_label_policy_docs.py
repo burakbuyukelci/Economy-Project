@@ -58,3 +58,9 @@ def test_guide_documents_the_schema_1_2_0_behaviours():
     """Şema 1.2.0: göstergelerde hafif varsayılanlar ve rank'te hisse bazlı kırılım (özne olay sayısı) kılavuzda yazılı."""
     for phrase in ("last_n_rows", "include_columns_meta", "value_columns", "per_ticker", "n_independent_events", "n_raw_laggard_observations"):
         assert phrase in GUIDE, phrase
+
+
+def test_guide_documents_weekday_multiple_testing_rule():
+    for phrase in ("n_tests_declared", "p_value_adjusted = min(1, p_value_raw × n_tests_declared)", "MULTIPLE_TESTING_RISK", "araç önceki denemeleri bilemez"):
+        assert phrase in GUIDE, phrase
+

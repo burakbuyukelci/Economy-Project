@@ -15,8 +15,8 @@
                         "cost_adjusted_mean_return_pct", "in_sample_cost_adjusted_mean_return_pct", "out_of_sample_n_events_complete",
                         "out_of_sample_cost_adjusted_mean_return_pct", "oos_degradation_flag"]},
     "test_weekday_pattern": {
-      "headline": ["verdict", "window"], "context": [], "excluded": [],
-      "policy_values": ["stability_verdict", "verdict_reason"]},
+      "headline": ["verdict", "window", "multiple_testing"], "context": [], "excluded": [],
+      "policy_values": ["stability_verdict", "verdict_reason", "n_trigger_weeks"]},
     "calculate_fundamental_change": {
       "headline": ["latest_metrics", "disclosure_counts", "reaction_summary"], "context": [], "excluded": [],
       "policy_values": ["fiscal_period", "yoy_direction", "qoq_direction", "tms29_comparable", "n_quarters_disclosed_by_as_of",

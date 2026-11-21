@@ -253,15 +253,24 @@ def _weekday(res: dict[str, Any]) -> list[Candidate]:
     for key, name in (("in_sample", "Örneklem içi"), ("out_of_sample", "Örneklem dışı")):
         w = res.get(key) or {}
         out.append(Candidate(
-            f"{label}, {name}: tetik hafta {_fmt(w.get('n_trigger_weeks'))}, gerçekleşme {_fmt(w.get('n_occurrences'))}, "
+            f"{label}, {name}: tamamlanmış hafta {_fmt(w.get('n_weeks_complete'))}, tetik hafta {_fmt(w.get('n_trigger_weeks'))}, "
+            f"gerçekleşme {_fmt(w.get('n_occurrences'))}, "
             f"sonuç ortalama getirisi %{_fmt(w.get('outcome_mean_return_pct'))}, koşulsuza fark "
             f"{_fmt(w.get('outcome_mean_diff_vs_unconditional_pct'))}, maliyet sonrası %{_fmt(w.get('cost_adjusted_outcome_mean_return_pct'))}, "
-            f"düzeltilmiş p {_fmt(w.get('p_value_adjusted'))}",
-            _vals(_v("n_trigger_weeks", w.get("n_trigger_weeks")), _v("n_occurrences", w.get("n_occurrences")),
+            f"ham p {_fmt(w.get('p_value_raw'))}, düzeltilmiş p {_fmt(w.get('p_value_adjusted'))}",
+            _vals(_v("n_weeks_complete", w.get("n_weeks_complete")),
+                  _v("n_trigger_weeks", w.get("n_trigger_weeks")), _v("n_occurrences", w.get("n_occurrences")),
                   _v("outcome_mean_return_pct", w.get("outcome_mean_return_pct"), "pct"),
                   _v("outcome_mean_diff_vs_unconditional_pct", w.get("outcome_mean_diff_vs_unconditional_pct"), "pct"),
                   _v("cost_adjusted_outcome_mean_return_pct", w.get("cost_adjusted_outcome_mean_return_pct"), "pct"),
-                  _v("p_value_adjusted", w.get("p_value_adjusted"))), "window"))
+                  _v("p_value_raw", w.get("p_value_raw")), _v("p_value_adjusted", w.get("p_value_adjusted"))), "window"))
+    mt = res.get("multiple_testing") or {}
+    if mt:
+        out.append(Candidate(
+            f"{label}: çoklu test düzeltmesi {_fmt(mt.get('method'))}, bildirilen test sayısı {_fmt(mt.get('n_tests_declared'))}, "
+            f"alfa {_fmt(mt.get('alpha'))}, düzeltilmiş alfa {_fmt(mt.get('adjusted_alpha'))}",
+            _vals(_v("n_tests_declared", mt.get("n_tests_declared")), _v("alpha", mt.get("alpha")),
+                  _v("adjusted_alpha", mt.get("adjusted_alpha")), _v("multiple_testing_method", mt.get("method"))), "multiple_testing"))
     return out
 
 
