@@ -22,6 +22,7 @@ from harness.session import HarnessSession
 from harness.tool_runner import run_tool
 from schemas.enums import AllowedAction as A, ToolName as T
 from schemas.examples import example_params
+from harness.tool_view import CONTEXT_TARGET_TOKENS
 from tests.harness.conftest import SNAPSHOT_ROOT, weekday_params
 
 Q1 = ("Analiz tarihi: 10.09.2026\nPerakende sektöründe (BIMAS, MGROS, MAVI) 10.09.2026'ya kadar olan son 20 işlem gününde sektör medyanının "
@@ -303,15 +304,17 @@ def test_q2_is_fully_real_and_the_label_is_reject_signal_with_a_training_eligibl
     assert "FEW_EVENTS" in {w["code"] for w in gates[-1]["soft_warnings"]} and s.policy.gate_status == "INVESTIGATE"
 
 
+_OVER = "AÇIK: tepe tur ölçüldü > CONTEXT_TARGET_TOKENS (karakter/3). Eğitim üreticisi tam oturum token sayısını FİLTRELER (seq len 6144); harness_design 13.2."
+
+
 @pytest.mark.parametrize("q", [
-    pytest.param("Q1", marks=pytest.mark.xfail(strict=True, reason=(
-        "AÇIK KARAR: gerçek rank zarfı ~13 bin karakter (per_ticker ~6,5 bin); araç tanımları küçüldü ama Q1 tepesi ~9,5 bin token. "
-        "Modelin gördüğü sonuç alanlarını kırpmak ya da bağlamı büyütmek sahibin kararı (harness_design 13.2)."))),
-    "Q2", "Q3", "Q4", "Q5"])
-def test_each_sample_question_stays_within_the_8192_token_context_target(q):
-    """Hedef: her model turunda istem ≤ 8192 token (karakter/3 tahmini; Ollama kurulunca prompt_eval_count ile doğrulanır)."""
+    pytest.param("Q1", marks=pytest.mark.xfail(strict=True, reason=_OVER + " Q1 ~7,4 bin (rank zarfı görünümü kırpılmış halde bile)")),
+    pytest.param("Q2", marks=pytest.mark.xfail(strict=True, reason=_OVER + " Q2 ~6,3 bin (weekday zarfı ~5 bin karakter)")),
+    "Q3", "Q4", "Q5"])
+def test_each_sample_question_stays_within_the_context_budget(q):
+    """Hedef: her model turunda istem ≤ CONTEXT_TARGET_TOKENS (karakter/3 tahmini; Ollama kurulunca prompt_eval_count ile doğrulanır)."""
     s = new_session(q)
     res, _ = run_q(q, [oracle_final(s, q)], session=s)
     est = [e["estimated_prompt_tokens"] for e in s.events if e["kind"] == "MODEL_TURN"]
-    assert est and max(est) <= 8192, (q, est)
+    assert est and max(est) <= CONTEXT_TARGET_TOKENS, (q, est)
 

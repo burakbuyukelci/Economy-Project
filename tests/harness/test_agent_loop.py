@@ -59,8 +59,9 @@ def test_tool_results_reach_the_model_as_tool_messages_with_the_validated_envelo
     tool_msgs = [m for m in backend.calls[1]["messages"] if m["role"] == "tool"]
     assert len(tool_msgs) == 1 and tool_msgs[0]["name"] == "rank_sector_relative_strength"
     env = json.loads(tool_msgs[0]["content"])
-    assert env["tool"] == "rank_sector_relative_strength" and env["status"] == "OK" and env["as_of"] == "2026-09-10"
-    assert res.session.tool_envelopes[0] == env                                  # modele giden = oturumun doğrulanmış zarfı
+    assert env["status"] == "OK" and "tool" not in env and "params" not in env and "results" in env      # model görünümü: yankı alanları yok
+    from harness.model_view import model_view
+    assert env == model_view(res.session.tool_envelopes[0], subject=None)       # modele giden = oturumun doğrulanmış zarfının GÖRÜNÜMÜ (null atılmış)
 
 
 def test_failed_final_attempt_feedback_goes_back_to_the_model_and_it_can_recover():
@@ -212,7 +213,7 @@ def test_run_is_deterministic_and_json_serialisable():
 def test_system_prompt_version_and_the_oos_rule_live_in_the_system_prompt():
     from harness.agent_loop import SYSTEM_PROMPT_VERSION
 
-    assert SYSTEM_PROMPT_VERSION == "2"
+    assert SYSTEM_PROMPT_VERSION == "3"
     p = build_system_prompt(HarnessSession.from_question(QUESTION, profile="D"))
     assert "split_date" in p and "out_of_sample_start" in p and "1 Ocak" in p and "varsayılan" in p
     assert "split_date" not in build_system_prompt(HarnessSession.from_question(QUESTION, profile="A"))      # A'da araç yok
@@ -223,6 +224,6 @@ def test_every_model_turn_logs_the_estimated_prompt_tokens_next_to_the_real_ones
     turns = [e for e in res.session.events if e["kind"] == "MODEL_TURN"]
     assert [e["turn"] for e in turns] == [1, 2, 3, 4] and all(e["estimated_prompt_tokens"] > 0 for e in turns)
     assert all(e["prompt_tokens"] is None for e in turns)                      # betikli model gerçek sayı vermez (Ollama verir)
-    assert turns[0]["estimated_prompt_tokens"] < turns[3]["estimated_prompt_tokens"]    # bağlam büyür
+    assert turns[0]["estimated_prompt_tokens"] < turns[2]["estimated_prompt_tokens"]    # araç sonuçları geldikçe bağlam büyür
     assert [e["n_tool_calls"] for e in turns] == [1, 1, 0, 0]
 

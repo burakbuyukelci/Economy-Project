@@ -49,9 +49,10 @@ def test_is_headline_semantics():
 
 
 def test_previously_context_only_tools_stay_context():
-    """Davranış korunur: haber, konuşma, destek/direnç, rejim kırılımı hâlâ yalnızca full sette."""
-    for tool in (T.GET_NEWS_EVENTS, T.GET_SPEECH_FEATURES, T.FIND_SUPPORT_RESISTANCE):
+    """Davranış korunur: haber, konuşma, rejim kırılımı hâlâ yalnızca full sette. (Destek/direnç şema 1.3.0 ile BAŞLIK oldu: mesafe alanları; harness_design 10.)"""
+    for tool in (T.GET_NEWS_EVENTS, T.GET_SPEECH_FEATURES):
         assert SPEC[tool.value]["headline"] == []
+    assert SPEC[T.FIND_SUPPORT_RESISTANCE.value]["headline"] == ["levels"]
     assert SPEC[T.DETECT_REVERSAL_EVENTS.value]["context"] == ["regime_breakdown"]
 
 
@@ -98,7 +99,7 @@ def test_committed_is_a_subset_of_full_for_all_example_tools():
 def test_rank_spec_version_and_new_sections_are_declared_headline():
     """Şema 1.2.0: havuz tanımı (`pooling`) ve hisse bazlı kırılım (`per_ticker`) committed (başlık) bölümlerdir; etiket politikası bunları okuyacak."""
     raw = json.loads(open(__import__("harness.evidence", fromlist=["x"]).__file__.replace("evidence.py", "evidence_headlines.json"), encoding="utf-8").read())
-    assert raw["version"] == 3
+    assert raw["version"] >= 3
     rank = SPEC["rank_sector_relative_strength"]
     assert {"pooling", "per_ticker"} <= set(rank["headline"])
     assert is_headline(T.RANK_SECTOR_RELATIVE_STRENGTH, "pooling") and is_headline(T.RANK_SECTOR_RELATIVE_STRENGTH, "per_ticker")

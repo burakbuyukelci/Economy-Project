@@ -218,8 +218,12 @@ def _reversal(res: dict[str, Any]) -> list[Candidate]:
         last_event = max(event_dates) if event_dates else None
         out.append(Candidate(
             f"{fam} ({label}): tespit edilen olay {_fmt(g.get('n_events_detected'))}"
-            + (f", son olay tarihi {last_event}" if last_event else ""),
-            _vals(_v("n_events_detected", g.get("n_events_detected")), _v("last_event_date", last_event)), "group_count"))
+            + (f", son olay tarihi {last_event}" if last_event else "")
+            + (f", ham olay günü {_fmt(g.get('n_raw_event_days'))}" if g.get("n_raw_event_days") is not None else "")
+            + (f", çakışan ileri pencere {_fmt(g.get('n_overlapping_forward_windows'))}" if g.get("n_overlapping_forward_windows") is not None else ""),
+            _vals(_v("n_events_detected", g.get("n_events_detected")), _v("last_event_date", last_event),
+                  _v("n_raw_event_days", g.get("n_raw_event_days")),
+                  _v("n_overlapping_forward_windows", g.get("n_overlapping_forward_windows"))), "group_count"))
         for blk in g.get("per_horizon") or []:
             f = blk.get("full") or {}
             extra_text, extra_vals = _block_extra(blk)
@@ -363,11 +367,16 @@ def _indicators(res: dict[str, Any]) -> list[Candidate]:
 
 
 def _support_resistance(res: dict[str, Any]) -> list[Candidate]:
+    """Şema 1.3.0: en yakın seviyelere uzaklık (yüzde) da başlık; kalan seviye/bölge listesi tam sette (bağlam) kalır."""
+    sup_d, res_d = res.get("nearest_support_distance_pct"), res.get("nearest_resistance_distance_pct")
     return [Candidate(
-        f"{res.get('ticker')} son kapanış {_fmt(res.get('last_close'))}, en yakın destek {_fmt(res.get('nearest_support'))}, "
-        f"en yakın direnç {_fmt(res.get('nearest_resistance'))}",
+        f"{res.get('ticker')} son kapanış {_fmt(res.get('last_close'))}, en yakın destek {_fmt(res.get('nearest_support'))}"
+        + (f" (uzaklık %{_fmt(sup_d)})" if sup_d is not None else "")
+        + f", en yakın direnç {_fmt(res.get('nearest_resistance'))}"
+        + (f" (uzaklık %{_fmt(res_d)})" if res_d is not None else ""),
         _vals(_v("last_close", res.get("last_close")), _v("nearest_support", res.get("nearest_support")),
-              _v("nearest_resistance", res.get("nearest_resistance"))), "levels")]
+              _v("nearest_resistance", res.get("nearest_resistance")),
+              _v("nearest_support_distance_pct", sup_d, "pct"), _v("nearest_resistance_distance_pct", res_d, "pct")), "levels")]
 
 
 def _backtest(res: dict[str, Any]) -> list[Candidate]:
@@ -381,6 +390,13 @@ def _backtest(res: dict[str, Any]) -> list[Candidate]:
               _v("cumulative_return_pct", net.get("cumulative_return_pct"), "pct"),
               _v("sharpe_ratio", net.get("sharpe_ratio")), _v("max_drawdown_pct", net.get("max_drawdown_pct"), "pct"),
               _v("win_rate_pct", net.get("win_rate_pct"), "pct"), _v("n_trades", net.get("n_trades"))), "strategy_net")]
+    if res.get("n_winning_trades") is not None or res.get("last_exit_date") is not None:
+        wins, losses, last_exit = res.get("n_winning_trades"), res.get("n_losing_trades"), res.get("last_exit_date")
+        out.append(Candidate(
+            f"Backtest işlem özeti: kazanan {_fmt(wins)}, kaybeden {_fmt(losses)}, sinyal gecikmesi {_fmt(res.get('signal_lag_days_applied'))} gün"
+            + (f", en geç çıkış tarihi {last_exit}" if last_exit else ""),
+            _vals(_v("n_winning_trades", wins), _v("n_losing_trades", losses),
+                  _v("signal_lag_days_applied", res.get("signal_lag_days_applied")), _v("last_exit_date", last_exit)), "trades"))
     for b in res.get("benchmarks") or []:
         out.append(Candidate(
             f"Backtest, {b.get('name')} karşılaştırması: kümülatif getiri farkı {_fmt(b.get('cumulative_return_diff_pct'))}, "

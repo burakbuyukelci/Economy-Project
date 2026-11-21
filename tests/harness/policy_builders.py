@@ -107,6 +107,9 @@ def reversal_env(*, tag: str = "rev", ticker: str = "ASELS", n_detected: int = 3
     g["label"] = label
     g["conditions"] = None if label == "single_indicator" else g["conditions"]
     g["n_events_detected"] = n_detected
+    # şema 1.3.0: ham olay günü >= olay sayısı, çakışan pencere <= olay sayısı - 1 (araç kuralı; şema çapraz doğrulayıcısı YOK, test_builder_invariants denetler)
+    g["n_raw_event_days"] = n_detected + (n_detected // 2)
+    g["n_overlapping_forward_windows"] = max(0, min(n_detected - 1, n_detected // 3))
     g["per_horizon"] = blocks if blocks is not None else [block(1), block(3), block(5), block(10)]
     ev = copy.deepcopy(g["events"][0])
     ev["date"] = event_date or "2026-09-01"

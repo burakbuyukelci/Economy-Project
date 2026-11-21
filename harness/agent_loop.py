@@ -17,11 +17,12 @@ from typing import Any
 
 from harness import settings
 from harness.llm_backend import LLMBackend, LLMError, ModelReply
+from harness.model_view import model_view
 from harness.session import FinalResult, HarnessSession
 from harness.tool_view import estimate_tokens, model_tool_specs
 from schemas.enums import AllowedAction
 
-SYSTEM_PROMPT_VERSION = "2"   # eğitim/çıkarım istem biçimi uyumu için: istem değişince artırılır (2: kısa araç tanımları + OOS kuralı system prompt'ta)
+SYSTEM_PROMPT_VERSION = "3"   # eğitim/çıkarım istem biçimi uyumu için: istem değişince artırılır (2: kısa araç tanımları + OOS kuralı; 3: model_view, null alan = yok)
 
 FINAL_INSTRUCTION = ("Araç çıktılarına dayanarak nihai açıklamayı şimdi yaz. Yalnızca araç çıktılarındaki sayıları kullan, kendin hesaplama yapma; "
                      "yatırım tavsiyesi verme. Son satır tam olarak yukarıdaki EYLEM satırı olmalı.")
@@ -48,7 +49,8 @@ def build_system_prompt(session: HarnessSession) -> str:
         "2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasaktır. Doğrulanmamış bir iddiayı tırnak içinde "
         "alıntılayıp doğrulanmadığını söyle.\n"
         "3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n"
-        "4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini açıkça belirt; nedensellik iddiası kurma.",
+        "4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini açıkça belirt; nedensellik iddiası kurma.\n"
+        "5. Araç çıktısında bulunmayan alan boş (null) demektir. `view_trimmed` varsa o bölümler bağlam için kısaltılmıştır; kısaltılan sayıları yazma.",
         f"NİHAİ ÇIKTI: açıklamanın son satırı tam olarak `EYLEM: <ETİKET>` olmalı. İzinli etiketler: {labels}.",
     ]
     if session.visible_tools:
@@ -103,7 +105,7 @@ def run_session(question: str, backend: LLMBackend, *, profile: str | None = Non
                 messages.append(_assistant(reply))
                 for tc in reply.tool_calls:
                     result = session.call_tool(tc.name, dict(tc.arguments))
-                    payload = result.envelope if result.ok else result.error
+                    payload = (model_view(result.envelope, subject=_subject(session)) if result.ok else result.error)
                     messages.append({"role": "tool", "name": tc.name, "content": _dump(payload)})
                 continue
             text = reply.text
@@ -133,6 +135,11 @@ def run_session(question: str, backend: LLMBackend, *, profile: str | None = Non
         return _abort(session, messages, turns, "MODEL_ERROR", str(exc))
     session.close()
     return RunResult(session, final, messages, "DELIVERED", None, turns)
+
+
+def _subject(session: HarnessSession) -> str | None:
+    """Etiket politikasıyla aynı özne kuralı: soruda TEK hisse varsa o (aksi halde sıralamadaki en çok geride kalan; model_view bulur)."""
+    return session.question_tickers[0] if len(session.question_tickers) == 1 else None
 
 
 def _assistant(reply: ModelReply) -> dict[str, Any]:

@@ -376,3 +376,16 @@ Eğitim kayıtları için kural (karar): **`training/RULES.md` madde 5 aynen ge�
   Kalan yük artık araç ÇIKTISIDIR, tanımı değil. Bu açık karar `test_each_sample_question_stays_within_the_8192_token_context_target[Q1]` (strict xfail) ile kayıtlıdır; çözülünce test kendiliğinden uyarır.
   Seçenekler (karar bekliyor): (A) modele giden zarf görünümünü kırp (`null` alanlar, `per_ticker` bloklarında yalnızca sayaç/isabet/taban/maliyet sonrası; kanıt ve doğrulayıcı TAM zarfla çalışmaya devam eder);
   (B) bağlamı 12–16 bin tutup yalnızca Q1 tipi sorularda kabul etmek; (C) `per_ticker`'ı rank'te isteğe bağlı parametreyle açmak (şema değişikliği, `schemas/` sahibi onayı).
+
+### 13.3 Şema 1.3.0 uyarlaması ve modele giden zarf görünümü (`SYSTEM_PROMPT_VERSION = "3"`)
+* **Kanıt (`evidence_headlines.json` version 4):** SR `levels` artık BAŞLIK (en yakın destek/direnç + yüzde uzaklıkları; §10 kararı); reversal `group_count` ham olay günü ve çakışan ileri pencereyi; backtest yeni `trades`
+  bölümünü (kazanan/kaybeden işlem, sinyal gecikmesi, `last_exit_date`) taşır. 1.2.0 zarflarında alanlar `None` olduğundan madde metne eklenmez.
+* **Politika T/C kuralları gerçek zarflarla** (`test_policy_real_130.py`): haftalık tarama (2025-09-05 → 2026-11-13, tüm evren): TR: `T2` REJECT 1251, `T5` WATCH 355, `T4` INVESTIGATE 237, **`T3` TECHNICAL_REVERSAL_CANDIDATE 47**;
+  retail catch-up: `C2` HOLD 30, `C4` REJECT 28, `C6` INVESTIGATE 5, **`C5` aday 0**. Yani gerçek araçlarla CU adayı hiç oluşmadı (yalnızca sentetik testle sınanır); eğitim verisinde CU adayı örneği olmayacak.
+* **Çapraz doğrulayıcı önerisi (Bilgisayar 1'e):** reversal grubunda `n_raw_event_days >= n_events_detected` ve `n_overlapping_forward_windows <= max(n_events_detected - 1, 0)` kuralı şemaya geri eklenebilir:
+  harness kurucuları artık tutarlı (`test_builder_invariants.py`) ve GERÇEK zarflarda (3 hisse × 2 aile) kural geçiyor; referans uygulama `reversal_group_problems`.
+* **Model görünümü (`harness/model_view.py`):** kanıt, politika ve doğrulayıcı TAM zarfla çalışır; yalnızca `tool` mesajı görünümdür. Null alanlar atılır; modelin kendi çağrısının yankısı (`params`, `input_hash`, `schema_version`, `as_of`, `tool`) atılır;
+  rank'te `per_ticker` yalnızca ÖZNE satırı tam (diğerleri özet sayı), `ranking` sıkıştırılır, `view_trimmed` işareti konur. Gerçek retail zarfı ~13,3 bin → ~yarı.
+* **Bağlam (hedef ≤ 6000 token, karakter/3):** Q3, Q4, Q5 uyuyor; **Q1 tepe ~7,4 bin, Q2 ~6,3 bin** (strict xfail). Kalan yük araç tanımları (~2,8 bin token) + havuzlu bloklar (rank) ve `per_day` blokları (weekday). Daha fazla kırpmak modelin gördüğü
+  sonuçları azaltır (sahibin kararı); bunun yerine **eğitim üreticisi her oturumun gerçek token sayısını (Gemma tokenizer) ölçüp seq len 6144'ü aşanları eler**, canlıda bağlam `num_ctx` ile açılır.
+

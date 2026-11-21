@@ -1,6 +1,6 @@
 {
   "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). 'policy_values': harness/label_policy.py'nin etiketi belirlerken OKUDUĞU alanların committed kanıttaki DEĞER ADLARI; model yalnızca committed kanıta dayanarak açıklayacağı için etiketin dayanağı da orada bulunmalıdır (tests/harness/test_policy_evidence.py denetler). Yeni bölüm/değer eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
-  "version": 3,
+  "version": 4,
   "tools": {
     "rank_sector_relative_strength": {
       "headline": ["sector", "laggard", "historical_catch_up", "pooling", "per_ticker"], "context": [], "excluded": [],
@@ -26,9 +26,9 @@
     "get_news_events": {"headline": [], "context": ["count", "events"], "excluded": [], "policy_values": []},
     "get_speech_features": {"headline": [], "context": ["summary"], "excluded": ["segments"], "policy_values": []},
     "calculate_indicators": {"headline": ["latest"], "context": [], "excluded": ["recent_rows"], "policy_values": []},
-    "find_support_resistance": {"headline": [], "context": ["levels"], "excluded": [], "policy_values": []},
+    "find_support_resistance": {"headline": ["levels"], "context": [], "excluded": [], "policy_values": []},
     "run_backtest": {
-      "headline": ["strategy_net", "benchmarks", "splits", "flags"], "context": [], "excluded": ["trade_log"],
+      "headline": ["strategy_net", "benchmarks", "splits", "flags", "trades"], "context": [], "excluded": ["trade_log"],
       "policy_values": ["signal_type", "benchmark_diff_pct", "n_signals", "low_signal_flag", "oos_degradation_flag"]}
   }
 }

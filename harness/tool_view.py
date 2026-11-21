@@ -18,6 +18,7 @@ from schemas.registry import TOOL_REGISTRY
 
 # 13 araç (D/E görünümü) için üst sınır; ölçüm: tests/harness/test_tool_view.py (karakter/3 tahmini)
 TOOL_SPEC_CHAR_BUDGET = 8600   # ölçülen: 8334 (13 araç); önceki sadeleştirmesiz tanım 23739
+CONTEXT_TARGET_TOKENS = 6000   # hedef bağlam (Gemma 3 4B, T4; sahibin kararı); ölçüm şimdilik karakter/3, sonra prompt_eval_count
 CHARS_PER_TOKEN = 3        # Türkçe/JSON için kaba tahmin; Ollama kurulunca prompt_eval_count ile DEĞİŞTİRİLİR
 
 TOOL_DESCRIPTIONS: dict[T, str] = {
