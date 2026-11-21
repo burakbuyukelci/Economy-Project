@@ -413,3 +413,20 @@ def test_ascii_and_turkish_uppercase_noun_variants_are_exempt(noun):
 def test_word_boundaries_hold_after_ascii_folding(text):
     violations, _ = find_advice_language(text)
     assert not violations, (text, [(v.rule_id, v.phrase) for v in violations])
+
+
+# =============================== deyim muafiyeti: "dikkate alın" masum, ama aynı cümledeki gerçek emir yakalanır ===============================
+@pytest.mark.parametrize("text", ["Riski dikkate alın.", "RISKI DIKKATE ALIN", "Dikkate alınız.", "Alın teri döktü.", "hedef fiyatsız analiz"])
+def test_idioms_are_not_advice(text):
+    assert not find_advice_language(text)[0], text
+
+
+@pytest.mark.parametrize("text", ["Riski dikkate alın, hisseyi alın.", "Alın teri döktü ama hisseyi almalısınız.",
+                                  "Hedef fiyatsız analiz, ancak hedef fiyat 350 TL.", "Kesinlikle yükselmedi, ama kesin yükselir."])
+def test_idiom_exemption_does_not_hide_real_advice_in_the_same_text(text):
+    assert find_advice_language(text)[0], text
+
+
+def test_certain_move_in_negated_past_tense_is_still_caught_by_decision():
+    # karar: 'kesinlikle yükselmedi' kesinlik dili sayılır (düşük risk, bilinçli yakalanır)
+    assert advice_ids("Kesinlikle yükselmedi.") == {"TR_CERTAIN_MOVE"}
