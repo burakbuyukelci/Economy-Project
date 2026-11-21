@@ -55,7 +55,9 @@ Bağlam penceresi dar olduğundan ve modelin gereksiz sayıya maruz kalması say
 **Not.** Yalnızca `RSI` istenince zarf 2 374 karakter; maliyetin büyük kısmı seçilen gösterge sayısıyla ölçeklenir, yani doğru araç çağrısı (yalnız gereken göstergeler) zaten
 en büyük kazançtır; şema değişikliği bunu destekler ama yerine geçmez.
 
-## 3. `get_macro_context`: ilişki alanı
+> **Durum (2026-11-21):** §3 (makro) 1.2.0 kapsamından ÇIKARILDI; ayrıntılı notlar §6'da. Kapsama alınanlar: §1, §2, §4, §5 (bkz. `docs/schema_1_2_0_plan.md`).
+
+## 3. `get_macro_context`: ilişki alanı (1.2.0 DIŞI, bkz. §6)
 **Sorun.** Soru 5 ("Kur artışı ile EREGL getirisi arasındaki tarihsel ilişkiyi araç çıktısıyla göstermeli") için makro araç yalnızca seri noktalarını döndürür
 (`MacroSeriesData.points`). İlişki hesabı için model, iki serinin hizalanmasını ve istatistiği kendi yapmak zorunda kalır; bu, "sayılar yalnızca araç çıktısından gelir" (kural 6)
 ilkesini ihlal eder.
@@ -105,6 +107,22 @@ Gerekçe (ikinci satır): bayatlık "snapshot `as_of`'u kapsıyor mu" sorusudur 
 **İsteğe bağlı (5.3): kodlu sayaçlar.** `hard_blocks`/`soft_warnings` "kodlu ve sayılı" isteniyor ama `CheckDataQualityResult`'ta sayaç alanı yok; sayılar yalnızca `gate_reason` metninde
 ("hard 1 (WRONG_TICKER_OR_BROKEN_HISTORY×1), soft 2 (…)"). Sayı doğrulayıcı bunları metinden ayrıştırmak zorunda. Öneri: `issue_counts: dict[str, int] = {}` (kod → adet, hard ve soft birlikte;
 `DQCode` anahtarlı). Varsayılanlı ve geriye uyumlu; yalnızca harness/doğrulayıcı kolaylığıdır.
+
+## 6. `get_macro_context` ilişki sözleşmesi: AYRI KÜÇÜK SÜRÜM (1.2.0'dan çıkarıldı, karar: 2026-11-21)
+`get_macro_context` aracı gerçek veriyle yazılırken, **Optional/varsayılanlı alanlarla** ayrı küçük sürümde eklenecek. §3'ün önerisine ek notlar (planlama sırasında çıkanlar):
+- **Params:** `relate_to: list[RelationSpec] = []` (en çok 5; sıralı-tekil, determinizm), her `macro_series` `series` içinde olmalı. `RelationSpec`: `ticker`, `macro_series`, `horizon` (=5),
+  `lag_days` (>=0, =0), `transform: MacroTransform`, `split_date | None`. `n_tests_declared: int = 1` (çoklu test).
+- **`MacroTransform` enum'u (yeni, enums.py):** `PCT_CHANGE`, `LEVEL_DIFF`.
+- **Result:** `relations: list[MacroRelation] = []`. `MacroRelation` §3'teki alanlara ek: `multiple_testing: MultipleTesting` (CLAUDE.md kural 11: çoklu test), `cost_model: CostModel` (kural 11: maliyet),
+  `sample_last_date: date | None` (`_PAST_ONLY_KEYS`'e eklenir; look-ahead taraması). `correlation`/`beta` birimsiz (`_pct` kuralının bilinçli istisnası, açıklamada yazılır).
+- **Zarf `n_events`:** `relations` varsa en küçük `n_obs`, yoksa `None`; `schemas/envelope.py` docstring'ine satır eklenir ve gerekirse `EVENT_COUNT_RULES`'a girer.
+- **Pencere politikası** (örtüşmeyen bloklar önerisi: örtüşme `n_obs`'u şişirir, rank'taki cooldown gibi) araç yazılırken `docs/data_dictionary.md` §16'da kesinleşir; `oos_degradation_flag` için §9 kuralının ilişki istatistiğine uyarlanması gerekir.
+- Etki (Bilgisayar 2): `harness/evidence.py::_macro` + `evidence_headlines.json` `relations` bölümü, `training/RULES.md` kural 2'ye `relate_to[].split_date`, makro senaryosu için etiket politikası, MCP `input_schema` büyümesi.
+
+## 7. `run_backtest`: `last_exit_date` (araç yazılırken ZORUNLU; 1.2.0'a girmez)
+`RunBacktestResult`'a `last_exit_date: date | None` eklenir; **araç bunu her zaman doldurur** (işlem varsa; işlem yoksa `None`) ve `trade_log` kısaltılsa (`trade_log_truncated`) bile TÜM işlemlerin en geç `exit_date`'ini taşır.
+`_PAST_ONLY_KEYS`'e eklenir. `schemas.registry.max_result_date` run_backtest için bu alanı kullanır (yoksa `trade_log`'a düşer). Gerekçe: kapı `max_result_date > as_of` kontrolünü kısaltılmış kayıt yüzünden kaçırmasın.
+Sürüm koşullu zorunluluk (§1 / `docs/schema_1_2_0_plan.md` D1) ile birlikte eklenir.
 
 ## Uygulama notu (onay sonrası)
 1. `schemas/` değişikliği tek commit, `SCHEMA_VERSION` → `1.2.0`, `schema_changelog.md` girişi, `schemas/examples.py` ve `tests/contract/` güncellemesi.
