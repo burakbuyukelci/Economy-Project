@@ -555,3 +555,48 @@ def test_real_retail_historical_only_numbers_are_not_hallucinations(retail_rank_
     assert rep.by_raw("398").sources[0].path == "warnings[3]"
     fake = verify_numbers("Toplam 399 laggard hisse-günü.", envelopes=[retail_rank_split], question="")
     assert fake.by_raw("399").verdict == "HALLUCINATION"        # uydurma sayı hâlâ yakalanır
+
+
+# =============================== ALLOWLISTED_POLICY: modele gösterilen politika bloğundaki sayılar ===============================
+POLICY_TEXT = ("Politika etiketi: INVESTIGATE (G7_NO_SCENARIO)\n"
+               "- FEW_EVENTS: tamamlanmış olay sayısı MIN_EVENTS (20) altında\n"
+               "- FEW_QUARTERS: açıklanmış çeyrek sayısı yetersiz (< 4)")
+
+
+def test_policy_block_numbers_get_their_own_verdict():
+    rep = verify_numbers("Tamamlanmış olay 20 eşiğinin altında; en az 4 çeyrek gerekir.", envelopes=[env({"x": 1.5})],
+                         question="", policy_text=POLICY_TEXT)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "4": "ALLOWLISTED_POLICY"}
+    assert rep.n_allowlisted_policy == 2 and rep.n_allowlisted == 0
+    assert rep.n_claims == 0 and rep.numerical_hallucination_rate == 0.0     # paydaya girmez (ALLOWLISTED gibi)
+    assert rep.claims[0].match_kind is None and rep.claims[0].sources[0].tool == "policy"
+    assert rep.to_dict()["n_allowlisted_policy"] == 2
+
+
+def test_without_policy_text_the_same_numbers_are_hallucinations():
+    rep = verify_numbers("Tamamlanmış olay 20 eşiğinin altında.", envelopes=[env({"x": 1.5})], question="")
+    assert rep.by_raw("20").verdict == "HALLUCINATION" and rep.n_allowlisted_policy == 0
+
+
+def test_policy_allowlist_is_exact_and_does_not_hide_other_numbers():
+    rep = verify_numbers("Eşik 20, ama 21 olay ve 4,5 çeyrek.", envelopes=[env({"x": 1.5})], question="", policy_text=POLICY_TEXT)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "21": "HALLUCINATION", "4,5": "HALLUCINATION"}
+    assert rep.n_claims == 2 and rep.numerical_hallucination_rate == 1.0   # 20 paydaya girmez; 21 ve 4,5 uydurma
+
+
+def test_tool_evidence_wins_over_the_policy_allowlist():
+    rep = verify_numbers("Olay sayısı 20.", envelopes=[env({"n_events_complete": 20})], question="", policy_text=POLICY_TEXT)
+    assert rep.by_raw("20").verdict == "SUPPORTED" and rep.n_allowlisted_policy == 0
+
+
+def test_policy_allowlist_also_rescues_a_number_that_is_in_a_tool_but_not_committed():
+    committed = [{"evidence_id": "E1", "source_input_hash": "a" * 64, "statement": "yalnızca 7 olay", "values": []}]
+    rep = verify_numbers("Eşik 20, 7 olay.", envelopes=[env({"a": 20, "b": 7})], question="", policy_text=POLICY_TEXT,
+                         committed_evidence=committed)
+    assert {r.claim.raw: r.verdict for r in rep.claims} == {"20": "ALLOWLISTED_POLICY", "7": "SUPPORTED"}
+
+
+def test_policy_dates_are_allowlisted_too():
+    rep = verify_numbers("Son kapı 08.09.2026'da çalıştı.", envelopes=[env({"x": 1})], question="",
+                         policy_text="Kapı tarihi 2026-09-08")
+    assert rep.claims[0].verdict == "ALLOWLISTED_POLICY"
