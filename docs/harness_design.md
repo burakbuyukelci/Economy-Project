@@ -119,6 +119,8 @@ Akış: metin → **maskele** → **çıkar** → **sınıflandır** → rapor.
 * **Sınıflar:** `ALLOWLISTED` (soruda ya da herhangi bir araç çağrısı parametresinde AYNEN var; iddia sayılmaz, paydaya girmez) →
   `HALLUCINATION` (hiçbir araç çıktısında yok; hocanın metriği) → `UNEVIDENCED` (araç çıktısında var, kilitli `committed_evidence_set`'te yok; yumuşak uyarı) → `SUPPORTED`.
   Kanıt kümesi verilmezse (`None`; A–C aşamaları, kilit yok) ikinci seviye kapalıdır.
+* **Havuz kaynağı:** zarfın `results` ağacı **ve** zarf düzeyi `n_events`, `n_excluded_incomplete_horizon`, `warnings` metinleri (yol örn. `warnings[3]`). Gerçek retail zarfında
+  `HISTORICAL_ONLY` uyarısındaki ham sayılar ("BIMAS 43, MAVI 227 ... toplam 398") bu yüzden alıntılanabilir. Bu alanlar kanıt paketine girmediğinden, kilitli pakette (D/E) böyle bir sayı `UNEVIDENCED` çıkar.
 * **Metrikler:** `numerical_hallucination_rate = n_hallucinated / n_claims`; `unevidenced_rate` ayrı. `n_claims` izin listesindekileri içermez.
   Eşleşme sayaçları: `n_exact`, `n_rounded` (d≥1), `n_rounded_coarse` (d=0), **`n_rounded_total`** (ikisinin toplamı), `n_sign_relaxed`.
 * **Yuvarlama kuralı:** yazılan sayı d ondalıklıysa havuz değeri d basamağa **yarıdan yukarı** (`Decimal`) yuvarlanınca eşitse doğru. Tam sayı (d=0) yalnızca

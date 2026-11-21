@@ -426,6 +426,10 @@ def _derivation_hint(claim: NumberClaim, operands: list[tuple[Decimal, Decimal]]
 
 
 # =============================== 6. ana fonksiyon ===============================
+# results dışında, zarfın kendisinde bulunan sayı taşıyan alanlar (havuz yolu: "n_events", "warnings[2]" …)
+_ENVELOPE_LEVEL = ("n_events", "n_excluded_incomplete_horizon", "warnings")
+
+
 def _usable(env: dict[str, Any]) -> bool:
     return (env.get("status") == "OK" and str(env.get("tool")) != BUNDLE_TOOL and isinstance(env.get("results"), dict))
 
@@ -469,7 +473,10 @@ def verify_numbers(text: str, *, envelopes: Iterable[dict[str, Any]], question: 
     pool = _Pool()
     for env in envs:
         if _usable(env):
-            pool.add_tree(env["results"], tool=str(env["tool"]), input_hash=str(env.get("input_hash", "")))
+            tool, h = str(env["tool"]), str(env.get("input_hash", ""))
+            pool.add_tree(env["results"], tool=tool, input_hash=h)
+            # zarf düzeyi alanlar da araç çıktısıdır: model uyarı metnini ("ham laggard ... toplam 398") ve sayaçları alıntılar
+            pool.add_tree({k: env[k] for k in _ENVELOPE_LEVEL if env.get(k) is not None}, tool=tool, input_hash=h)
     allow_nums, allow_dates = _build_allowlist(question, envs)
     committed = _committed_pool(committed_evidence) if committed_evidence is not None else None
 
