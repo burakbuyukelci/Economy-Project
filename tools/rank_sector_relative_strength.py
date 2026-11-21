@@ -9,6 +9,9 @@
 Bağımsızlaştırma: aynı hissede ardışık günlerde geride kalma, ileri pencereleri örtüştürüp olay sayısını şişirir. Her hissede
 kabul edilen bir olaydan sonra `max(forward_horizons)` işlem günü yeni olay kabul edilmez (cooldown).
 
+Şema 1.2.0: havuzlu `historical_catch_up` yanında HİSSE BAZLI kırılım (`per_ticker`), ham laggard sayıları, `cooldown_days` ve sonuç
+ölçütü tanımı döner. Hisse blokları havuzun PARÇALARIDIR (toplamları şema doğrulayıcısınca havuza eşitlenir; IS/OOS hisse bazında yok).
+
 as_of'tan sonra hiçbir satır hesaba girmez (enforce_as_of). Ağ yok; yalnızca snapshot okur.
 """
 from __future__ import annotations
@@ -35,7 +38,7 @@ from schemas.common import (
 from schemas.enums import SectorStrength, ToolName, WarningCode
 from schemas.envelope import make_warning
 from schemas.params import RankSectorRelativeStrengthParams
-from schemas.results import CatchUpHorizon, RankingRow, RankSectorRelativeStrengthResult, StrengthThresholds
+from schemas.results import CatchUpHorizon, RankingRow, RankSectorRelativeStrengthResult, StrengthThresholds, TickerCatchUp
 from tools.common import Snapshot, ToolFailure, ToolOutput, enforce_as_of, run_tool, trading_calendar
 from tools.stability import oos_degradation
 
@@ -243,6 +246,7 @@ def _handler(p: RankSectorRelativeStrengthParams, snap: Snapshot) -> ToolOutput:
     ev_date = [dates[t].date() for t in ev_t]
 
     catch_up: list[CatchUpHorizon] = []
+    ticker_blocks: dict[int, list[CatchUpHorizon]] = {i: [] for i in range(n)}  # 1.2.0: hisse -> ufuk blokları
     oos_small: list[int] = []
     oos_bad: list[int] = []
     excluded_by_h: dict[int, int] = {}
@@ -282,6 +286,18 @@ def _handler(p: RankSectorRelativeStrengthParams, snap: Snapshot) -> ToolOutput:
                                median_diff_vs_baseline_pct=_diff(full.median_return_pct, bl.median_return_pct),
                                oos_degradation_flag=flag),
             median_catch_up_size_pp=_r(float(np.median(ex[ex > 0]))) if (ex > 0).any() else None))
+        # hisse bazlı kırılım: aynı olaylar, aynı excess (E), yalnızca o hissenin sütunu; IS/OOS yok
+        for i in range(n):
+            mine = ev_i == i
+            sel = complete & mine
+            vals = E[ev_t[sel] - first_t, i] if sel.any() else np.empty(0)
+            st = _stats(vals, int((~complete & mine).sum()), cost.round_trip_cost_pct)
+            bl_i = _baseline(E[:, i])
+            ticker_blocks[i].append(CatchUpHorizon(
+                block=HorizonBlock(horizon=f, full=st, baseline=bl_i,
+                                   mean_diff_vs_baseline_pct=_diff(st.mean_return_pct, bl_i.mean_return_pct),
+                                   median_diff_vs_baseline_pct=_diff(st.median_return_pct, bl_i.median_return_pct)),
+                median_catch_up_size_pp=_r(float(np.median(vals[vals > 0]))) if (vals > 0).any() else None))
         excluded_by_h[f] = full.n_excluded_incomplete_horizon
         n_complete_by_h[f] = full.n_events_complete
 
@@ -314,8 +330,21 @@ def _handler(p: RankSectorRelativeStrengthParams, snap: Snapshot) -> ToolOutput:
         WarningCode.MULTIPLE_TESTING_RISK,
         f"{len(fh)} ileri ufuk aynı veride denendi (ayrıca lag penceresi ve eşik seçimi); çoklu test düzeltmesi uygulanmadı"))
 
-    return ToolOutput(results=RankSectorRelativeStrengthResult(historical_catch_up=catch_up, **base), n_events=n_events,
-                      n_excluded_incomplete_horizon=n_excl, warnings=warnings)
+    by_rank = {row.ticker: row for row in ranking}
+    per_ticker = [
+        TickerCatchUp(
+            ticker=m, is_laggard=by_rank[m].is_laggard, lag_score_pp=by_rank[m].lag_score_pp,
+            n_raw_laggard_observations=raw[m], n_independent_events=kept[m],
+            n_excluded_incomplete_horizon=ticker_blocks[i][-1].block.full.n_excluded_incomplete_horizon,  # en uzun ufuk (fh sıralı)
+            per_horizon=ticker_blocks[i])
+        for i, m in enumerate(members)]
+    outcome_def = BenchmarkDefinition(type="peer_median", includes_subject_stock=False, price_field="adj_close",
+                                      return_type="simple", peer_group=p.sector.value, members=members)
+    return ToolOutput(
+        results=RankSectorRelativeStrengthResult(
+            historical_catch_up=catch_up, n_raw_laggard_observations=sum(raw.values()), cooldown_days=cooldown,
+            outcome_benchmark_definition=outcome_def, per_ticker=per_ticker, **base),
+        n_events=n_events, n_excluded_incomplete_horizon=n_excl, warnings=warnings)
 
 
 def run(params: dict) -> dict:
