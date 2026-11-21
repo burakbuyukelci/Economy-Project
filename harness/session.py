@@ -24,10 +24,12 @@ from harness import settings
 from harness.as_of import resolve_as_of
 from harness.event_log import EventLog
 from harness.evidence import EnvelopeStore, EvidenceBundle, make_analysis_id
+from harness.final_check import FinalReport, build_feedback, check_final, fallback_text, render_policy_block
 from harness.gate_params import GateParamsError, derive_gate_params, detect_question_tickers
+from harness.label_policy import PolicyDecision, decide_session
 from harness.profiles import StageProfile, get_profile, harness_only_tools, routing_for, visible_tools
 from harness.routing import ReviewStatus, Routing, State
-from harness.state_machine import Decision, StateMachine
+from harness.state_machine import Decision, HarnessRuleViolation, StateMachine
 from harness.tool_runner import RealToolUnavailable, ToolRejected, run_tool
 from schemas.enums import AllowedAction, ToolName as T
 from schemas.registry import validate_envelope, validate_params
@@ -42,6 +44,19 @@ class ToolCallResult:
     envelope: dict[str, Any] | None = None
     # {"type": "INVALID_TOOL_CALL" | "HARNESS_ERROR" | "SAFE_FAILURE", "code", "message", ...}
     error: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class FinalResult:
+    """submit_final sonucu. status: ACCEPTED (zorlama; temiz) | RETRY (ihlal; geri besleme var, metin teslim EDİLMEDİ)
+    | FALLBACK (deneme hakkı bitti; güvenli metin teslim edildi) | RECORDED (zorlama yok, A–C: ham metin teslim edildi, yalnızca ölçüldü)."""
+    status: str
+    attempt: int
+    max_attempts: int
+    report: FinalReport
+    text: str | None = None            # teslim edilen metin (RETRY'de None)
+    action: AllowedAction | None = None
+    feedback: str | None = None        # RETRY'de modele iletilecek mesaj
 
 
 class HarnessSession:
@@ -66,6 +81,12 @@ class HarnessSession:
         self.bundle: EvidenceBundle | None = EvidenceBundle(self.analysis_id, self.store) if self.profile.evidence else None
         self._model_calls: list[tuple[T, dict[str, Any]]] = []  # başarıyla çalışan model çağrıları (kapı parametresi için)
         self.question_tickers: list[str] = detect_question_tickers(question) if question else []
+        # nihai çıktı denetimi: politika kararı her profilde hesaplanır (ölçüm); blok yalnızca show_policy_label'da modele gösterilir
+        self.policy: PolicyDecision | None = None
+        self.policy_text: str = ""
+        self._final_reports: list[FinalReport] = []
+        self._max_final_attempts: int | None = None
+        self._delivered: dict[str, Any] | None = None
 
         self.log.append("SESSION_START", as_of=as_of.isoformat(), as_of_source=as_of_source,
                         stage=self.profile.name, order_mode=self.machine.order_mode, analysis_id=self.analysis_id)
@@ -149,7 +170,76 @@ class HarnessSession:
             if self.machine.safe_failure:
                 break
         self.machine.begin_explanation()
+        self._prepare_policy()
         return Decision(True, target=State.GENERATE_EXPLANATION)
+
+    def explanation_context(self) -> str | None:
+        """GENERATE_EXPLANATION'da modele verilecek politika bloğu (izinli etiket + gerekçe); yoksa (A–C, D′) None."""
+        return self.policy_text or None
+
+    def submit_final(self, text: str) -> FinalResult:
+        """Modelin nihai metni. Denetim: sayı doğrulama + eylem koruması (+ D/E'de required_action = politika etiketi).
+
+        Zorlama açıksa (D/E): ihlal -> RETRY (geri besleme), hak bitince FALLBACK (güvenli metin, etiket = politika etiketi).
+        Zorlama kapalıysa (A–C): metin AYNEN teslim edilir (RECORDED); yalnızca ölçülür. İhlaller deneme ve teslim düzeyinde ayrı sayılır."""
+        if self.machine.state != State.GENERATE_EXPLANATION:
+            msg = f"nihai metin yalnızca açıklama aşamasında verilir; şimdiki durum {self.machine.state.value}"
+            self.machine.reject(None, "EXPLANATION_NOT_ALLOWED", msg)
+            raise HarnessRuleViolation("EXPLANATION_NOT_ALLOWED", msg)
+        if self.policy is None:
+            self._prepare_policy()
+        if self._max_final_attempts is None:
+            self._max_final_attempts = 1 + (settings.final_max_retries() if self.profile.enforce_final_check else 0)
+        max_attempts = self._max_final_attempts
+        report = check_final(self, text, policy=self.policy)
+        self._final_reports.append(report)
+        attempt = len(self._final_reports)
+        self._log_final_check(report, attempt)
+
+        if not self.profile.enforce_final_check:  # ÖLÇÜM: ham metin teslim edilir
+            action, source = report.action, "model"
+            if action is None:
+                action, source = AllowedAction.INVESTIGATE, "defaulted"
+                self.log.append("ACTION_DEFAULTED", action=action.value,
+                                reason="nihai metinde çözümlenebilir eylem etiketi yok (yalnızca ölçüm)")
+            self._deliver(text, action, report, status="RECORDED", source=source, fallback=False)
+            return FinalResult("RECORDED", attempt, max_attempts, report, text, action)
+        if report.ok:
+            assert report.action is not None
+            self._deliver(text, report.action, report, status="ACCEPTED", source="model", fallback=False)
+            return FinalResult("ACCEPTED", attempt, max_attempts, report, text, report.action)
+        if attempt < max_attempts:
+            return FinalResult("RETRY", attempt, max_attempts, report,
+                               feedback=build_feedback(report, attempt=attempt, max_attempts=max_attempts))
+        assert self.policy is not None
+        action = self.policy.label            # güvenli hata yolunda politika zaten ANALYSIS_UNSAFE'tir (G1)
+        fb_text = fallback_text(action)
+        self.log.append("FINAL_FALLBACK", action=action.value, attempts=attempt, reason="deneme hakkı bitti")
+        delivered_report = check_final(self, fb_text, policy=self.policy)
+        self._deliver(fb_text, action, delivered_report, status="FALLBACK", source="fallback", fallback=True)
+        return FinalResult("FALLBACK", attempt, max_attempts, report, fb_text, action)
+
+    def final_metrics(self) -> dict[str, Any]:
+        """İhlaller İKİ düzeyde: deneme düzeyi (her denemedeki ihlaller) ve teslim düzeyi (teslim edilen metin)."""
+        reps = self._final_reports
+        by_code: dict[str, int] = {}
+        by_source: dict[str, int] = {}
+        for r in reps:
+            for v in r.violations:
+                by_code[v.code] = by_code.get(v.code, 0) + 1
+                by_source[v.source] = by_source.get(v.source, 0) + 1
+        attempt_level = {
+            "n_attempts_with_violation": sum(1 for r in reps if not r.ok),
+            "n_violations": sum(len(r.violations) for r in reps),
+            "by_code": dict(sorted(by_code.items())), "by_source": dict(sorted(by_source.items())),
+            "n_hallucinated": sum(r.numbers.n_hallucinated for r in reps),
+            "n_number_claims": sum(r.numbers.n_claims for r in reps),
+        }
+        delivered_level: dict[str, Any] = {"delivered": self._delivered is not None}
+        if self._delivered is not None:
+            delivered_level.update(self._delivered)
+        return {"enforced": self.profile.enforce_final_check, "n_attempts": len(reps),
+                "max_attempts": self._max_final_attempts, "attempt_level": attempt_level, "delivered_level": delivered_level}
 
     def complete_explanation(self, action: AllowedAction, text: str) -> None:
         self.machine.complete_explanation(action, text)
@@ -264,6 +354,46 @@ class HarnessSession:
         if tool == T.BUILD_EVIDENCE_BUNDLE and envelope["status"] == "OK" and self.bundle is not None:
             self.log.append("EVIDENCE_BUILT", stage=extra.get("step_state", "model"), version=self.bundle.version,
                             n_full=envelope["n_events"])
+
+    # ---- nihai çıktı yardımcıları ------------------------------------------------------------
+    def _prepare_policy(self) -> None:
+        self.policy = decide_session(self)
+        self.policy_text = render_policy_block(self.policy) if self.profile.show_policy_label else ""
+
+    def _log_final_check(self, report: FinalReport, attempt: int) -> None:
+        n = report.numbers
+        self.log.append("FINAL_CHECK", attempt=attempt, ok=report.ok, enforced=report.enforced, codes=report.codes,
+                        n_violations=len(report.violations), n_number_claims=n.n_claims, n_hallucinated=n.n_hallucinated,
+                        n_allowlisted_policy=n.n_allowlisted_policy, n_unevidenced=n.n_unevidenced,
+                        action=report.action.value if report.action else None,
+                        policy_label=report.policy_label.value if report.policy_label else None,
+                        policy_match=report.policy_match)
+        for v in report.violations:
+            self.log.append("RULE_VIOLATION", level="attempt", attempt=attempt, code=v.code, source=v.source,
+                            message=v.message, phrase=v.detail.get("phrase"), raw=v.detail.get("raw"))
+
+    def _deliver(self, text: str, action: AllowedAction, report: FinalReport, *, status: str, source: str,
+                 fallback: bool) -> None:
+        n = report.numbers
+        by_code: dict[str, int] = {}
+        by_source: dict[str, int] = {}
+        for v in report.violations:
+            by_code[v.code] = by_code.get(v.code, 0) + 1
+            by_source[v.source] = by_source.get(v.source, 0) + 1
+        self._delivered = {
+            "status": status, "fallback": fallback, "action": action.value, "action_source": source,
+            "n_violations": len(report.violations), "by_code": dict(sorted(by_code.items())),
+            "by_source": dict(sorted(by_source.items())),
+            "policy_label": report.policy_label.value if report.policy_label else None, "policy_match": report.policy_match,
+            "n_number_claims": n.n_claims, "n_hallucinated": n.n_hallucinated, "n_unevidenced": n.n_unevidenced,
+            "n_allowlisted_policy": n.n_allowlisted_policy, "numerical_hallucination_rate": n.numerical_hallucination_rate,
+        }
+        if not fallback:
+            for v in report.violations:  # teslim düzeyi ihlal kaydı (A–C: ham çıktının ihlalleri)
+                self.log.append("RULE_VIOLATION", level="delivered", code=v.code, source=v.source, message=v.message)
+        self.complete_explanation(action, text)
+        self.log.append("FINAL_DELIVERED", status=status, fallback=fallback, action=action.value,
+                        metrics=self.final_metrics())
 
     # ---- iç yardımcılar ------------------------------------------------------------------
     def _callable_hint(self) -> list[str]:

@@ -85,6 +85,25 @@ def state_order_mode() -> str:
         raise ValueError(f"STATE_ORDER_MODE {mode!r} geçersiz; geçerli: {_ORDER_MODES}")
     return mode
 
+# --- Nihai çıktı denetimi (harness/final_check.py, HarnessSession.submit_final) ----------------------------------------
+# Zorlama açık profilde (D/E) ihlalli nihai metin için en çok bu kadar YENİDEN DENEME; hepsi başarısızsa güvenli geri çekilme.
+# Toplam deneme sayısı = 1 + FINAL_MAX_RETRIES. Ortam değişkeniyle ezilebilir.
+FINAL_MAX_RETRIES = 2
+FINAL_RETRIES_ENV = "HARNESS_FINAL_RETRIES"
+
+
+def final_max_retries() -> int:
+    raw = os.environ.get(FINAL_RETRIES_ENV, "").strip()
+    if not raw:
+        return FINAL_MAX_RETRIES
+    try:
+        n = int(raw)
+    except ValueError:
+        raise ValueError(f"{FINAL_RETRIES_ENV}={raw!r} tam sayı olmalı") from None
+    if n < 0:
+        raise ValueError(f"{FINAL_RETRIES_ENV}={raw!r} negatif olamaz")
+    return n
+
 # --- Etiket politikası eşikleri (harness/label_policy.py; docs/harness_design.md bölüm 11) ----------------------------
 # Eşikler getiriye bakılmadan seçildi (retail örneği +0,12 pp'de bile her marjda aynı sonucu verir) ve sonradan sonuçlara
 # bakılarak DEĞİŞTİRİLMEZ. MIN_EVENTS / MIN_OOS_EVENTS / OOS_DEGRADATION_* config.settings'ten (ORTAK) çağrı anında okunur.

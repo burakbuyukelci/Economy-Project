@@ -107,7 +107,7 @@ Mock/gerçek geçişi: `settings.TOOL_BACKEND_OVERRIDES = {ToolName.X: "real"}`.
   `PRECONDITION_FAILED`, `AS_OF_*`, `INVALID_PARAMS`, `TICKER_UNDETERMINED`, `AS_OF_INVALID`) sayılır ve olay günlüğüne yazılır.
 
 ## 9. Sayı doğrulayıcı (`harness/number_verifier.py`) ve eylem koruması (`harness/action_guard.py`)
-İkisi de **saf fonksiyon**dur (oturum/MCP bağımlılığı yok); oturuma bağlama (`complete_explanation` öncesi çağrı, yeniden deneme) sonraki iştir.
+İkisi de **saf fonksiyon**dur (oturum/MCP bağımlılığı yok); oturuma bağlama bölüm 12'dedir (`HarnessSession.submit_final`).
 `verify_session(session, metin)` yalnızca ince bir yardımcıdır.
 
 ### 9.1 Sayı doğrulayıcı
@@ -268,3 +268,44 @@ Gerçek `tools.rank_sector_relative_strength` çıktısı. MAVI geride kalan (`l
 * Güncel sinyal için resmi tatiller sayılmaz (iş günü = hafta içi).
 * Birden çok backtest uygulanabilirse en temkinli birleşim kullanılır (TEST farkı en küçük, bayraklardan herhangi biri).
 * `proposed_action` (kanıt paketi): kapı `INVESTIGATE` iken artık eylem ZORLANMAZ (`None`); yalnızca `HARD_BLOCK`/`ANALYSIS_UNSAFE` -> `ANALYSIS_UNSAFE`. Asıl etiket politikadandır.
+
+## 12. Nihai çıktı denetimi ve oturuma bağlama (`final_check.py`, `HarnessSession.submit_final`)
+**Akış.** Model açıklama ister (`request_explanation`) -> nihai metni `submit_final(metin)` ile verir -> `check_final` sayı doğrulayıcı (`verify_session`), eylem koruması
+(`check_final_output`) ve politika etiketini (`decide_session`) tek raporda toplar. Metin yalnızca geçerse `complete_explanation` çağrılır.
+
+**Ölçüm ve zorlama ayrı.** Ölçüm her profilde (A–E) aynı değerlendiriciyle yapılır; zorlama (yeniden deneme, güvenli geri çekilme, `required_action`) yalnızca profilde `enforce_final_check` açıksa.
+Bayraklar `profiles.py`'de veridir; A–E'yi aynı ölçüyle karşılaştırabilmek için böyle yapıldı.
+
+| Bileşen | A | B | C | D | E | (D′) |
+|---|---|---|---|---|---|---|
+| Araçlar modele açık | – | ✓ | ✓ | ✓ (13) | ✓ (13) | ✓ (13) |
+| `as_of` ve şema doğrulaması | – | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Durum sırası + zorunlu adım (model çağırır) | – | – | ✓ | ✓ | ✓ | ✓ |
+| Kapı ve kanıt paketini harness çalıştırır | – | – | – | ✓ | ✓ | ✓ |
+| Kanıt kilidi + güvenli hata yolu | – | – | – | ✓ | ✓ | ✓ |
+| İnsan incelemesi | – | – | – | – | ✓ | – |
+| Nihai çıktı **ölçümü** (sayı + eylem + politika uyumu, rapor) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Nihai çıktı **zorlaması** (yeniden deneme, geri çekilme, `required_action`) | – | – | – | ✓ | ✓ | ✓ |
+| Sayı doğrulayıcı 2. seviye (kilitli kanıt) | – | – | – | ✓ | ✓ | ✓ |
+| Politika etiketi + gerekçe modele **gösterilir** | – | – | – | ✓ | ✓ | – |
+
+D′ = D, ama etiket/gerekçe gösterilmez (yalnızca denetlenir + yeniden deneme). `EXTRA_PROFILES`'te durur, A–E'ye girmez; **deney şimdilik koşulmaz**, yalnızca bayrak hazırdır.
+A'da kapı yok, B'de modelin kapıyı çağırması şart değil: politika kapı sonucu olmadığında `INVESTIGATE` (G2) üretir; A–B'de "politika uyumu" bu temkinli etikete karşı ölçülür.
+
+> **Raporlama notu (karar):** D/E'de etiket doğruluğu büyük ölçüde **harness'ten** gelir (politika etiketi modele verilir, `required_action` ile zorlanır, geçmezse harness'in kendi etiketi yazılır). Bu doğruluk **model başarısı diye raporlanmaz**;
+> modelin payı açıklamanın kanıta sadakati (sayı halüsinasyonu, tavsiye dili, gerekçenin etikete uyumu) ve A–C'deki kendi etiketidir.
+
+**Politika bloğu** (`render_policy_block`): izinli etiket, kural kimliği, kapı sonucu, gerekçe kodları ve metinleri. Gerekçe metinlerinde geçen eşik sayıları (`MIN_EVENTS (20)`, `< 4` çeyrek) araç çıktısında olmadığından
+modelin alıntısı `HALLUCINATION` sayılmasın diye sayı doğrulayıcıda **`ALLOWLISTED_POLICY`** olur (ayrı sayılır, paydaya girmez; araç kanıtı önce gelir). D′ ve A–C'de blok yoktur, özellik kapalıdır.
+
+**Deneme.** `settings.FINAL_MAX_RETRIES = 2` (`HARNESS_FINAL_RETRIES` ile ezilir) => en çok 3 deneme. İhlalli denemede modele Türkçe geri besleme gider (uydurma sayı + `derivation_hint`, tavsiye ifadesi ve cümlesi, eylem sorunu, gerekli son satır).
+Hak bitince **güvenli geri çekilme**: sayı ve tavsiye dili içermeyen sabit metin (`fallback_text`, kendisi denetimden geçer), etiket = politika etiketi (güvenli hata yolunda `ANALYSIS_UNSAFE`). A–C'de zorlama olmadığı için geri çekilme yoktur;
+metinde çözümlenebilir etiket yoksa makineyi kapatmak için `INVESTIGATE` yazılır ve `ACTION_DEFAULTED` olayıyla `action_source="defaulted"` işaretlenir (ihlal `NO_ACTION` olarak yine sayılır).
+
+**İhlal sayımı iki düzeyde** (`session.final_metrics()`, `FINAL_DELIVERED` olayı):
+* *deneme düzeyi:* her denemedeki ihlaller (`by_code`, `by_source`, `n_hallucinated`) — yeniden denemeyle düzelse de sayılır; modelin kural ihlali eğilimidir. Olay: `RULE_VIOLATION level=attempt`.
+* *teslim düzeyi:* teslim edilen metindeki ihlaller. D/E'de zorlama sonrası 0 olmalıdır (geri çekilme metni de denetlenir); A–C'de modelin ham çıktısının ihlalleridir. `fallback`, `action_source`, `policy_match` ile birlikte.
+
+**Bilinen sınırlar.** `UNEVIDENCED` yalnızca not (ihlal değil). Politika bloğu kanıt eşiklerini (`+5 pp` marjı vb.) göstermez; model bunları alıntılarsa `HALLUCINATION` sayılır (gerekçe metinlerinde geçmiyorsa).
+Aday etiketlerde `CANDIDATE_CAVEAT` notunun metinde bulunması bu aşamada zorlanmaz (eğitim verisi kuralı 7, `training/RULES.md`).
+
