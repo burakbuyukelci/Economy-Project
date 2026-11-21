@@ -29,54 +29,15 @@ from harness import settings
 from harness.as_of import parse_date
 from harness.session import HarnessSession
 from schemas.enums import ToolName
-from schemas.registry import TOOL_REGISTRY
+from harness.tool_view import model_tool_specs
 
 SERVER_NAME = "bist-harness"
 
-# Kısa, İngilizce araç açıklamaları (proje dokümanı §22). as_of uyarısı her şemada tekrar edilir.
-_AS_OF_NOTE = " `as_of` must equal the analysis date stated in the question."
-TOOL_DESCRIPTIONS: dict[ToolName, str] = {
-    ToolName.GET_STOCK_HISTORY: "OHLCV history and metadata for one BIST ticker.",
-    ToolName.GET_INDEX_HISTORY: "Benchmark index (XU100) time series.",
-    ToolName.CALCULATE_INDICATORS: "SMA/EMA/RSI/MACD/Bollinger/ATR/KAMA/Supertrend/Ichimoku for a ticker.",
-    ToolName.DETECT_REVERSAL_EVENTS: "Timestamped technical reversal events with forward-return statistics.",
-    ToolName.FIND_SUPPORT_RESISTANCE: "Support/resistance levels, zones, touch counts and strength.",
-    ToolName.RANK_SECTOR_RELATIVE_STRENGTH: "Peer-group returns, lag score and rank for a sector and horizon.",
-    ToolName.TEST_WEEKDAY_PATTERN: "Weekday pattern occurrences, conditional returns, in/out-of-sample stability.",
-    ToolName.GET_FUNDAMENTAL_METRICS: "Point-in-time financial metrics aligned to the disclosure date.",
-    ToolName.CALCULATE_FUNDAMENTAL_CHANGE: "Quarterly/annual metric changes and post-disclosure price reaction.",
-    ToolName.GET_MACRO_CONTEXT: "FX, rates and inflation series with publication metadata.",
-    ToolName.GET_NEWS_EVENTS: "Timestamped, legally accessible news/KAP event metadata.",
-    ToolName.GET_SPEECH_FEATURES: "Timestamped transcript-derived topics, claims and stance.",
-    ToolName.RUN_BACKTEST: "Historical verification of a strategy spec on a universe and period.",
-    ToolName.CHECK_DATA_QUALITY: "Data quality / leakage checks and the risk-gate status.",
-    ToolName.BUILD_EVIDENCE_BUNDLE: "Full and committed evidence sets for an analysis.",
-}
-
-
-# Etiket politikası (harness/label_policy.py) IS/OOS doğrulaması ister: OOS yoksa aday etiket verilemez (INVESTIGATE).
-# docs/tool_usage_guide.md ve training/RULES.md ile aynı kural.
-_OOS_RULE = ("Always set the out-of-sample start to January 1 of the as_of year, or to the out-of-sample start stated in the question; "
-             "without it no out-of-sample validation is performed and the analysis stays INVESTIGATE.")
-_TOOL_NOTES: dict[ToolName, str] = {
-    ToolName.RANK_SECTOR_RELATIVE_STRENGTH: " Set `split_date`. " + _OOS_RULE,
-    ToolName.DETECT_REVERSAL_EVENTS: " Set `split_date`. " + _OOS_RULE,
-    ToolName.TEST_WEEKDAY_PATTERN: " Set `out_of_sample_start`. " + _OOS_RULE,
-    ToolName.RUN_BACKTEST: " Set `strategy.train_end` to the day before the out-of-sample start. " + _OOS_RULE,
-}
-
-
+# Modele görünen araç tanımları (kısa description, sadeleştirilmiş şema, gizli gelişmiş parametreler) harness/tool_view.py'dedir:
+# orkestratör ve MCP sunucusu AYNI görünümü kullanır. Doğrulama tam pydantic şemasıyla yapılır (session.call_tool).
 def _tool_list(visible: list[ToolName]) -> list[types.Tool]:
     """Yalnızca oturum profilinin MODELE gösterdiği araçlar (harness-içi kapı araçları listelenmez)."""
-    return [
-        types.Tool(
-            name=spec.name.value,
-            description=TOOL_DESCRIPTIONS[spec.name] + _AS_OF_NOTE + _TOOL_NOTES.get(spec.name, ""),
-            input_schema=spec.params_model.model_json_schema(),
-        )
-        for spec in TOOL_REGISTRY.values()
-        if spec.name in visible
-    ]
+    return [types.Tool(name=s["name"], description=s["description"], input_schema=s["parameters"]) for s in model_tool_specs(visible)]
 
 
 def _text(payload: dict[str, Any]) -> list[types.TextContent]:

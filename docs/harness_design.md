@@ -349,13 +349,13 @@ Aday etiketlerde `CANDIDATE_CAVEAT` notunun metinde bulunması bu aşamada zorla
 Karma oturumda **gerçek kapı mock zarfı `DATA_VERSION_MISMATCH` ile işaretler**: ilk kapı (yalnızca gerçek veri) `PASS_WITH_WARNINGS`, son kapı `INVESTIGATE` olur; paket mock damgası taşır ve eğitime girmez.
 Q1'de etiket yine `REJECT_SIGNAL` (G3 yalnızca aday etiketleri düşürür). Karma oturumda aday etiket üretilemez; aday yolu mock-only birim testlerinde (`test_label_policy.py`) sınanır.
 
-### 13.1 Eğitimden ÖNCE dondurulacak biçimler (`SYSTEM_PROMPT_VERSION = "1"`, henüz DONDURULMADI)
+### 13.1 Eğitimden ÖNCE dondurulacak biçimler (`SYSTEM_PROMPT_VERSION = "2"`, henüz DONDURULMADI)
 Fine-tune kayıtları çıkarımdaki istemle birebir aynı olmak zorundadır. Aşağıdaki biçimler **eğitim verisi üretilmeden önce dondurulacaktır**; dondurulana kadar değişebilir ve her değişiklikte
 `SYSTEM_PROMPT_VERSION` artırılır (eğitim kaydı hangi sürümle üretildiğini taşır). Kaynak: `agent_loop.py` (`build_system_prompt`, `FINAL_INSTRUCTION`, `TOOLS_CLOSED`), `final_check.py` (`render_policy_block`, `build_feedback`).
 
 | Aşama | Mesaj dizisi (rol: içerik) |
 |---|---|
-| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç şemaları ayrı `tools` alanında (13 araç; D/E'de kapı ve kanıt paketi yok). |
+| **1. Araç aşaması** | `system`: `build_system_prompt` (rol, 4 kural, nihai çıktı biçimi + izinli etiketler, profilde araç varsa `ARAÇ KULLANIMI` paragrafı: as_of, varsayılanlar, OOS kuralı; D/E'de `HAZIR` sinyali cümlesi) → `user`: soru (aynen) → `assistant`: `tool_calls` → `tool`: zarf JSON'u (`sort_keys`, `ensure_ascii=False`) ya da hata nesnesi (`INVALID_TOOL_CALL` / `HARNESS_ERROR` / `SAFE_FAILURE`) → … Araç tanımları ayrı `tools` alanında (13 araç; D/E'de kapı ve kanıt paketi yok): `harness/tool_view.py` görünümü (kısa description, sadeleştirilmiş şema, gizli gelişmiş parametreler; bkz. 13.2). |
 | **Geçiş** | Model araç çağırmadan metin yazar (D/E'de `HAZIR`). Harness `request_explanation` der; reddedilirse `user`: `Açıklama aşamasına geçilemedi (<kod>): <mesaj>. Eksik adımları araç çağrılarıyla tamamlayın.` |
 | **2. Nihai aşama (D/E)** | `user`: `POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):` + `EYLEM: <ETİKET>` + `Kural:` + `Kalite kapısı:` + `Gerekçeler:` (`- KOD: mesaj`) + boş satır + `FINAL_INSTRUCTION` → `assistant`: nihai metin (araç yok, `tools` alanı boş). Son satır `EYLEM: <ETİKET>`. |
 | **2. Nihai aşama (A–C, D′)** | Blok ve ek istem yok: araç çağrısız ilk `assistant` metni nihai metindir. |
@@ -364,8 +364,15 @@ Fine-tune kayıtları çıkarımdaki istemle birebir aynı olmak zorundadır. A�
 Eğitim kayıtları için kural (karar): **`training/RULES.md` madde 5 aynen geçerlidir.** Eğitim veri üreticisi açıklamalarda **yalnızca kilitli committed kanıttaki sayıları** kullanır
 (`UNEVIDENCED` sayı yok); `warnings` metnindeki ya da kanıta girmeyen sayılar alıntılanmaz. Politika bloğundaki eşik sayıları (`ALLOWLISTED_POLICY`) yalnızca D/E çıkarımında tolere edilir, eğitim açıklamasında kullanılmaz.
 
-### 13.2 Sıradaki iş: araç tanımlarını kısaltma (bağlam hedefi ≤ 8192)
-`LLM_NUM_CTX = 16384` **geçici** varsayılandır; hedef ≤ 8192. Plan: modele görünen `description` metinlerini ve `input_schema`'ları sadeleştirmek, gelişmiş parametreleri (`config`, `indicator_config`,
-maliyet/slipaj, `n_tests_declared` vb.) modele göstermemek (harness sabit varsayılan koyar), ölçümü Ollama'nın `prompt_eval_count` değeriyle yapmak (karakter/token yaklaşığı yerine).
-Araç tanımları istemin parçası olduğundan bu iş bittiğinde `SYSTEM_PROMPT_VERSION` artırılır ve biçim ancak ondan sonra dondurulur.
-
+### 13.2 Araç tanımlarını kısaltma (yapıldı; `SYSTEM_PROMPT_VERSION = "2"`) ve bağlam bütçesi
+`harness/tool_view.py` modele görünen tanımı üretir; MCP sunucusu ve orkestratör AYNI görünümü kullanır, doğrulama tam pydantic şemasıyla kalır (`schemas/` değişmedi).
+* **description:** araç başına ≤ 100 karakter (tekrarlanan `as_of` ve OOS paragrafları kalktı; kural system prompt'ta tek kez ve ilgili parametrenin kısa notunda).
+* **input_schema:** `$ref` açık, başlık/uzun açıklama/desen/min-maks atılmış, `null` dalı yok. **Gelişmiş parametreler gizli** (`HIDDEN_PARAMS`): maliyet/kayma, gösterge `config`, `price_adjustment`, `include_columns_meta`,
+  `forward_horizons`, `analysis_start`, `touch_mode`, `alpha`, `conditioning`, `strategy.{maliyet, signal_params, signal_lag_days, benchmarks, validation_end, walk_forward}`, kapıdaki `checks`/`analysis_bundle` vb.
+  Hepsi isteğe bağlıdır ve varsayılanları örneklerle aynıdır (testle denetlenir); gizli alanı model yine de gönderirse tam şema doğrular. Görünen kalanlar: `as_of`, hisse/sektör, tarih aralığı, `split_date` / `out_of_sample_start` /
+  `strategy.train_end` (OOS notuyla), `n_tests_declared`, `last_n_rows`, `value_columns`, `event_family`, `condition_sets`, `pattern`.
+* **Ölçüm (13 araç, karakter):** 23 739 → **8 334** (~2,8 bin token tahmini; önceki ~7,9 bin). Tahmin karakter/3; **Ollama kurulunca `MODEL_TURN` olayındaki `prompt_tokens` (gerçek `prompt_eval_count`) ile `estimated_prompt_tokens` yan yana okunup `CHARS_PER_TOKEN` düzeltilecek.**
+* **Bütçe (hedef ≤ 8192 token, her model turunda, karakter/3):** Q2, Q3, Q4, Q5 uyuyor (tepe ~6,6 bin). **Q1 uymuyor (tepe ~9,5 bin):** gerçek rank zarfı ~13 bin karakter, bunun ~6,5 bini `per_ticker`, ~4 bini `historical_catch_up`.
+  Kalan yük artık araç ÇIKTISIDIR, tanımı değil. Bu açık karar `test_each_sample_question_stays_within_the_8192_token_context_target[Q1]` (strict xfail) ile kayıtlıdır; çözülünce test kendiliğinden uyarır.
+  Seçenekler (karar bekliyor): (A) modele giden zarf görünümünü kırp (`null` alanlar, `per_ticker` bloklarında yalnızca sayaç/isabet/taban/maliyet sonrası; kanıt ve doğrulayıcı TAM zarfla çalışmaya devam eder);
+  (B) bağlamı 12–16 bin tutup yalnızca Q1 tipi sorularda kabul etmek; (C) `per_ticker`'ı rank'te isteğe bağlı parametreyle açmak (şema değişikliği, `schemas/` sahibi onayı).

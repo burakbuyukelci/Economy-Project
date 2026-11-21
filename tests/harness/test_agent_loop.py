@@ -207,3 +207,22 @@ def test_run_is_deterministic_and_json_serialisable():
         res, _ = run([RANK, BACKTEST, "HAZIR", FABRICATED, GOOD])
         return json.dumps(res.messages, ensure_ascii=False, sort_keys=True), res.session.final_metrics(), res.n_model_turns
     assert once() == once()
+
+
+def test_system_prompt_version_and_the_oos_rule_live_in_the_system_prompt():
+    from harness.agent_loop import SYSTEM_PROMPT_VERSION
+
+    assert SYSTEM_PROMPT_VERSION == "2"
+    p = build_system_prompt(HarnessSession.from_question(QUESTION, profile="D"))
+    assert "split_date" in p and "out_of_sample_start" in p and "1 Ocak" in p and "varsayılan" in p
+    assert "split_date" not in build_system_prompt(HarnessSession.from_question(QUESTION, profile="A"))      # A'da araç yok
+
+
+def test_every_model_turn_logs_the_estimated_prompt_tokens_next_to_the_real_ones():
+    res, _ = run([RANK, BACKTEST, "HAZIR", GOOD])
+    turns = [e for e in res.session.events if e["kind"] == "MODEL_TURN"]
+    assert [e["turn"] for e in turns] == [1, 2, 3, 4] and all(e["estimated_prompt_tokens"] > 0 for e in turns)
+    assert all(e["prompt_tokens"] is None for e in turns)                      # betikli model gerçek sayı vermez (Ollama verir)
+    assert turns[0]["estimated_prompt_tokens"] < turns[3]["estimated_prompt_tokens"]    # bağlam büyür
+    assert [e["n_tool_calls"] for e in turns] == [1, 1, 0, 0]
+

@@ -48,7 +48,7 @@ def test_tool_input_schema_comes_from_pydantic_models_and_requires_as_of():
     tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
     schema = tools["get_stock_history"].input_schema
     assert "as_of" in schema["required"] and "ticker" in schema["required"]
-    assert "analysis date" in tools["get_stock_history"].description
+    assert "analysis date" in schema["properties"]["as_of"]["description"]
 
 
 def test_valid_call_returns_the_envelope_as_json():
@@ -180,23 +180,23 @@ def test_safe_failure_over_mcp_is_an_error_result_with_the_required_action():
     assert res.is_error and body["type"] == "SAFE_FAILURE" and body["required_action"] == "ANALYSIS_UNSAFE"
 
 
-def test_oos_rule_is_part_of_the_descriptions_of_the_validation_tools_only():
-    """Karar: split_date her zaman as_of yılının başı ya da sorudaki OOS başlangıcı (label_policy OOS ister)."""
+def test_oos_rule_is_a_short_note_on_the_oos_parameters_only():
+    """Karar: split_date her zaman as_of yılının başı ya da sorudaki OOS başlangıcı (label_policy OOS ister). Şimdi parametre notu + system prompt."""
     session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
-    for name in ("rank_sector_relative_strength", "detect_reversal_events", "test_weekday_pattern", "run_backtest"):
-        d = tools[name].description
-        assert "January 1 of the as_of year" in d and "out-of-sample start stated in the question" in d, name
-    assert "split_date" in tools["rank_sector_relative_strength"].description
-    assert "strategy.train_end" in tools["run_backtest"].description
+    for name, key in (("rank_sector_relative_strength", "split_date"), ("detect_reversal_events", "split_date"),
+                      ("test_weekday_pattern", "out_of_sample_start")):
+        note = tools[name].input_schema["properties"][key]["description"]
+        assert "Jan 1 of the as_of year" in note and "stated in the question" in note, name
+    assert "day before" in tools["run_backtest"].input_schema["properties"]["strategy"]["properties"]["train_end"]["description"]
     for name in ("get_stock_history", "calculate_indicators", "get_macro_context"):
-        assert "January 1" not in tools[name].description
+        assert "Jan 1" not in json.dumps(tools[name].input_schema)
 
 
-def test_calculate_indicators_schema_exposes_the_1_2_0_light_defaults():
-    """Şema 1.2.0: model yeni param'ları şemadan görür; varsayılanlar hafiftir (last_n_rows=0, kolon meta kapalı)."""
+def test_calculate_indicators_schema_is_light_and_hides_advanced_parameters():
+    """Şema 1.2.0 hafif varsayılanları: model last_n_rows ve value_columns'ı görür; config/meta/price_adjustment gizli (varsayılanla çalışır)."""
     session = HarnessSession.from_question(QUESTION, profile=MANUAL)
     tools = {t.name: t for t in with_client(session, lambda c: c.list_tools()).tools}
     props = tools["calculate_indicators"].input_schema["properties"]
-    assert props["include_columns_meta"]["default"] is False and props["last_n_rows"]["default"] == 0
-    assert "value_columns" in props
+    assert props["last_n_rows"]["default"] == 0 and "value_columns" in props
+    assert not {"config", "include_columns_meta", "price_adjustment", "start"} & set(props)

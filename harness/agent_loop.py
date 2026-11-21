@@ -18,9 +18,10 @@ from typing import Any
 from harness import settings
 from harness.llm_backend import LLMBackend, LLMError, ModelReply
 from harness.session import FinalResult, HarnessSession
+from harness.tool_view import estimate_tokens, model_tool_specs
 from schemas.enums import AllowedAction
 
-SYSTEM_PROMPT_VERSION = "1"   # eğitim/çıkarım istem biçimi uyumu için: istem değişince artırılır
+SYSTEM_PROMPT_VERSION = "2"   # eğitim/çıkarım istem biçimi uyumu için: istem değişince artırılır (2: kısa araç tanımları + OOS kuralı system prompt'ta)
 
 FINAL_INSTRUCTION = ("Araç çıktılarına dayanarak nihai açıklamayı şimdi yaz. Yalnızca araç çıktılarındaki sayıları kullan, kendin hesaplama yapma; "
                      "yatırım tavsiyesi verme. Son satır tam olarak yukarıdaki EYLEM satırı olmalı.")
@@ -52,7 +53,9 @@ def build_system_prompt(session: HarnessSession) -> str:
     ]
     if session.visible_tools:
         tools = ("ARAÇ KULLANIMI: gerekli araçları doğru parametrelerle çağır; her çağrıda as_of = sorudaki analiz tarihi "
-                 f"({session.as_of.isoformat()}).")
+                 f"({session.as_of.isoformat()}). Belirtmediğin parametreler varsayılanlarla çalışır. Örneklem dışı doğrulama için split_date / "
+                 "out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi): "
+                 "verilmezse analiz INVESTIGATE kalır.")
         if session.profile.show_policy_label:
             tools += (" Araçlarla işin bitince araç çağırmadan `HAZIR` yaz; ardından harness sana politika kararını ve gerekçelerini "
                       "verip nihai açıklamayı isteyecek.")
@@ -64,9 +67,7 @@ def build_system_prompt(session: HarnessSession) -> str:
 
 def tool_specs(session: HarnessSession) -> list[dict[str, Any]]:
     """MODELE gösterilen araçlar (MCP'den bağımsız yalın biçim); profilin gizlediği harness-içi araçlar yoktur."""
-    from harness.mcp_server import _tool_list  # MCP ile aynı açıklama/şema kaynağı (tek doğruluk kaynağı)
-
-    return [{"name": t.name, "description": t.description, "parameters": t.input_schema} for t in _tool_list(session.visible_tools)]
+    return model_tool_specs(session.visible_tools)
 
 
 # =============================== döngü ===============================
@@ -89,7 +90,12 @@ def run_session(question: str, backend: LLMBackend, *, profile: str | None = Non
     try:
         while turns < limit:
             turns += 1
-            reply: ModelReply = backend.chat(messages, None if (final_phase or not specs) else specs)
+            offered = None if (final_phase or not specs) else specs
+            reply: ModelReply = backend.chat(messages, offered)
+            # bağlam ölçümü: karakter/3 tahmini ile Ollama'nın gerçek prompt_eval_count'u (varsa) yan yana (hedef ≤ 8192 token)
+            session.log.append("MODEL_TURN", turn=turns, estimated_prompt_tokens=estimate_tokens(messages=messages, tools=offered),
+                               prompt_tokens=reply.prompt_tokens, completion_tokens=reply.completion_tokens,
+                               n_tool_calls=len(reply.tool_calls))
             if reply.has_tool_calls:
                 if final_phase:
                     messages += [_assistant(reply), {"role": "user", "content": TOOLS_CLOSED}]
