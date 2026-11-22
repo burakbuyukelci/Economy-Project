@@ -499,8 +499,36 @@ def test_fundamental_table(over, expected, rule):
 
 
 def test_fundamental_basis_selects_the_direction_field():
-    assert decide([fundamental_env(basis="QOQ", qoq="IMPROVED", yoy="DETERIORATED")]).label == FI
+    assert decide([fundamental_env(basis="QOQ", qoq="IMPROVED", yoy="IMPROVED")]).label == FI
     assert decide([fundamental_env(basis="QOQ", qoq="DETERIORATED", yoy="IMPROVED", secondary="DETERIORATED")]).label == A.REJECT_SIGNAL
+
+
+@pytest.mark.parametrize("basis", ["QOQ", "YOY"])
+def test_f3_requires_a_computable_and_improved_yoy_direction(basis):
+    """Karar 2026-11-23: QoQ mevsim arındırılmadığından F3 için YoY hesaplanabilir ve IMPROVED olmalı."""
+    ok = decide([fundamental_env(basis=basis, qoq="IMPROVED", yoy="IMPROVED")])
+    assert ok.label == FI and rule_of(ok) == "F3_CANDIDATE"
+    assert ok.scenarios[0].check("yoy_direction_required").ok is True and "YOY_NOT_COMPUTABLE" not in ok.reason_codes
+    if basis == "QOQ":     # baz QoQ iken YoY yönü yoksa: F4 + uyarı kodu (yalnız QoQ var)
+        no_yoy = decide([fundamental_env(basis="QOQ", qoq="IMPROVED", yoy=None)])
+        assert no_yoy.label == A.WATCH and rule_of(no_yoy) == "F4_WATCH"
+        assert "YOY_NOT_COMPUTABLE" in no_yoy.reason_codes and no_yoy.scenarios[0].check("yoy_direction_required").ok is False
+        assert "FUNDAMENTAL_IMPROVEMENT_CANDIDATE" not in no_yoy.scenarios[0].raw_label.value           # aday olarak da üretilmez (CANDIDATE_CAVEAT yok)
+        assert "CANDIDATE_CAVEAT" not in no_yoy.reason_codes
+        for yoy in ("FLAT", "DETERIORATED"):
+            mixed = decide([fundamental_env(basis="QOQ", qoq="IMPROVED", yoy=yoy)])
+            assert mixed.label == A.WATCH and rule_of(mixed) == "F4_WATCH" and "YOY_NOT_IMPROVED" in mixed.reason_codes
+    else:                  # baz YoY ve yön yok: zaten F4; kod yine eklenir
+        no_yoy = decide([fundamental_env(basis="YOY", qoq="IMPROVED", yoy=None)])
+        assert no_yoy.label == A.WATCH and "YOY_NOT_COMPUTABLE" in no_yoy.reason_codes
+
+
+def test_other_fundamental_rules_are_unchanged_by_the_yoy_requirement():
+    # F2 (kötüleşme + ikinci metrik de iyileşmiyor) YoY'a bakmaz; F1 aynen
+    assert rule_of(decide([fundamental_env(basis="QOQ", qoq="DETERIORATED", yoy=None, secondary="DETERIORATED")])) == "F2_REJECT"
+    assert rule_of(decide([fundamental_env(n_quarters=3, yoy=None)])) == "F1_INSUFFICIENT"
+    # F4: ikinci metrik kötüleşiyorsa YoY iyi olsa da aday yok
+    assert rule_of(decide([fundamental_env(secondary="DETERIORATED", yoy="IMPROVED")])) == "F4_WATCH"
 
 
 def test_fundamental_price_reaction_is_reported_but_never_gates():

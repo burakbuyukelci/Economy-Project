@@ -12,16 +12,16 @@
     "snap_2026-11-20_v2"
   ],
   "final_status": "ACCEPTED",
-  "final_text": "TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)\n- Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0\nDeğerlendirme: Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE.\nTemel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.\nBazı çeyreklerin açıklama tarihi haber ve KAP kaynaklarından doğrulandı, ancak açıklama saati bilinmiyor; tepki başlangıcı muhafazakâr alındı.\nEnflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.\nNet Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.\nÇeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.\nBilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.\nBu yalnızca tarihsel bir gözlemdir: örnek küçük, belirsizlik var; geçmiş kanıt gelecek getiri garantisi değildir.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
+  "final_text": "TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)\n- Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0\nDeğerlendirme: Metrikler çelişiyor ya da yön belirsiz; kanıt karışık olduğundan izleme (WATCH) etiketi verilir.\nYıllık (YoY) değişim hesaplanamadı; çeyreklik (QoQ) değişim mevsim arındırılmamıştır, bu nedenle aday etiket verilmez.\nTemel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.\nBazı çeyreklerin açıklama tarihi haber ve KAP kaynaklarından doğrulandı, ancak açıklama saati bilinmiyor; tepki başlangıcı muhafazakâr alındı.\nEnflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.\nNet Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.\nÇeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.\nBilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: WATCH",
   "gate_status": "PASS_WITH_WARNINGS",
   "id": "q4_tuprs_fundamental",
   "policy": {
-    "label": "FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
+    "label": "WATCH",
     "reasons": [
-      "THRESHOLDS_PROVISIONAL",
-      "CANDIDATE_CAVEAT"
+      "YOY_NOT_COMPUTABLE",
+      "THRESHOLDS_PROVISIONAL"
     ],
-    "rule_id": "F3_CANDIDATE"
+    "rule_id": "F4_WATCH"
   },
   "question": "Analiz tarihi: 10.09.2026\nTUPRS'un 01.01.2024 – 10.09.2026 döneminde kamuya açıklanan tüm çeyreklik bilançolarında FAVÖK marjı ve Net Borç/FAVÖK nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?",
   "session_status": "DELIVERED",
@@ -251,7 +251,7 @@
               "yoy_change": null
             },
             "NET_DEBT_EBITDA": {
-              "qoq_change": -0.4757,
+              "qoq_change": -0.1425,
               "qoq_direction": "IMPROVED",
               "value": -0.7646
             },
@@ -396,6 +396,7 @@
       "warnings": [
         "INSUFFICIENT_HISTORY: NET_DEBT_EBITDA 2025Q3, 2025Q4, 2026Q1: 4 ardışık çeyrek yok; çeyreklik FAVÖK x4 (yıllıklandırılmış) kullanıldı",
         "SMALL_PEER_GROUP: TUPRS peer grubu 2 hisse: sektör medyanı zayıf ölçüt",
+        "INSUFFICIENT_HISTORY: NET_DEBT_EBITDA değişim tabanı aynı iki uçta hesaplandı; yıllıklandırılmış (çeyreklik FAVÖK x4, iki dönemde de): 2025Q4 QOQ, 2026Q1 QOQ, 2026Q2 QOQ",
         "PRE_TMS29_NOT_COMPARABLE: 2025Q3, 2025Q4: önceki çeyrek/yıl TMS 29 öncesi (2025 öncesi) olduğundan ilgili QoQ/YoY değişim None (karşılaştırılamaz)",
         "INSUFFICIENT_HISTORY: 1/4 çeyrekte EBITDA_MARGIN QOQ değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); bu çeyrekler IMPROVED/NOT_IMPROVED gruplarına girmedi, yalnız ALL'a girdi",
         "FEW_EVENTS: n_quarters=4 < MIN_EVENTS=20; istatistik zayıf, örneklem dışı ayrımı yapılamaz",

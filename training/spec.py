@@ -9,7 +9,7 @@ from datetime import date
 
 from schemas.enums import ToolName as T
 
-GENERATOR_VERSION = "2"   # v2: bilanço oturumları (Soru 4), unsupported şablonları güncel, tip payları yeniden dağıtıldı
+GENERATOR_VERSION = "2.1"   # 2.1: F3 için YoY zorunlu, Net Borç/FAVÖK değişimi aynı tabanda (v2 = bilanço oturumları, unsupported şablonları, tip payları)
 SEED = 42
 SPLITS = ("train", "val", "test")
 SIZES = {"train": 600, "val": 50, "test": 100}

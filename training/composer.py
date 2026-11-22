@@ -74,6 +74,8 @@ REASON_SENTENCES = {
     "IMPROVEMENT_METRIC_MISSING": "İyileşme metriği son çeyrekte yok; değerlendirme yapılamadı.",
     "FUNDAMENTALS_DETERIORATING": "İyileşme metriği kötüleşiyor ve ikinci ana metrik de iyileşmiyor.",
     "LATEST_REACTION_INCOMPLETE": "Son çeyreğin bazı fiyat tepki pencereleri analiz tarihi itibarıyla tamamlanmadı; bu eksik veri olarak belirtilir ve analiz tarihinden sonraki fiyat kullanılmadı.",
+    "YOY_NOT_COMPUTABLE": "Yıllık (YoY) değişim hesaplanamadı; çeyreklik (QoQ) değişim mevsim arındırılmamıştır, bu nedenle aday etiket verilmez.",
+    "YOY_NOT_IMPROVED": "Yıllık (YoY) değişim iyileşme göstermediği için aday etiket verilmez.",
     "THRESHOLDS_PROVISIONAL": "Temel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.",
 }
 ASSOCIATION_NOTE = "Bilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez."

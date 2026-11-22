@@ -391,3 +391,45 @@ def test_statutory_after_deadline_without_reaction_window_complete_flags_untouch
     assert _q(e, "2026Q1")["reactions"] == []
     assert e["n_excluded_incomplete_horizon"] >= 1  # yalnızca 2026Q2'nin 20 günlük penceresi; statutory çeyrek bunu şişirmez
     assert sum(1 for q in e["results"]["quarters"] for r in q["reactions"] if not r["complete"]) == e["n_excluded_incomplete_horizon"]
+
+
+# --- Net Borç/FAVÖK değişimi: iki uçta AYNI taban (LTM ya da ikisi de yıllıklandırılmış) -----------------------------------
+def test_nd_ebitda_change_uses_the_same_basis_on_both_ends_annualised_when_either_lacks_four_quarters(env):
+    e = _ch(env)
+    q4 = _mc(_q(e, "2025Q4"), "NET_DEBT_EBITDA")
+    # kendi değeri LTM (Q1..Q4 mevcut): 400/490; ama 2025Q3 (yalnız 3 çeyrek) yıllıklandırılmış -> değişim İKİSİ DE yıllıklandırılmış kıyaslanır
+    assert q4["value"] == round(400 / 490, 4)
+    ann_q4, ann_q3 = round(400 / (130 * 4), 4), round(400 / (150 * 4), 4)       # 0.7692, 0.6667
+    assert q4["qoq_change"] == round(ann_q4 - ann_q3, 4) and q4["change_unit"] == "ABS"
+    assert q4["qoq_change"] != round(round(400 / 490, 4) - ann_q3, 4)           # eski (karışık taban) değer DEĞİL
+    assert q4["qoq_direction"] == "DETERIORATED"                                # yüksek borç/FAVÖK kötü; |0.1025| > 0.05
+    assert q4["yoy_change"] is None                                             # 2024Q4 yok
+
+
+def test_nd_ebitda_change_is_ltm_when_both_ends_have_four_quarters(env):
+    q = _mc(_q(_ch(env), "2026Q1"), "NET_DEBT_EBITDA")        # 2026Q1 (Q2'25..Q1'26) ve 2025Q4 (Q1..Q4'25): ikisi de LTM
+    assert q["value"] == round(400 / 558, 4) and q["qoq_change"] == round(round(400 / 558, 4) - round(400 / 490, 4), 4)
+
+
+def test_nd_ebitda_yoy_both_annualised_and_warning_lists_the_basis(env):
+    e = _ch(env)
+    q = _mc(_q(e, "2026Q1"), "NET_DEBT_EBITDA")
+    assert q["yoy_change"] == round(round(400 / (168 * 4), 4) - round(400 / (100 * 4), 4), 4)   # 2025Q1 yalnız 1 çeyrek: ikisi de yıllıklandırılmış
+    w = [x for x in e["warnings"] if x.startswith("INSUFFICIENT_HISTORY: NET_DEBT_EBITDA değişim tabanı")]
+    assert len(w) == 1 and "yıllıklandırılmış" in w[0] and "2025Q4 QOQ" in w[0] and "2026Q1 YOY" in w[0] and "LTM" in w[0] and "2026Q1 QOQ" in w[0]
+
+
+def test_nd_ebitda_pair_helper_cases(env):
+    import pandas as pd
+    from tools import _fundamentals as F
+    t = _table()
+    rows = t.loc[t["ticker"] == "TUPRS"].set_index("fiscal_period", drop=False)
+    assert F.nd_ebitda_pair(rows, "2026Q2", "2026Q1")[2] == "LTM"
+    assert F.nd_ebitda_pair(rows, "2025Q4", "2025Q3")[2] == "ANNUALISED"
+    assert F.nd_ebitda_pair(rows, "2025Q1", "2024Q4") == (None, None, "NONE")
+    rows2 = rows.copy()
+    rows2["ebitda"] = -5.0                                        # FAVÖK <= 0 (LTM ve yıllıklandırılmış): oran anlamsız -> değişim hesaplanamaz
+    assert F.nd_ebitda_pair(rows2, "2026Q1", "2025Q4") == (None, None, "NONE")
+    rows3 = rows.copy()
+    rows3.loc["2026Q1", "ebitda"] = -5.0                          # tek çeyrek negatif ama LTM toplamı pozitif: LTM geçerli
+    assert F.nd_ebitda_pair(rows3, "2026Q2", "2026Q1")[2] == "LTM"

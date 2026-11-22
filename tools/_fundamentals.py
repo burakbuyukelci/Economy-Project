@@ -125,6 +125,35 @@ def ltm_ebitda(rows: pd.DataFrame, fp: str) -> tuple[float | None, str]:
     return None, "NONE"
 
 
+def nd_ebitda_on_basis(rows: pd.DataFrame, fp: str, basis: str) -> float | None:
+    """Net Borç/FAVÖK'ü VERİLEN tabanla hesaplar: 'LTM' (dört ardışık çeyrek toplamı; yoksa None) ya da 'ANNUALISED' (çeyreklik FAVÖK x4). FAVÖK <= 0 ise None."""
+    r = rows.loc[fp]
+    debt, cash = _val(r["total_financial_debt"]), _val(r["cash_and_equivalents"])
+    if debt is None or cash is None:
+        return None
+    if basis == "LTM":
+        fps = [fp_shift(fp, -i) for i in range(4)]
+        if not all(f in rows.index and _val(rows.at[f, "ebitda"]) is not None for f in fps):
+            return None
+        e = float(sum(rows.at[f, "ebitda"] for f in fps))
+    else:
+        own = _val(r["ebitda"])
+        e = None if own is None else own * 4.0
+    return _r((debt - cash) / e) if e is not None and e > 0 else None
+
+
+def nd_ebitda_pair(rows: pd.DataFrame, fp: str, prev_fp: str) -> tuple[float | None, float | None, str]:
+    """İki dönemin Net Borç/FAVÖK'ü AYNI tabanda (değişim elmayla elma): ikisinde de 4 çeyrek varsa LTM, yoksa İKİSİ DE yıllıklandırılmış.
+    Dönüş (cari, önceki, taban 'LTM'|'ANNUALISED'|'NONE'). Örn. 2026Q1 (yalnız 3 önceki çeyrek yok -> yıllıklandırılmış) ile 2026Q2 (LTM mümkün) kıyaslanırsa İKİSİ DE yıllıklandırılır."""
+    if prev_fp not in rows.index or fp not in rows.index:
+        return None, None, "NONE"
+    cur, prev = nd_ebitda_on_basis(rows, fp, "LTM"), nd_ebitda_on_basis(rows, prev_fp, "LTM")
+    if cur is not None and prev is not None:
+        return cur, prev, "LTM"
+    cur, prev = nd_ebitda_on_basis(rows, fp, "ANNUALISED"), nd_ebitda_on_basis(rows, prev_fp, "ANNUALISED")
+    return (cur, prev, "ANNUALISED") if cur is not None and prev is not None else (None, None, "NONE")
+
+
 def quarter_metrics(rows: pd.DataFrame, fp: str, metric_set: MetricSet) -> tuple[dict[M, float | None], str]:
     """Bir dönemin metrikleri (yuvarlanmış) ve Net Borç/FAVÖK tabanı ('LTM'|'ANNUALISED'|'NONE').
 

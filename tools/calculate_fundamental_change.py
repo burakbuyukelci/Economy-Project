@@ -8,6 +8,8 @@ KURALLAR
   aksi halde (saat yok/seans içi/tatil günü) açıklamadan ÖNCEKİ son işlem günü kapanışı (muhafazakâr: tüm tepki pencerede).
   h günlük tepki = baz kapanışından baz+h işlem günü sonraki kapanışa basit getiri (adj_close). Pencere sonu as_of'u aşıyorsa
   complete=False (kural 2). Anormal getiri = hisse - XU100 ve hisse - peer medyanı (hisse DAHİL; tek hisseli grupta None).
+* Net Borç/FAVÖK DEĞİŞİMİ (QoQ/YoY) iki dönemde AYNI tabanla hesaplanır (F.nd_ebitda_pair): ikisinde de 4 ardışık çeyrek varsa LTM, yoksa İKİSİ DE yıllıklandırılmış (FAVÖK x4).
+  Her çeyreğin kendi `value`'su kendi tabanında kalır (LTM mümkünse LTM); kullanılan değişim tabanı uyarıda listelenir.
 * Nedensellik iddiası yok: ilişki gözlemidir (ASSOCIATION_NOT_CAUSATION). Ağ yok.
 """
 from __future__ import annotations
@@ -134,6 +136,7 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
     quarters: list[QuarterRow] = []
     group_of: dict[str, str | None] = {}
     pre_tms: list[str] = []
+    nd_bases: dict[str, list[str]] = {"LTM": [], "ANNUALISED": []}
     n_incomplete = 0
     n_statutory = 0
     basis_key = p.improvement_basis.value
@@ -150,8 +153,14 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
             cur = qm[fp][m]
             res = {}
             for key, pf in prev_fp.items():
-                pv = qm[pf][m] if comparable[key] and pf in qm else None
-                chg, unit = F.change(m, cur, pv)
+                if m == M.NET_DEBT_EBITDA:
+                    c2, pv, base_used = F.nd_ebitda_pair(rows, fp, pf) if comparable[key] else (None, None, "NONE")
+                    chg, unit = F.change(m, c2, pv)
+                    if chg is not None:
+                        nd_bases[base_used].append(f"{fp} {key}")
+                else:
+                    pv = qm[pf][m] if comparable[key] and pf in qm else None
+                    chg, unit = F.change(m, cur, pv)
                 res[key] = (chg, unit, F.direction(m, chg, unit))
             mc.append(MetricChange(name=m, value=cur, qoq_change=res["QOQ"][0], yoy_change=res["YOY"][0],
                                    change_unit=res["QOQ"][1], qoq_direction=res["QOQ"][2], yoy_direction=res["YOY"][2]))
@@ -184,6 +193,14 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
         quarters.append(QuarterRow(fiscal_period=fp, period_end_date=pe, disclosure_date=r["disclosure_date"].date(),
                                    tms29_comparable=F.tms29_comparable(pe), metrics=mc, reactions=reacts))
 
+    if nd_bases["LTM"] or nd_bases["ANNUALISED"]:
+        parts = []
+        if nd_bases["ANNUALISED"]:
+            parts.append(f"yıllıklandırılmış (çeyreklik FAVÖK x4, iki dönemde de): {', '.join(nd_bases['ANNUALISED'])}")
+        if nd_bases["LTM"]:
+            parts.append(f"LTM (iki dönemde de 4 ardışık çeyrek): {', '.join(nd_bases['LTM'])}")
+        warnings.append(make_warning(WarningCode.INSUFFICIENT_HISTORY,
+                                     "NET_DEBT_EBITDA değişim tabanı aynı iki uçta hesaplandı; " + "; ".join(parts)))
     if pre_tms:
         warnings.append(make_warning(
             WarningCode.PRE_TMS29_NOT_COMPARABLE,

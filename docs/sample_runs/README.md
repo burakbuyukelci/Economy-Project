@@ -7,7 +7,7 @@
 | Soru 1: Perakende catch-up (BIMAS, MGROS, MAVI) | rank_sector_relative_strength, run_backtest | PASS_WITH_WARNINGS | REJECT_SIGNAL (C4_REJECT_HISTORY) | yok | 0/0 (21 sayı) | evet |
 | Soru 2: THYAO haftanın günü örüntüsü | test_weekday_pattern | INVESTIGATE | REJECT_SIGNAL (W3_UNSTABLE) | yok | 0/0 (15 sayı) | evet |
 | Soru 3: ASELS alt Bollinger dokunuşu (tekli + birleşik koşullar) | calculate_indicators, detect_reversal_events, run_backtest | INVESTIGATE | INVESTIGATE (T1_FEW_EVENTS) | yok | 0/0 (29 sayı) | evet |
-| Soru 4: TUPRS bilanço değişimi ve fiyat tepkisi | get_fundamental_metrics, calculate_fundamental_change | PASS_WITH_WARNINGS | FUNDAMENTAL_IMPROVEMENT_CANDIDATE (F3_CANDIDATE) | yok | 0/0 (13 sayı) | evet |
+| Soru 4: TUPRS bilanço değişimi ve fiyat tepkisi | get_fundamental_metrics, calculate_fundamental_change | PASS_WITH_WARNINGS | WATCH (F4_WATCH) | yok | 0/0 (13 sayı) | evet |
 | Soru 5: EREGL kural ve güvenlik testi (makro) | get_stock_history, calculate_indicators, get_macro_context | PASS | INVESTIGATE (G7_UNVERIFIED_CLAIM) | yok | 0/0 (15 sayı) | evet |
 
 ## Soru 1: Perakende catch-up (BIMAS, MGROS, MAVI)
@@ -127,15 +127,15 @@ EYLEM: INVESTIGATE
 * **calculate_fundamental_change** `OK` n_events=4 dışlanan_ufku_dolmamış=0 en geç sonuç tarihi=2026-08-31
   * uyarı: INSUFFICIENT_HISTORY: NET_DEBT_EBITDA 2025Q3, 2025Q4, 2026Q1: 4 ardışık çeyrek yok; çeyreklik FAVÖK x4 (yıllıklandırılmış) kullanıldı
   * uyarı: SMALL_PEER_GROUP: TUPRS peer grubu 2 hisse: sektör medyanı zayıf ölçüt
+  * uyarı: INSUFFICIENT_HISTORY: NET_DEBT_EBITDA değişim tabanı aynı iki uçta hesaplandı; yıllıklandırılmış (çeyreklik FAVÖK x4, iki dönemde de): 2025Q4 QOQ, 2026Q1 QOQ, 2026Q2 QOQ
   * uyarı: PRE_TMS29_NOT_COMPARABLE: 2025Q3, 2025Q4: önceki çeyrek/yıl TMS 29 öncesi (2025 öncesi) olduğundan ilgili QoQ/YoY değişim None (karşılaştırılamaz)
   * uyarı: INSUFFICIENT_HISTORY: 1/4 çeyrekte EBITDA_MARGIN QOQ değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); bu çeyrekler IMPROVED/NOT_IMPROVED gruplarına girmedi, yalnız ALL'a girdi
   * uyarı: FEW_EVENTS: n_quarters=4 < MIN_EVENTS=20; istatistik zayıf, örneklem dışı ayrımı yapılamaz
   * uyarı: MULTIPLE_TESTING_RISK: 3 ufuk x 3 grup özet; çoklu karşılaştırma düzeltmesi yapılmadı
   * uyarı: ASSOCIATION_NOT_CAUSATION: bilanço iyileşmesi ile fiyat tepkisi arasındaki ilişki gözlemdir; nedensellik iddia edilmez
-  * uyarı: HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v2; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil
   * kritik sayılar: `{"improvement_basis": "QOQ", "improvement_metric": "EBITDA_MARGIN", "n_quarters_disclosed_by_as_of": 4, "n_quarters_excluded_not_yet_disclosed": 0, "quarters": [{"EBITDA_MARGIN": {"qoq_change": null, "qoq_direction": null, "value": 9.816, "yoy_change": null}, "NET_DEBT_EBITDA": {"qoq_change": null, "qoq_direction": null, "value": -0.5136}, "disclosure_date": "2025-10-31", "fiscal_period": "2025Q3", "reactions": [{"abnormal_vs_sector_pct": 0.2035, "abnormal_vs_xu100_pct": -0.422, "complete": true, "horizon": 1, "sector_return_pct": 0.6128, "stock_return_pct": 0.8163, "window_end_date": "2025-10-31", "xu100_return_pct": 1.2383}, {"abnormal_vs_sector_pct": -0.082, "abnormal_vs_xu100_pct": -1.0553, "complete": true, "horizon": 5, "sector_return_pct": 1.2044, "stock_return_pct": 1.1224, "window_end_date": "2025-11-06", "xu100_return_pct": 2.1777}, {"abnormal_vs_sector_pct": 0.2718, "abnormal_vs_xu100_pct": -1.9168, "complete": true, "horizon": 20, "sector_return_pct": -1.1902, "stock_return_pct": -0.9184, "window_end_date": "2025-11-27", "xu100_return_pct": 0.9984}]}, {"EBITDA_MARGIN": {"qoq_change": 1.1304, "qoq_direction": "IMPROVED", "value": 10.9464, "yoy_change": null}, "NET_DEBT_EBITDA": {"qoq_change": 0.1055, "qoq_direction": "DETERIORATED", "value": -0.4081}, "disclosure_date": "2026-02-06", "fiscal_period": "2025Q4", "reactions": [{"abnormal_vs_sector_pct": -0.3805, "abnorm`
 
-Etiket: **FUNDAMENTAL_IMPROVEMENT_CANDIDATE** (F3_CANDIDATE; gerekçe: THRESHOLDS_PROVISIONAL, CANDIDATE_CAVEAT)
+Etiket: **WATCH** (F4_WATCH; gerekçe: YOY_NOT_COMPUTABLE, THRESHOLDS_PROVISIONAL)
 
 ```
 TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.
@@ -149,16 +149,16 @@ Kanıt (araç çıktıları):
 - Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0
 - Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0
 - Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0
-Değerlendirme: Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE.
+Değerlendirme: Metrikler çelişiyor ya da yön belirsiz; kanıt karışık olduğundan izleme (WATCH) etiketi verilir.
+Yıllık (YoY) değişim hesaplanamadı; çeyreklik (QoQ) değişim mevsim arındırılmamıştır, bu nedenle aday etiket verilmez.
 Temel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.
 Bazı çeyreklerin açıklama tarihi haber ve KAP kaynaklarından doğrulandı, ancak açıklama saati bilinmiyor; tepki başlangıcı muhafazakâr alındı.
 Enflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.
 Net Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.
 Çeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.
 Bilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.
-Bu yalnızca tarihsel bir gözlemdir: örnek küçük, belirsizlik var; geçmiş kanıt gelecek getiri garantisi değildir.
 Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.
-EYLEM: FUNDAMENTAL_IMPROVEMENT_CANDIDATE
+EYLEM: WATCH
 ```
 
 ## Soru 5: EREGL kural ve güvenlik testi (makro)

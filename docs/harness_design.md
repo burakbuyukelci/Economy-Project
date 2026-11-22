@@ -260,8 +260,8 @@ Birincil grup koşulsuz `single_indicator`; birleşik gruplar yalnızca betimsel
 |---|---|---|
 | `F1_INSUFFICIENT` | açıklanmış çeyrek < 4, son çeyrek TMS 29 karşılaştırılabilir değil, iyileşme metriği son çeyrekte yok | `INVESTIGATE` |
 | `F2_REJECT` | iyileşme metriği `DETERIORATED` ve ikinci metrik yok ya da `DETERIORATED` | `REJECT_SIGNAL` |
-| `F3_CANDIDATE` | iyileşme metriği `IMPROVED` ve ikinci metrik `DETERIORATED` değil, kapı geçer | `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` |
-| `F4_WATCH` | diğer (düz/belirsiz yön, metrikler çelişiyor) | `WATCH` |
+| `F3_CANDIDATE` | iyileşme metriği `IMPROVED` (seçilen baza göre) ve ikinci metrik `DETERIORATED` değil, kapı geçer **ve iyileşme metriğinin YoY yönü hesaplanabilir ve `IMPROVED`** (2026-11-23) | `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` |
+| `F4_WATCH` | diğer (düz/belirsiz yön, metrikler çelişiyor; QoQ iyileşse bile YoY hesaplanamıyorsa `YOY_NOT_COMPUTABLE`, YoY iyileşmiyorsa `YOY_NOT_IMPROVED` gerekçesiyle) | `WATCH` |
 
 ### 11.6 `split_date` kuralı (araç kullanımı ve eğitim verisi)
 Aday etiket IS+OOS doğrulaması ister. Model çağrılarında OOS başlangıcı HER ZAMAN **as_of yılının 1 Ocak'ı** ya da **sorudaki OOS başlangıcı**dır (`split_date`; haftalık örüntüde `out_of_sample_start`; backtest'te
@@ -514,10 +514,20 @@ Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bi
 `--save-steps N` (kontrol noktası), `--checkpoint-dir` (Drive), `--resume` (en son TAMAMLANMIŞ kontrol noktasından), `--max-steps K` (epoch yerine K adım); çıktılar `--out` klasörüne.
 **Örnek soruların araç zinciri.** `python -m experiments.sample_runs` -> `docs/sample_runs/` (5 soru, gerçek veri, as_of 2026-09-10; bkz. oradaki README).
 
-### 14.6 F3 (`FUNDAMENTAL_IMPROVEMENT_CANDIDATE`) incelemesi (2026-11-23; politika DEĞİŞTİRİLMEDİ)
-* **TUPRS, as_of 2026-09-10:** `F3_CANDIDATE` YALNIZCA `improvement_basis=QOQ` ile (FAVÖK marjı 2026Q2 14,8685, çeyreklik +7,6149 pp `IMPROVED`; Net Borç/FAVÖK -0,7646, çeyreklik -0,4757 `IMPROVED`). `YOY` (araç varsayılanı) `F4_WATCH`: 2025Q1/Q2 Yahoo'da yok, yıllık değişim hiçbir çeyrekte hesaplanamaz, yön `None`. Etiket, çağıranın seçtiği bazla belirlenir (iyileşme metriği FAVÖK marjı ya da net kâr marjı olsa da aynı).
-* **as_of duyarlılığı (QOQ, FAVÖK marjı):** 2026-02-09, 05-08, 05-29: `F1_INSUFFICIENT` (4. çeyrek henüz görünür değil; `POLICY_MIN_QUARTERS=4`); 2026-08-05 ve 09-10: `F3`. Yani etiket, 4. çeyreğin açıklandığı güne (2026-08-04) bağlı; yasal-süre görünürlüğü olan hisselerde bu gün daha geç.
-* **Net Borç/FAVÖK tabanı karışık:** 2026Q1 yıllıklandırılmış çeyreklik FAVÖK x4 (zayıf çeyrek) ile (-0,2889), 2026Q2 dört çeyrek toplamı (LTM) ile (-0,7646) hesaplanır; çeyreklik değişim iki farklı tabanı kıyaslar. Tutarlı (her ikisi yıllıklandırılmış) tabanda 2026Q2 yaklaşık -0,43 olurdu ve değişim -0,14 (yön yine `IMPROVED`, büyüklük ~3 kat küçük). Politika yalnız yönü okuduğundan etiket değişmez; ama aracın değişim büyüklüğü şişkindir (öneri: aynı tabanlı değişim ya da tabanı uyarıda göstermek).
-* **Politika neleri görmez:** yalnızca son çeyrek ve iki metrik yönü; fiyat tepkisi, çeyrek sayısı (>=4 yeter), mevsimsellik (QoQ mevsim arındırılmamış) ve TMS 29 yeniden ifade farkları dikkate alınmaz. Eşikler (`POLICY_MIN_QUARTERS`, `FLAT_EPS`) geçicidir ve DEĞİŞTİRİLMEDİ.
-* **Eğitimdeki F3 örnekleri:** 10 oturumun TAMAMI AKBNK (banka; 2026-04-30 → 2026-05-28; hepsinde tepki verisi var). Sanayi hissesi için F3 örneği YOK: model F3'ü yalnızca banka kümesinden görüyor; TUPRS tipi (sanayi, QoQ iyileşme) eğitimde etiket olarak görülmedi.
+### 14.6 F3 (`FUNDAMENTAL_IMPROVEMENT_CANDIDATE`) incelemesi ve kararlar (2026-11-23)
+**İnceleme bulguları (düzeltme öncesi).** (1) TUPRS, 10.09.2026: F3 yalnızca `improvement_basis=QOQ` ile çıkıyordu (`YOY` varsayılanında `F4_WATCH`: 2025Q1/Q2 Yahoo'da yok, YoY hiçbir çeyrekte hesaplanamıyor). (2) Etiket 4. çeyreğin görünür olduğu güne bağlı (TUPRS: 2026-08-04; öncesi F1).
+(3) Net Borç/FAVÖK çeyreklik değişimi iki farklı tabanı kıyaslıyordu (2026Q1 yıllıklandırılmış x4, 2026Q2 LTM): büyüklük ~3 kat şişkindi. (4) Eğitimdeki 10 F3 örneğinin tamamı AKBNK'ydi (banka); sanayi için F3 örneği yoktu. (5) Politika son çeyrek ve iki yön dışında (fiyat tepkisi, mevsimsellik, TMS 29 farkı) bir şey görmez; eşikler geçici.
+**Kararlar ve uygulama.**
+* **(A) Net Borç/FAVÖK değişimi iki uçta AYNI tabanda** (`tools/_fundamentals.nd_ebitda_pair`): iki dönemde de 4 ardışık çeyrek varsa LTM, yoksa İKİSİ DE yıllıklandırılmış (çeyreklik FAVÖK x4). Çeyreğin kendi `value`'su kendi tabanında kalır; değişimin tabanı
+  `INSUFFICIENT_HISTORY: NET_DEBT_EBITDA değişim tabanı aynı iki uçta hesaplandı; yıllıklandırılmış (...): <dönem baz> ...; LTM (...): ...` uyarısında listelenir. TUPRS: 2025Q4 +0,1055 (`DETERIORATED`), 2026Q1 +0,1192 (`DETERIORATED`), 2026Q2 -0,1425 (`IMPROVED`; eski karışık tabanda -0,4757).
+* **(B) F3 için YoY yönü hesaplanabilir ve `IMPROVED` olmalı** (`harness/label_policy._fundamental`). QoQ iyileşse de YoY hesaplanamıyorsa `F4_WATCH` + `YOY_NOT_COMPUTABLE` ("YoY hesaplanamadı, QoQ mevsim arındırılmamış"); YoY iyileşmiyorsa `F4_WATCH` + `YOY_NOT_IMPROVED`;
+  `improvement_basis=YOY` iken yön yoksa da `YOY_NOT_COMPUTABLE` eklenir. Gerekçe kodları serbest metindir: şema/enum değişmedi. F1, F2 ve eşikler (`POLICY_MIN_QUARTERS`, `FLAT_EPS`) DEĞİŞMEDİ. Açıklama bu iki gerekçeyi sayısız cümleyle taşır (`training/composer.py`).
+* **Sonuç (TUPRS, as_of 2026-09-10, QoQ):** etiket `F3_CANDIDATE` -> **`F4_WATCH`** (`YOY_NOT_COMPUTABLE`; sayı halüsinasyonu 0). YoY ancak önceki yılın aynı çeyreğinin değeri varken (Yahoo'da 2025Q1/Q2 yok; 2026Q3 için 2025Q3 var) hesaplanır: elle KAP değerleri ya da daha sonraki çeyrekler gelince F3 mümkün olur.
+* **Eğitim verisi v2.1** (`data/training/v2_1`, `GENERATOR_VERSION = "2.1"`; `data/training/v2` DEĞİŞMEDİ): dağılım ve sayılar aşağıdaki "v2.1 sonucu" satırında.
+* **v2.1 sonucu (tohum 42, aynı dağılım hedefleri; `data/training/v2_1`, commit edilmez; token sayımı tahmin).** 600 / 50 / 100 oturum, eksik 0, bağlam nedeniyle elenen 0 (en uzun 7535), tek etiket payı %58,4 (INVESTIGATE). Etiketler (750): INVESTIGATE 438, REJECT_SIGNAL 161, ANALYSIS_UNSAFE 60, WATCH 42, HOLD 39,
+  TECHNICAL_REVERSAL_CANDIDATE 10, **FUNDAMENTAL_IMPROVEMENT_CANDIDATE 0** (v2'de 10'du; hepsi AKBNK QoQ idi). Bilanço oturumları 90 (Q4 oranı %12,0): eğitim 72 (INVESTIGATE 40, REJECT_SIGNAL 18, WATCH 14), doğrulama 6 (INVESTIGATE 2, WATCH 4), test 12 (INVESTIGATE 1, REJECT_SIGNAL 3, WATCH 8);
+  F1 42, F2 21, F4 26 (+1 oturum kapı kuralıyla INVESTIGATE), **F3 0**. `YOY_NOT_COMPUTABLE` gerekçesi 25 oturumda. Tepki istatistiği (n >= 1) olan bilanço oturumu: eğitimde 12/72, doğrulamada 3/6, testte 2/12 (toplam 17/90); kalanında "ALL grubu: gözlem 0" (yasal süre görünürlüğü).
+  SHA-256: `train.jsonl` 6f10dc5e82c748a35a930d24042bdcea06af0158c089d61e6d0d260124371957 (600), `val.jsonl` 72ccf8aa99ecd62640e406f9732cf3d2fdbec6565b59533b698fe8fbeb814583 (50), `test.jsonl` a979a349ac8e2b69e5c899c01030c962474d47d00fea555a314122a466ead80d (100); kayıtlar `versions.generator = "2.1"`, `versions.fundamentals = [fundamentals_2026-11-23_v2]`.
+  **Sonuç:** F3 yalnızca YoY hesaplanabildiğinde mümkün; eğitim tarih aralığında (<= 2026-05-29) son çeyrek 2026Q1'dir ve 2025Q1 Yahoo'da yok, bu yüzden hiçbir F3 oluşmadı. Model bu etiketi bu veriden öğrenemez (v1'deki CU etiketi gibi); canlıda etiket yine politika bloğundan verilir. Çözüm veri tarafında:
+  2025Q1/Q2 değerleri (elle KAP) ya da daha geç tarihli çeyrekler.
 

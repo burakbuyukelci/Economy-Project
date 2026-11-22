@@ -599,8 +599,20 @@ def _fundamental(env: dict[str, Any], th: PolicyThresholds, gate: str | None) ->
     if direction == "DETERIORATED" and (sec_dir is None or sec_dir == "DETERIORATED"):
         ctx.why("FUNDAMENTALS_DETERIORATING", "iyileşme metriği kötüleşiyor ve ikinci ana metrik de iyileşmiyor")
         return _finish(ctx, "FUNDAMENTAL", subject, A.REJECT_SIGNAL, "F2_REJECT", gate, provisional=True)
+    yoy_dir = entry.get("yoy_direction")
     if direction == "IMPROVED" and sec_dir != "DETERIORATED":
-        return _finish(ctx, "FUNDAMENTAL", subject, FI, "F3_CANDIDATE", gate, provisional=True)
+        # F3 için YIL ÜZERİ (YoY) yön HESAPLANABİLİR ve IMPROVED olmalı (karar 2026-11-23): QoQ mevsim arındırılmamıştır, tek başına aday kanıtı sayılmaz.
+        ctx.chk("yoy_direction_required", "F3 için YoY yönü hesaplanabilir ve IMPROVED olmalı", yoy_dir == "IMPROVED", yoy_dir, "IMPROVED",
+                f"quarters[latest].metrics[{im}].yoy_direction")
+        if yoy_dir == "IMPROVED":
+            return _finish(ctx, "FUNDAMENTAL", subject, FI, "F3_CANDIDATE", gate, provisional=True)
+        if yoy_dir is None:
+            ctx.why("YOY_NOT_COMPUTABLE", "YoY hesaplanamadı, QoQ mevsim arındırılmamış: aday etiket verilmez")
+        else:
+            ctx.why("YOY_NOT_IMPROVED", "yıllık (YoY) yön iyileşme göstermiyor: aday etiket verilmez")
+        return _finish(ctx, "FUNDAMENTAL", subject, A.WATCH, "F4_WATCH", gate, provisional=True)
+    if yoy_dir is None:
+        ctx.why("YOY_NOT_COMPUTABLE", "YoY hesaplanamadı, QoQ mevsim arındırılmamış: aday etiket verilmez")
     ctx.why("EVIDENCE_MIXED", "temel veri karışık ya da düz")
     return _finish(ctx, "FUNDAMENTAL", subject, A.WATCH, "F4_WATCH", gate, provisional=True)
 
