@@ -5,6 +5,7 @@ DOĞRULANMAMIŞ kodu tahmin etmeyiz: TCMB_POLICY_RATE kodu verilmeden indirilmez
 Önce `python -m scripts.download_macro --verify` ile her serinin EVDS'de yanıt verdiğini kontrol edin.
 
 Kullanım:
+  python -m scripts.download_macro --list-series repo      # seri kodu keşfi (politika faizi kodunu bulmak için)
   python -m scripts.download_macro --verify
   python -m scripts.download_macro --date 2026-11-21 [--start 2023-01-01]
 
@@ -118,7 +119,67 @@ def write_macro_snapshot(df: pd.DataFrame, root: Path, version: str, meta: dict)
     return d
 
 
+# --- seri arama (saf yardımcılar; testlerde sınanır) -------------------------------------------------
+_TR = str.maketrans({"İ": "i", "I": "i", "ı": "i", "ç": "c", "Ç": "c", "ğ": "g", "Ğ": "g", "ö": "o", "Ö": "o", "ş": "s", "Ş": "s",
+                     "ü": "u", "Ü": "u"})
+
+
+def fold(s: object) -> str:
+    """Türkçe harfleri ASCII'ye indirip küçültür: 'Politika Faizi' ~ 'politika faizi', 'İHALE' ~ 'ihale'."""
+    return str(s).translate(_TR).lower()
+
+
+def match_items(items: list[dict], keyword: str, fields: tuple[str, ...]) -> list[dict]:
+    """`fields` alanlarından herhangi birinde (katlanmış) anahtar kelimeyi içeren öğeler. Boş anahtar -> hepsi."""
+    k = fold(keyword)
+    return [it for it in items if any(k in fold(it.get(f, "")) for f in fields)]
+
+
+def describe_series(it: dict) -> str:
+    """Bir serieList öğesi için tek satır: kod | ad | sıklık | başlangıç. Anahtar alanlar yoksa mevcut alan adlarını gösterir."""
+    code, name = it.get("SERIE_CODE"), it.get("SERIE_NAME")
+    if code is None and name is None:
+        return f"(beklenmeyen alanlar: {sorted(it)})"
+    return f"{code} | {name} | {it.get('FREQUENCY_STR', '?')} | {it.get('START_DATE', '?')}"
+
+
 # --- ağ ----------------------------------------------------------------------------------------------
+def evds_get(path: str) -> list | dict:  # pragma: no cover - ağ
+    """Anahtarlı GET (anahtar başlıkta; ASLA yazdırılmaz). Hata durumunda yalnızca HTTP kodu yazılır."""
+    import requests
+    key = os.environ.get("EVDS_API_KEY", "").strip()
+    if not key:
+        raise SystemExit("EVDS_API_KEY yok: .env dosyasına yazın (bkz. .env.example)")
+    base = os.environ.get("EVDS_BASE_URL", EVDS_BASE_DEFAULT).rstrip("/") + "/"
+    r = requests.get(base + path, headers={"key": key}, timeout=60)
+    if r.status_code != 200:
+        raise SystemExit(f"EVDS HTTP {r.status_code} ({path.split('&')[0]}); anahtar/adres kontrol edin (yanıt gövdesi yazdırılmadı)")
+    return r.json()
+
+
+def list_series(keyword: str, max_groups: int = 8, max_series: int = 40) -> None:  # pragma: no cover - ağ
+    """EVDS veri gruplarında anahtar kelimeyi arar; eşleşen gruplarda seri kodlarını listeler (kod keşfi için).
+
+    Örn. `--list-series repo`: ad/kategori 'repo' içeren veri grupları ve içlerindeki SERIE_CODE'lar (politika faizi kodunu bulmak için)."""
+    groups = evds_get("datagroups/mode=0&type=json")
+    if isinstance(groups, dict):
+        groups = groups.get("items", [])
+    hits = match_items(groups, keyword, ("DATAGROUP_NAME", "DATAGROUP_NAME_ENG", "TOPIC_TITLE_TR", "CATEGORY_NAME"))
+    if not hits:
+        print(f"'{keyword}': veri grubu bulunamadı ({len(groups)} grup tarandı)")
+        return
+    print(f"'{keyword}': {len(hits)} veri grubu eşleşti (ilk {min(max_groups, len(hits))} gösteriliyor)")
+    for g in hits[:max_groups]:
+        gcode = g.get("DATAGROUP_CODE")
+        print(f"\n== {gcode} | {g.get('DATAGROUP_NAME')}")
+        ser = evds_get(f"serieList/type=json&code={gcode}")
+        ser = ser.get("items", []) if isinstance(ser, dict) else ser
+        for it in ser[:max_series]:
+            print("  " + describe_series(it))
+        if len(ser) > max_series:
+            print(f"  (+{len(ser) - max_series} seri daha)")
+
+
 def fetch_series(name: str, start: date, end: date) -> list[dict]:  # pragma: no cover - ağ
     import requests
     key = os.environ.get("EVDS_API_KEY", "").strip()
@@ -143,8 +204,12 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - ağ
     ap.add_argument("--start", default="2023-01-01")
     ap.add_argument("--version-no", type=int, default=1)
     ap.add_argument("--verify", action="store_true", help="her seriden son 30 günü çek, satır sayısını yaz (yazmaz)")
+    ap.add_argument("--list-series", metavar="ANAHTAR", help="EVDS veri gruplarında ara ve seri kodlarını listele (örn. repo, politika)")
     a = ap.parse_args(argv)
     load_env()
+    if a.list_series:
+        list_series(a.list_series)
+        return
     end = date.fromisoformat(a.date)
     if a.verify:
         for name in SERIES:

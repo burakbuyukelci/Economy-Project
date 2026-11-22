@@ -64,3 +64,29 @@ def test_write_snapshot_lf_immutable_and_manifest(tmp_path):
         D.write_macro_snapshot(df, tmp_path, v, {})
     with pytest.raises(ValueError):
         D.write_macro_snapshot(df, tmp_path, "snap_2026-11-21_v1", {})
+
+
+def test_fold_handles_turkish_letters():
+    assert D.fold("Politika FAİZİ") == "politika faizi" and D.fold("İHALE Işık") == "ihale isik" and D.fold("Şeker Öğün") == "seker ogun"
+
+
+def test_match_items_is_case_and_diacritic_insensitive():
+    items = [{"DATAGROUP_NAME": "Bir Hafta Vadeli REPO İhale Faiz Oranları"}, {"DATAGROUP_NAME": "Döviz Kurları"}, {"DATAGROUP_NAME": None}]
+    assert D.match_items(items, "repo", ("DATAGROUP_NAME",)) == items[:1]
+    assert D.match_items(items, "IHALE", ("DATAGROUP_NAME",)) == items[:1]
+    assert D.match_items(items, "doviz", ("DATAGROUP_NAME",)) == items[1:2]
+    assert len(D.match_items(items, "", ("DATAGROUP_NAME",))) == 3
+
+
+def test_describe_series_and_unexpected_fields():
+    assert D.describe_series({"SERIE_CODE": "TP.X", "SERIE_NAME": "Ad", "FREQUENCY_STR": "GÜNLÜK", "START_DATE": "01-01-2020"}) == "TP.X | Ad | GÜNLÜK | 01-01-2020"
+    assert "beklenmeyen" in D.describe_series({"FOO": 1})
+
+
+def test_list_series_never_prints_key(monkeypatch, capsys):
+    monkeypatch.setenv("EVDS_API_KEY", "GIZLI-ANAHTAR-123")
+    monkeypatch.setattr(D, "evds_get", lambda path: ([{"DATAGROUP_CODE": "bie_x", "DATAGROUP_NAME": "Repo ihale"}] if path.startswith("datagroups")
+                                                     else [{"SERIE_CODE": "TP.A", "SERIE_NAME": "Faiz"}]))
+    D.list_series("repo")
+    out = capsys.readouterr().out
+    assert "bie_x" in out and "TP.A | Faiz" in out and "GIZLI-ANAHTAR-123" not in out

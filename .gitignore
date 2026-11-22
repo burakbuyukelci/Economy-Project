@@ -33,3 +33,4 @@ Thumbs.db
 # v1 egitim verisi (tek komutla yeniden uretilir: python -m training.build_dataset)
 data/training/
 training/.cache/
+colab_bundle.zip
