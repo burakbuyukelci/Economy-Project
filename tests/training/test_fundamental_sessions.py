@@ -138,7 +138,7 @@ def test_model_view_keeps_only_the_latest_quarter_and_evidence_quotable_fields()
 @needs_data
 def test_model_view_still_shows_the_visibility_warnings_for_dates():
     v = model_view(CH.run({"ticker": "TUPRS", "as_of": AS_OF}), subject="TUPRS")
-    assert any("YAHOO_APPROX" in str(w) for w in v["warnings"])
+    assert any("KAP_DATE_VIA_NEWS" in str(w) for w in v["warnings"])   # TUPRS tarihleri haber/KAP doğrulamalı (saat bilinmiyor); belirsizlik uyarısı modele gider
 
 
 # --- açıklama notları -------------------------------------------------------------------------------------------------

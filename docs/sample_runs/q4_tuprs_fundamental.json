@@ -12,7 +12,7 @@
     "snap_2026-11-20_v2"
   ],
   "final_status": "ACCEPTED",
-  "final_text": "TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)\n- Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0\nDeğerlendirme: Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE.\nTemel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.\nAçıklama tarihleri Yahoo'dan alınan yaklaşık tarihlerdir; resmî KAP tarihi ve saati değildir.\nEnflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.\nNet Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.\nÇeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.\nBilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.\nBu yalnızca tarihsel bir gözlemdir: örnek küçük, belirsizlik var; geçmiş kanıt gelecek getiri garantisi değildir.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
+  "final_text": "TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)\n- Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0\nDeğerlendirme: Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE.\nTemel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.\nBazı çeyreklerin açıklama tarihi haber ve KAP kaynaklarından doğrulandı, ancak açıklama saati bilinmiyor; tepki başlangıcı muhafazakâr alındı.\nEnflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.\nNet Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.\nÇeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.\nBilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.\nBu yalnızca tarihsel bir gözlemdir: örnek küçük, belirsizlik var; geçmiş kanıt gelecek getiri garantisi değildir.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
   "gate_status": "PASS_WITH_WARNINGS",
   "id": "q4_tuprs_fundamental",
   "policy": {
@@ -58,7 +58,7 @@
       "actor": "model",
       "after_as_of": false,
       "dataset_versions": [
-        "fundamentals_2026-11-23_v1"
+        "fundamentals_2026-11-23_v2"
       ],
       "input_hash": "c5c7fa0ae3694e35abf03f59d9a1fbf1ad0f0e6ec1042c6545dfa2e2da4df491",
       "key_figures": {
@@ -85,15 +85,15 @@
       "status": "OK",
       "tool": "get_fundamental_metrics",
       "warnings": [
-        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v1; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
-        "INSUFFICIENT_HISTORY: YAHOO_APPROX: 2026Q2 dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, yaklaşık) alındı; resmî KAP tarihi/saati değil"
+        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v2; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
+        "INSUFFICIENT_HISTORY: KAP_DATE_VIA_NEWS: 2026Q2 dönemlerinin açıklama tarihi haber/KAP kaynaklarından doğrulandı; açıklama saati bilinmiyor (tepki bazı muhafazakâr: açıklamadan önceki son kapanış)"
       ]
     },
     {
       "actor": "model",
       "after_as_of": false,
       "dataset_versions": [
-        "fundamentals_2026-11-23_v1"
+        "fundamentals_2026-11-23_v2"
       ],
       "input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
       "key_figures": {
@@ -401,8 +401,8 @@
         "FEW_EVENTS: n_quarters=4 < MIN_EVENTS=20; istatistik zayıf, örneklem dışı ayrımı yapılamaz",
         "MULTIPLE_TESTING_RISK: 3 ufuk x 3 grup özet; çoklu karşılaştırma düzeltmesi yapılmadı",
         "ASSOCIATION_NOT_CAUSATION: bilanço iyileşmesi ile fiyat tepkisi arasındaki ilişki gözlemdir; nedensellik iddia edilmez",
-        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v1; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
-        "INSUFFICIENT_HISTORY: YAHOO_APPROX: 2025Q3, 2025Q4, 2026Q1, 2026Q2 dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, yaklaşık) alındı; resmî KAP tarihi/saati değil"
+        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v2; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
+        "INSUFFICIENT_HISTORY: KAP_DATE_VIA_NEWS: 2025Q3, 2025Q4, 2026Q1, 2026Q2 dönemlerinin açıklama tarihi haber/KAP kaynaklarından doğrulandı; açıklama saati bilinmiyor (tepki bazı muhafazakâr: açıklamadan önceki son kapanış)"
       ]
     },
     {

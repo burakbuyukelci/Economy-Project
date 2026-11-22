@@ -140,3 +140,49 @@ def test_manual_kap_row_overrides_statutory_row(tmp_path):
     m, _ = D.read_manual_csv(_csv(tmp_path, ["TUPRS,2026Q1,2026-03-31,2026-05-06,18:30,KAP,STANDALONE,true,111,1,1,1,1,1"]), load_universe())
     out = D.merge_sources(y, m).iloc[0]
     assert out["disclosure_source"] == "KAP_MANUAL" and out["disclosure_date"] == pd.Timestamp("2026-05-06")
+
+
+
+# --- tarih-yalnız CSV satırları (haber/KAP'tan doğrulanmış açıklama tarihi; değerler Yahoo'dan) -------------------------------
+def test_date_only_row_overrides_the_date_but_keeps_yahoo_values(tmp_path):
+    inc, bal = _frames(["2026-03-31"])
+    y = D.rows_from_frames("TUPRS", "INDUSTRIAL", inc, bal, [], pd.Timestamp("2026-11-21"))   # STATUTORY_DEADLINE 2026-05-15
+    assert y.iloc[0]["disclosure_source"] == "STATUTORY_DEADLINE"
+    m, notes = D.read_manual_csv(_csv(tmp_path, ["TUPRS,2026Q1,2026-03-31,2026-05-06,,KAP_DATE_VIA_NEWS,,,,,,,,"]), load_universe())
+    assert len(m) == 1 and m.iloc[0]["data_source"] == "DATE_ONLY" and m.iloc[0]["disclosure_source"] == "KAP_DATE_VIA_NEWS" and not notes
+    out = D.merge_sources(y, m).iloc[0]
+    assert out["disclosure_date"] == pd.Timestamp("2026-05-06") and out["disclosure_source"] == "KAP_DATE_VIA_NEWS" and pd.isna(out["disclosure_time"])
+    assert out["data_source"] == "YAHOO" and out["revenue"] == 1000.0 and out["total_financial_debt"] == 2000.0     # değerler Yahoo'dan (ezilmedi)
+
+
+def test_date_only_row_without_yahoo_values_is_dropped_and_reported(tmp_path):
+    m, _ = D.read_manual_csv(_csv(tmp_path, ["TUPRS,2025Q1,2025-03-31,2025-04-29,,KAP_DATE_VIA_NEWS,,,,,,,,"]), load_universe())
+    notes: list[str] = []
+    out = D.merge_sources(pd.DataFrame(columns=COLUMNS), m, notes)
+    assert out.empty and notes == [] or len(out) == 0
+    inc, bal = _frames(["2026-03-31"])
+    y = D.rows_from_frames("TUPRS", "INDUSTRIAL", inc, bal, [], pd.Timestamp("2026-11-21"))
+    out = D.merge_sources(y, m, notes)
+    assert list(out["fiscal_period"]) == ["2026Q1"] and any("TUPRS 2025Q1" in n and "değer yok" in n for n in notes)
+
+
+def test_date_only_row_never_beats_a_valued_kap_row_and_validates_dates(tmp_path):
+    inc, bal = _frames(["2026-03-31"])
+    y = D.rows_from_frames("TUPRS", "INDUSTRIAL", inc, bal, [], pd.Timestamp("2026-11-21"))
+    m, _ = D.read_manual_csv(_csv(tmp_path, ["TUPRS,2026Q1,2026-03-31,2026-05-06,18:30,KAP,STANDALONE,true,111,1,1,1,1,1",
+                                              "TUPRS,2026Q1,2026-03-31,2026-05-07,,KAP_DATE_VIA_NEWS,,,,,,,,"]), load_universe())
+    out = D.merge_sources(y, m).iloc[0]
+    assert out["data_source"] == "KAP_MANUAL" and out["disclosure_date"] == pd.Timestamp("2026-05-06") and out["disclosure_time"] == "18:30"
+    with pytest.raises(ValueError, match="sonra olmalı"):
+        D.read_manual_csv(_csv(tmp_path, ["TUPRS,2026Q1,2026-03-31,2026-03-30,,KAP_DATE_VIA_NEWS,,,,,,,,"]), load_universe())
+
+
+def test_real_tuprs_dates_csv_in_repo_is_valid_and_date_only():
+    from config.settings import REPO_ROOT
+    p = REPO_ROOT / "data" / "raw" / "fundamentals_kap.csv"
+    if not p.exists():
+        pytest.skip("data/raw/fundamentals_kap.csv yok")
+    m, _ = D.read_manual_csv(p, load_universe())
+    assert set(m["data_source"]) == {"DATE_ONLY"} and set(m["disclosure_source"]) == {"KAP_DATE_VIA_NEWS"} and m["disclosure_time"].isna().all()
+    got = {r["fiscal_period"]: r["disclosure_date"].date().isoformat() for _, r in m.iterrows() if r["ticker"] == "TUPRS"}
+    assert got == {"2025Q1": "2025-04-29", "2025Q2": "2025-07-29", "2025Q3": "2025-10-31", "2025Q4": "2026-02-06", "2026Q1": "2026-05-06", "2026Q2": "2026-08-04"}

@@ -1,0 +1,54 @@
+{
+  "data_version": "fundamentals_2026-11-23_v2",
+  "n_rows": 159,
+  "tickers": [
+    "AKBNK",
+    "AKSEN",
+    "ARCLK",
+    "ASELS",
+    "BIMAS",
+    "CCOLA",
+    "ECILC",
+    "EKGYO",
+    "ENJSA",
+    "ENKAI",
+    "EREGL",
+    "FROTO",
+    "GUBRF",
+    "ISMEN",
+    "KCHOL",
+    "KRDMD",
+    "MAVI",
+    "MGROS",
+    "MPARK",
+    "OYAKC",
+    "PETKM",
+    "PGSUS",
+    "SASA",
+    "TCELL",
+    "THYAO",
+    "TOASO",
+    "TRALT",
+    "TTKOM",
+    "TUPRS",
+    "TURSG"
+  ],
+  "sources": {
+    "YAHOO": 159
+  },
+  "disclosure_sources": {
+    "STATUTORY_DEADLINE": 134,
+    "YAHOO_APPROX": 21,
+    "KAP_DATE_VIA_NEWS": 4
+  },
+  "unit": "TRY_mn",
+  "first_period_end": "2025-03-31",
+  "created": "2026-11-23",
+  "yahoo_used": true,
+  "manual_csv": "fundamentals_kap.csv",
+  "notes": [
+    "TUPRS 2025Q1: tarih CSV'de var (2025-04-29) ama değer yok (Yahoo'da dönem boş); satır alınmadı",
+    "TUPRS 2025Q2: tarih CSV'de var (2025-07-29) ama değer yok (Yahoo'da dönem boş); satır alınmadı"
+  ],
+  "disclosure_rule": "YAHOO_APPROX: Yahoo earnings_dates ABD->Istanbul, saat belirsiz; KAP_MANUAL: resmi KAP"
+}

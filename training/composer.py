@@ -80,6 +80,7 @@ ASSOCIATION_NOTE = "Bilanço değişimi ile fiyat tepkisi arasındaki ilişki ya
 # Bilanço araç uyarısı (WarningCode ön eki / etiketi) -> sayısız açıklama cümlesi (modele giden uyarıdan türer; sayı içermez)
 FUNDAMENTAL_WARNING_NOTES = [
     ("STATUTORY_DEADLINE", "Bazı çeyreklerin açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı; bu çeyrekler fiyat tepkisi istatistiğine girmedi."),
+    ("KAP_DATE_VIA_NEWS", "Bazı çeyreklerin açıklama tarihi haber ve KAP kaynaklarından doğrulandı, ancak açıklama saati bilinmiyor; tepki başlangıcı muhafazakâr alındı."),
     ("YAHOO_APPROX", "Açıklama tarihleri Yahoo'dan alınan yaklaşık tarihlerdir; resmî KAP tarihi ve saati değildir."),
     ("NOT_YET_DISCLOSED_EXCLUDED", "Dönem sonu geçmiş ama analiz tarihinde henüz açıklanmamış bilançolar dışlandı."),
     ("PRE_TMS29_NOT_COMPARABLE", "Enflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı."),

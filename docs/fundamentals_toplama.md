@@ -1,5 +1,7 @@
 # TUPRS bilanço verisini KAP'tan elle toplama (arkadaş için kılavuz)
 
+> **Güncelleme (2026-11-23):** TUPRS açıklama TARİHLERİ haber/KAP'tan doğrulandı ve `data/raw/fundamentals_kap.csv`'ye tarih-yalnız satırlar olarak girildi (`source=KAP_DATE_VIA_NEWS`, saat boş, değerler Yahoo'dan). Elle DEĞER toplamak (2025Q1/Q2 için YoY) hâlâ isteğe bağlıdır; dolu değerli satır Yahoo'yu satır bazında ezer. Ayrıntı: `docs/data_dictionary.md` §21.1.
+
 Amaç: `data/raw/fundamentals_kap.template.csv` dosyasını doldurmak. Yahoo'nun çeyreklik tabloları 2025Q1–Q2'yi vermiyor ve
 açıklama tarihi/saati resmî değil; bu yüzden **TUPRS için** resmî KAP verisini elle giriyoruz. Dolu CSV, Yahoo'yu **satır bazında ezer**.
 

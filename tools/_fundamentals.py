@@ -206,6 +206,12 @@ def provenance_warnings(version: str, rows: pd.DataFrame) -> list[str]:
             WarningCode.INSUFFICIENT_HISTORY,
             f"YAHOO_APPROX: {', '.join(approx)} dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, "
             "yaklaşık) alındı; resmî KAP tarihi/saati değil"))
+    news = sorted(rows.loc[rows["disclosure_source"] == "KAP_DATE_VIA_NEWS", "fiscal_period"])
+    if news:
+        out.append(make_warning(
+            WarningCode.INSUFFICIENT_HISTORY,
+            f"KAP_DATE_VIA_NEWS: {', '.join(news)} dönemlerinin açıklama tarihi haber/KAP kaynaklarından doğrulandı; açıklama saati bilinmiyor "
+            "(tepki bazı muhafazakâr: açıklamadan önceki son kapanış)"))
     stat = sorted(rows.loc[rows["disclosure_source"] == "STATUTORY_DEADLINE", "fiscal_period"])
     if stat:
         out.append(make_warning(

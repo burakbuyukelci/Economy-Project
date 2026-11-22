@@ -46,7 +46,9 @@ def fiscal_period_of(period_end: pd.Timestamp) -> str:
 def read_manual_csv(path: Path, universe: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     """Elle CSV'yi doğrular ve standart sütunlara çevirir. Dönüş (tablo, atlanan_satır_notları).
 
-    Atlanan: disclosure_date boş veya hiçbir finansal alanı dolu olmayan satırlar (şablonun boş satırları Yahoo'yu EZMEZ)."""
+    Atlanan: disclosure_date boş satırlar (şablonun boş satırları Yahoo'yu EZMEZ).
+    TARİH-YALNIZ satır (disclosure_date dolu, hiçbir finansal alan dolu değil): `data_source="DATE_ONLY"`; birleştirmede Yahoo değerleri KORUNUR, yalnızca açıklama
+    tarihi/saati ve kaynağı (`source` sütunu, örn. KAP_DATE_VIA_NEWS) CSV'den gelir. Dolu değerli satır Yahoo'yu satır bazında tamamen EZER (KAP_MANUAL)."""
     if not path.exists():
         return pd.DataFrame(columns=COLUMNS), []
     raw = pd.read_csv(path, dtype=str).apply(lambda s: s.str.strip() if s.dtype == object else s)
@@ -58,9 +60,10 @@ def read_manual_csv(path: Path, universe: pd.DataFrame) -> tuple[pd.DataFrame, l
     mset = dict(zip(universe["ticker"], np.where(universe["sector_label"].str.contains("Bank", case=False), "BANK", "INDUSTRIAL")))
     for i, r in raw.iterrows():
         fin = [r[c] for c in ("revenue", "ebitda", "net_profit", "total_financial_debt", "cash_and_equivalents", "equity")]
-        if pd.isna(r["disclosure_date"]) or all(pd.isna(x) for x in fin):
+        if pd.isna(r["disclosure_date"]):
             notes.append(f"satır {i + 2} ({r['ticker']} {r['fiscal_period']}): boş, atlandı")
             continue
+        date_only = all(pd.isna(x) for x in fin)
         if r["ticker"] not in mset:
             raise ValueError(f"satır {i + 2}: {r['ticker']} evrende yok")
         fp = r["fiscal_period"]
@@ -77,7 +80,8 @@ def read_manual_csv(path: Path, universe: pd.DataFrame) -> tuple[pd.DataFrame, l
         if t is not None:
             datetime.strptime(t, "%H:%M")
         row = {"ticker": r["ticker"], "fiscal_period": fp, "period_end_date": pe, "disclosure_date": dd, "disclosure_time": t,
-               "disclosure_source": "KAP_MANUAL", "data_source": "KAP_MANUAL", "report_basis": basis,
+               "disclosure_source": (str(r["source"]).strip() if pd.notna(r["source"]) and str(r["source"]).strip() else "KAP_DATE_ONLY") if date_only else "KAP_MANUAL",
+               "data_source": "DATE_ONLY" if date_only else "KAP_MANUAL", "report_basis": basis,
                "tms29_restated": (str(r["tms29_restated"]).lower() == "true") if pd.notna(r["tms29_restated"]) else None,
                "metric_set": mset[r["ticker"]], "net_interest_income": np.nan}
         for c in ("revenue", "ebitda", "net_profit", "total_financial_debt", "cash_and_equivalents", "equity"):
@@ -180,14 +184,28 @@ def yahoo_rows(ticker: str, yahoo_symbol: str, metric_set: str) -> pd.DataFrame:
 
 
 # --- birleştirme + yazım ---------------------------------------------------------------------------
-def merge_sources(yahoo: pd.DataFrame, manual: pd.DataFrame) -> pd.DataFrame:
-    """CSV varsa Yahoo'yu EZER (aynı ticker+dönem, satır bazında). Yalnızca 2025+ dönemler. Sıralı, tekrarsız."""
-    both = pd.concat([x for x in (yahoo, manual) if len(x)], ignore_index=True) if (len(yahoo) or len(manual)) else pd.DataFrame(columns=COLUMNS)
+def merge_sources(yahoo: pd.DataFrame, manual: pd.DataFrame, notes: list[str] | None = None) -> pd.DataFrame:
+    """CSV'de DEĞERLİ satır varsa Yahoo'yu EZER (aynı ticker+dönem, satır bazında). TARİH-YALNIZ satır Yahoo satırının değerlerini korur ve yalnızca
+    açıklama tarihi/saati/kaynağını değiştirir; o dönem için Yahoo satırı yoksa (değer yok) satır ALINMAZ (`notes`'a yazılır). Yalnızca 2025+ dönemler. Sıralı, tekrarsız."""
+    date_only = manual.loc[manual["data_source"] == "DATE_ONLY"] if len(manual) else manual
+    full = manual.loc[manual["data_source"] != "DATE_ONLY"] if len(manual) else manual
+    both = pd.concat([x for x in (yahoo, full) if len(x)], ignore_index=True) if (len(yahoo) or len(full)) else pd.DataFrame(columns=COLUMNS)
     if both.empty:
         return both
     both["_pri"] = (both["data_source"] == "KAP_MANUAL").astype(int)
     both = both.sort_values(["ticker", "fiscal_period", "_pri"]).drop_duplicates(["ticker", "fiscal_period"], keep="last").drop(columns="_pri")
-    both = both.loc[pd.to_datetime(both["period_end_date"]) >= FIRST_PERIOD_END]
+    both = both.loc[pd.to_datetime(both["period_end_date"]) >= FIRST_PERIOD_END].reset_index(drop=True)
+    for _, d in date_only.iterrows():
+        m = (both["ticker"] == d["ticker"]) & (both["fiscal_period"] == d["fiscal_period"])
+        if not m.any():
+            if notes is not None:
+                notes.append(f"{d['ticker']} {d['fiscal_period']}: tarih CSV'de var ({pd.Timestamp(d['disclosure_date']).date()}) ama değer yok (Yahoo'da dönem boş); satır alınmadı")
+            continue
+        if (both.loc[m, "data_source"] == "KAP_MANUAL").any():
+            continue                      # değerli KAP satırı zaten kendi tarihini taşır
+        both.loc[m, "disclosure_date"] = pd.Timestamp(d["disclosure_date"])
+        both.loc[m, "disclosure_time"] = d["disclosure_time"]
+        both.loc[m, "disclosure_source"] = d["disclosure_source"]
     return both[COLUMNS].sort_values(["ticker", "period_end_date"]).reset_index(drop=True)
 
 
@@ -240,7 +258,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - ağ
             frames.append(f)
             print(f"{u['ticker']}: Yahoo {len(f)} dönem")
     yahoo = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=COLUMNS)
-    df = merge_sources(yahoo, manual)
+    df = merge_sources(yahoo, manual, notes)
     version = f"fundamentals_{a.date}_v{a.version_no}"
     meta = {"created": a.date, "yahoo_used": not a.no_yahoo, "manual_csv": Path(a.manual).name, "notes": notes,
             "disclosure_rule": "YAHOO_APPROX: Yahoo earnings_dates ABD->Istanbul, saat belirsiz; KAP_MANUAL: resmi KAP"}
