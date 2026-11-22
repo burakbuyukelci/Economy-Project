@@ -135,6 +135,7 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
     group_of: dict[str, str | None] = {}
     pre_tms: list[str] = []
     n_incomplete = 0
+    n_statutory = 0
     basis_key = p.improvement_basis.value
     for fp in fps:
         r = rows.loc[fp]
@@ -156,7 +157,12 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
                                    change_unit=res["QOQ"][1], qoq_direction=res["QOQ"][2], yoy_direction=res["YOY"][2]))
             dirs[m.value] = res
         group_of[fp] = dirs[imp.value][basis_key][2]
-        # tepki
+        # tepki (açıklama tarihi yasal süreden VARSAYILDIYSA tepki hesaplanmaz: tarih gerçek değil)
+        if r["disclosure_source"] == "STATUTORY_DEADLINE":
+            n_statutory += 1
+            quarters.append(QuarterRow(fiscal_period=fp, period_end_date=pe, disclosure_date=r["disclosure_date"].date(),
+                                       tms29_comparable=F.tms29_comparable(pe), metrics=mc, reactions=[]))
+            continue
         base = reaction_base_pos(cal, r["disclosure_date"], r["disclosure_time"] if pd.notna(r["disclosure_time"]) else None)
         reacts: list[QuarterReaction] = []
         for h in p.reaction_horizons:
@@ -185,9 +191,10 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
 
     # --- özet ---
     summary: list[ReactionSummary] = []
+    react_qs = [q for q in quarters if q.reactions]  # yasal süre görünürlüklü çeyrekler tepki istatistiğine girmez
     for h in p.reaction_horizons:
         for g in (ReactionGroup.IMPROVED, ReactionGroup.NOT_IMPROVED, ReactionGroup.ALL):
-            sel = [q for q in quarters if g == ReactionGroup.ALL
+            sel = [q for q in react_qs if g == ReactionGroup.ALL
                    or (g == ReactionGroup.IMPROVED and group_of[q.fiscal_period] == "IMPROVED")
                    or (g == ReactionGroup.NOT_IMPROVED and group_of[q.fiscal_period] in ("DETERIORATED", "FLAT"))]
             rs = [next(x for x in q.reactions if x.horizon == h) for q in sel]
@@ -203,18 +210,24 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
                 median_abnormal_vs_sector_pct=_r(float(np.median(asec))) if asec else None))
 
     n_q = len(quarters)
-    n_nodir = sum(1 for fp in fps if group_of[fp] is None)
+    n_react = len(react_qs)
+    n_nodir = sum(1 for q in react_qs if group_of[q.fiscal_period] is None)
     if n_nodir:
         warnings.append(make_warning(
             WarningCode.INSUFFICIENT_HISTORY,
-            f"{n_nodir}/{n_q} çeyrekte {imp.value} {basis_key} değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); "
+            f"{n_nodir}/{n_react} çeyrekte {imp.value} {basis_key} değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); "
             "bu çeyrekler IMPROVED/NOT_IMPROVED gruplarına girmedi, yalnız ALL'a girdi"))
     if n_incomplete:
         warnings.append(make_warning(WarningCode.INCOMPLETE_HORIZON_EXCLUDED,
                                      f"{n_incomplete} (çeyrek x ufuk) penceresi as_of'u aşıyor; istatistiğe katılmadı"))
-    if n_q < MIN_EVENTS:
+    if n_statutory:
+        warnings.append(make_warning(
+            WarningCode.INSUFFICIENT_HISTORY,
+            f"{n_statutory}/{n_q} çeyreğin açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı; bu çeyrekler metrik/değişim hesabında "
+            "görünür, fiyat tepkisine ve tepki istatistiklerine girmedi"))
+    if n_react < MIN_EVENTS:
         warnings.append(make_warning(WarningCode.FEW_EVENTS,
-                                     f"n_quarters={n_q} < MIN_EVENTS={MIN_EVENTS}; istatistik zayıf, örneklem dışı ayrımı yapılamaz"))
+                                     f"n_quarters={n_react} < MIN_EVENTS={MIN_EVENTS}; istatistik zayıf, örneklem dışı ayrımı yapılamaz"))
     warnings.append(make_warning(WarningCode.MULTIPLE_TESTING_RISK,
                                  f"{len(p.reaction_horizons)} ufuk x 3 grup özet; çoklu karşılaştırma düzeltmesi yapılmadı"))
     warnings.append(make_warning(WarningCode.ASSOCIATION_NOT_CAUSATION,
@@ -227,7 +240,7 @@ def _handler(p: CalculateFundamentalChangeParams, snap: Snapshot, fund_version: 
         ticker=p.ticker, metric_set=mset, benchmark_definition=bench, improvement_metric=imp, improvement_basis=basis_key,
         n_quarters_disclosed_by_as_of=len(rows), n_quarters_excluded_not_yet_disclosed=n_pending,
         quarters=quarters, reaction_summary=summary)
-    return ToolOutput(results=res, n_events=n_q, n_excluded_incomplete_horizon=n_incomplete, warnings=warnings)
+    return ToolOutput(results=res, n_events=n_react, n_excluded_incomplete_horizon=n_incomplete, warnings=warnings)
 
 
 def run(params: dict) -> dict:

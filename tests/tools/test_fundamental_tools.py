@@ -310,3 +310,84 @@ def test_real_tuprs_soru4_shape():
     g = GM.run({"ticker": "TUPRS", "as_of": AS_OF})
     validate_envelope(g)
     assert g["results"]["disclosure_date"] <= AS_OF
+
+
+# --- yasal süre görünürlüğü (açıklama tarihi bilinmeyen dönemler) ----------------------------------------
+STAT_DISC = "2026-05-15"  # 2026Q1 dönem sonu 31 Mar + 45 gün
+
+
+def _table_stat(values_after=None):
+    t = _table()
+    m = (t["ticker"] == "TUPRS") & (t["fiscal_period"] == "2026Q1")
+    t.loc[m, "disclosure_date"] = pd.Timestamp(STAT_DISC)
+    t.loc[m, "disclosure_source"] = "STATUTORY_DEADLINE"
+    t.loc[m, "data_source"] = "YAHOO"
+    if values_after is not None:
+        t.loc[m, ["revenue", "ebitda"]] = values_after
+    return t
+
+
+@pytest.fixture()
+def env_stat(tmp_path):
+    _prices(tmp_path)
+    write_fundamentals_snapshot(_table_stat(), tmp_path, FV, {})
+    return tmp_path
+
+
+STAT_TEXT = "açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı"
+
+
+def test_statutory_row_is_hidden_until_deadline_inclusive(env_stat):
+    assert _gm(env_stat, as_of="2026-05-14")["results"]["fiscal_period"] == "2025Q4"
+    e = _gm(env_stat, as_of="2026-05-14")
+    assert any(w.startswith("NOT_YET_DISCLOSED_EXCLUDED") for w in e["warnings"])  # dönem bitmiş, 'açıklanmamış' sayılır
+    on = _gm(env_stat, as_of=STAT_DISC)
+    assert on["results"]["fiscal_period"] == "2026Q1" and on["results"]["disclosure_date"] == STAT_DISC
+    assert any(STAT_TEXT in w and "2026Q1" in w for w in on["warnings"])
+
+
+def test_statutory_metrics_visible_but_not_in_reactions_or_stats(env_stat, tmp_path_factory):
+    plain = tmp_path_factory.mktemp("plain")
+    _prices(plain)
+    write_fundamentals_snapshot(_table(), plain, FV, {})
+    e, base = _ch(env_stat), _ch(plain)
+    q = _q(e, "2026Q1")
+    assert q["reactions"] == [] and q["disclosure_date"] == STAT_DISC
+    assert _mc(q, "EBITDA_MARGIN")["value"] == 12.0  # metrik/değişim hesabında GÖRÜNÜR
+    assert _mc(q, "EBITDA_MARGIN")["qoq_change"] == 2.0
+    # QoQ zinciri bozulmaz: 2026Q2 kendi değişimini 2026Q1'e göre hesaplar
+    assert _mc(_q(e, "2026Q2"), "EBITDA_MARGIN")["qoq_change"] == _mc(_q(base, "2026Q2"), "EBITDA_MARGIN")["qoq_change"]
+    # diğer çeyreklerin tepkileri değişmez
+    assert _q(e, "2026Q2")["reactions"] == _q(base, "2026Q2")["reactions"]
+    # istatistik: ALL grubunda tepki taşıyan çeyrek sayısı bir azalır, statutory çeyrek ne n ne dışlanan sayısına girer
+    for h in (1, 5, 20):
+        a = next(s for s in e["results"]["reaction_summary"] if s["horizon"] == h and s["group"] == "ALL")
+        b = next(s for s in base["results"]["reaction_summary"] if s["horizon"] == h and s["group"] == "ALL")
+        assert a["n"] + a["n_excluded_incomplete_horizon"] == b["n"] + b["n_excluded_incomplete_horizon"] - 1
+    assert e["n_events"] == base["n_events"] - 1
+    assert e["results"]["n_quarters_disclosed_by_as_of"] == base["results"]["n_quarters_disclosed_by_as_of"]
+
+
+def test_statutory_warning_text_and_counts(env_stat):
+    e = _ch(env_stat)
+    validate_envelope(e)
+    w = [x for x in e["warnings"] if "STATUTORY" not in x and STAT_TEXT in x]
+    assert len(w) >= 1 and any("1/6 çeyreğin" in x for x in w)  # yalnızca ilgili çeyrek, sayı ayrı raporlanır
+    assert any(x.startswith("INSUFFICIENT_HISTORY: STATUTORY_DEADLINE: 2026Q1") for x in e["warnings"])
+
+
+def test_statutory_row_values_after_as_of_never_leak(env_stat, tmp_path_factory):
+    # as_of yasal süre görünürlüğünden ÖNCE: satırın değerleri (ve tepkisi) hiçbir şeyi etkilemez
+    base = _ch(env_stat, as_of="2026-05-14")
+    other = tmp_path_factory.mktemp("s")
+    _prices(other)
+    write_fundamentals_snapshot(_table_stat(values_after=9e9), other, FV, {})
+    assert _ch(other, as_of="2026-05-14")["results"] == base["results"]
+    assert "2026Q1" not in [q["fiscal_period"] for q in base["results"]["quarters"]]
+
+
+def test_statutory_after_deadline_without_reaction_window_complete_flags_untouched(env_stat):
+    e = _ch(env_stat, as_of="2026-08-14")
+    assert _q(e, "2026Q1")["reactions"] == []
+    assert e["n_excluded_incomplete_horizon"] >= 1  # yalnızca 2026Q2'nin 20 günlük penceresi; statutory çeyrek bunu şişirmez
+    assert sum(1 for q in e["results"]["quarters"] for r in q["reactions"] if not r["complete"]) == e["n_excluded_incomplete_horizon"]

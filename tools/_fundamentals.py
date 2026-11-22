@@ -206,4 +206,10 @@ def provenance_warnings(version: str, rows: pd.DataFrame) -> list[str]:
             WarningCode.INSUFFICIENT_HISTORY,
             f"YAHOO_APPROX: {', '.join(approx)} dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, "
             "yaklaşık) alındı; resmî KAP tarihi/saati değil"))
+    stat = sorted(rows.loc[rows["disclosure_source"] == "STATUTORY_DEADLINE", "fiscal_period"])
+    if stat:
+        out.append(make_warning(
+            WarningCode.INSUFFICIENT_HISTORY,
+            f"STATUTORY_DEADLINE: {', '.join(stat)} dönemlerinin açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı "
+            "(dönem sonu + yasal süre; gerçek açıklama daha erken olabilir); bu dönemler fiyat tepkisi analizine girmez"))
     return out

@@ -5,7 +5,8 @@ Kaynaklar (satır bazında `data_source`):
   * YAHOO      : yfinance çeyreklik gelir tablosu/bilanço, 2025Q1+ (delikli olabilir; boş satırlar atlanır).
   * KAP_MANUAL : data/raw/fundamentals_kap.csv (elle, resmî KAP). Aynı (ticker, dönem) için CSV, Yahoo'yu EZER (satır bazında).
 Açıklama tarihi: Yahoo `earnings_dates` ABD saatiyle damgalı -> Europe/Istanbul'a çevrilir, `disclosure_source=YAHOO_APPROX`,
-saat BELİRSİZ kabul edilir (disclosure_time boş; tepki bazı muhafazakâr). KAP_MANUAL satırlarda tarih/saat resmî KAP'tan.
+saat BELİRSİZ kabul edilir (disclosure_time boş; tepki bazı muhafazakâr). Eşleşmeyen dönemde `STATUTORY_DEADLINE`:
+görünürlük tarihi = dönem sonu + yasal süre (geç olan; muhafazakâr); bu satırlar fiyat tepkisine GİRMEZ. KAP_MANUAL satırlarda tarih/saat resmî KAP'tan.
 Kullanım: python -m scripts.download_fundamentals [--date 2026-11-21] [--no-yahoo] [--tickers TUPRS,AKBNK]
 """
 from __future__ import annotations
@@ -116,7 +117,7 @@ def assign_disclosures(period_ends: list[pd.Timestamp], earnings_dates: list[pd.
     Kurallar (Yahoo tarihleri güvenilmezdir; ARCLK 2026Q3 -> 2027 projeksiyonu, ASELS 2026Q2 -> başka çeyreğin tarihi görüldü):
       * `cutoff` (indirme günü) SONRASI tarih projeksiyondur -> kullanılmaz.
       * Bir tarih yalnızca BİR döneme atanır (önce eski dönem).
-    earnings_dates: tz-naive İstanbul zamanı. Eşleşme yoksa dönem atlanır. Örn. TUPRS 2025Q2 (30 Haz) -> 2025-07-29."""
+    earnings_dates: tz-naive İstanbul zamanı. Eşleşme yoksa dönem eşleşmez (çağıran yasal süre görünürlüğüne düşer). Örn. TUPRS 2025Q2 (30 Haz) -> 2025-07-29."""
     out: dict[pd.Timestamp, pd.Timestamp] = {}
     used: set[pd.Timestamp] = set()
     eds = sorted({e.normalize() for e in earnings_dates if cutoff is None or e.normalize() <= cutoff})
@@ -137,17 +138,21 @@ def _pick(frame: pd.DataFrame, names: list[str], col) -> float:
     return np.nan
 
 
-def yahoo_rows(ticker: str, yahoo_symbol: str, metric_set: str) -> pd.DataFrame:  # pragma: no cover - ağ
-    import warnings
-    import yfinance as yf
-    warnings.filterwarnings("ignore")
-    t = yf.Ticker(yahoo_symbol)
-    inc, bal = t.quarterly_income_stmt, t.quarterly_balance_sheet
-    ed = t.get_earnings_dates(limit=24)
-    ed_ist = [] if ed is None or ed.empty else [x.tz_convert("Europe/Istanbul").tz_localize(None) for x in ed.index]
-    cols = sorted((set(inc.columns) | set(bal.columns)))
+def statutory_date(period_end: pd.Timestamp) -> pd.Timestamp:
+    """Açıklama tarihi bilinmeyen dönem için GÖRÜNÜRLÜK tarihi = dönem sonu + yasal süre (muhafazakâr: geç olan; MAX_DISCLOSURE_LAG_DAYS).
+
+    Gerçek açıklama bundan önce olmuş olabilir; veri as_of'ta bu tarihe kadar GİZLENİR (sızıntıdan kaçınmak için). Bu satırlar fiyat tepkisine girmez."""
+    return period_end.normalize() + pd.Timedelta(days=MAX_DISCLOSURE_LAG_DAYS[(period_end.month - 1) // 3 + 1])
+
+
+def rows_from_frames(ticker: str, metric_set: str, inc: pd.DataFrame, bal: pd.DataFrame, ed_ist: list[pd.Timestamp],
+                     cutoff: pd.Timestamp) -> pd.DataFrame:
+    """Yahoo tabloları + İstanbul saatli earnings tarihleri -> satırlar (saf; testlerde sınanır).
+
+    Tarih eşleşirse `YAHOO_APPROX`; eşleşmezse `STATUTORY_DEADLINE` (görünürlük = dönem sonu + yasal süre). Finansal değeri olmayan dönem alınmaz."""
+    cols = sorted(set(inc.columns) | set(bal.columns))
     period_ends = [pd.Timestamp(c) for c in cols if pd.Timestamp(c) >= FIRST_PERIOD_END]
-    disc = assign_disclosures(period_ends, ed_ist, pd.Timestamp(date.today()))
+    disc = assign_disclosures(period_ends, ed_ist, cutoff)
     rows = []
     for pe in period_ends:
         vals = {}
@@ -156,12 +161,22 @@ def yahoo_rows(ticker: str, yahoo_symbol: str, metric_set: str) -> pd.DataFrame:
             vals[k] = _pick(src, names, pe) if pe in src.columns else np.nan
         if all(pd.isna(vals[k]) for k in ("revenue", "ebitda", "net_profit", "total_financial_debt", "equity", "net_interest_income")):
             continue
-        if pe not in disc:
-            continue  # açıklama tarihi bilinmeyen dönem hizalanamaz -> alınmaz
-        rows.append({"ticker": ticker, "fiscal_period": fiscal_period_of(pe), "period_end_date": pe, "disclosure_date": disc[pe],
-                     "disclosure_time": None, "disclosure_source": "YAHOO_APPROX", "data_source": "YAHOO",
+        matched = pe in disc
+        rows.append({"ticker": ticker, "fiscal_period": fiscal_period_of(pe), "period_end_date": pe,
+                     "disclosure_date": disc[pe] if matched else statutory_date(pe), "disclosure_time": None,
+                     "disclosure_source": "YAHOO_APPROX" if matched else "STATUTORY_DEADLINE", "data_source": "YAHOO",
                      "report_basis": "STANDALONE", "tms29_restated": None, "metric_set": metric_set, **vals})
     return pd.DataFrame(rows, columns=COLUMNS)
+
+
+def yahoo_rows(ticker: str, yahoo_symbol: str, metric_set: str) -> pd.DataFrame:  # pragma: no cover - ağ
+    import warnings
+    import yfinance as yf
+    warnings.filterwarnings("ignore")
+    t = yf.Ticker(yahoo_symbol)
+    ed = t.get_earnings_dates(limit=24)
+    ed_ist = [] if ed is None or ed.empty else [x.tz_convert("Europe/Istanbul").tz_localize(None) for x in ed.index]
+    return rows_from_frames(ticker, metric_set, t.quarterly_income_stmt, t.quarterly_balance_sheet, ed_ist, pd.Timestamp(date.today()))
 
 
 # --- birleştirme + yazım ---------------------------------------------------------------------------
@@ -189,7 +204,8 @@ def write_fundamentals_snapshot(df: pd.DataFrame, root: Path, version: str, meta
     out["tms29_restated"] = out["tms29_restated"].astype("object")
     out.to_parquet(d / "fundamentals.parquet", index=False)
     manifest = {"data_version": version, "n_rows": int(len(out)), "tickers": sorted(set(out["ticker"])),
-                "sources": {k: int(v) for k, v in out["data_source"].value_counts().items()}, "unit": "TRY_mn",
+                "sources": {k: int(v) for k, v in out["data_source"].value_counts().items()},
+                "disclosure_sources": {k: int(v) for k, v in out["disclosure_source"].value_counts().items()}, "unit": "TRY_mn",
                 "first_period_end": str(out["period_end_date"].min().date()) if len(out) else None, **meta}
     # LF zorunlu: Windows'ta write_text CRLF üretir; hash/karşılaştırma her makinede aynı olmalı
     with open(d / "manifest.json", "w", encoding="utf-8", newline="\n") as fh:

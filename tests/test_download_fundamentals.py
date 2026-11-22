@@ -100,3 +100,43 @@ def test_snapshot_write_is_immutable_and_loadable(tmp_path):
         D.write_fundamentals_snapshot(y, tmp_path, v, {})
     with pytest.raises(ValueError):
         D.write_fundamentals_snapshot(y, tmp_path, "snap_2026-11-21_v1", {})
+
+
+def _frames(cols):
+    idx = ["Total Revenue", "EBITDA", "Net Income"]
+    inc = pd.DataFrame({pd.Timestamp(c): [1e9 * (i + 1), 1e8, 5e7] for i, c in enumerate(cols)}, index=idx)
+    bal = pd.DataFrame({pd.Timestamp(c): [2e9, 1e9, 3e9] for c in cols}, index=["Total Debt", "Cash And Cash Equivalents", "Stockholders Equity"])
+    return inc, bal
+
+
+def test_statutory_date_uses_latest_plausible_deadline_per_quarter():
+    assert D.statutory_date(pd.Timestamp("2026-03-31")) == pd.Timestamp("2026-05-15")  # +45
+    assert D.statutory_date(pd.Timestamp("2026-06-30")) == pd.Timestamp("2026-09-03")  # +65
+    assert D.statutory_date(pd.Timestamp("2026-09-30")) == pd.Timestamp("2026-11-14")  # +45
+    assert D.statutory_date(pd.Timestamp("2025-12-31")) == pd.Timestamp("2026-03-16")  # +75
+
+
+def test_rows_from_frames_matched_get_yahoo_approx_unmatched_get_statutory():
+    inc, bal = _frames(["2026-03-31", "2026-06-30", "2025-06-30"])
+    ed = [pd.Timestamp("2026-08-04 03:00"), pd.Timestamp("2027-01-01")]  # yalnız 2026Q2 eşleşir; 2027 projeksiyonu
+    df = D.rows_from_frames("THYAO", "INDUSTRIAL", inc, bal, ed, pd.Timestamp("2026-11-21")).set_index("fiscal_period")
+    assert df.loc["2026Q2", "disclosure_source"] == "YAHOO_APPROX" and df.loc["2026Q2", "disclosure_date"] == pd.Timestamp("2026-08-04")
+    assert df.loc["2026Q1", "disclosure_source"] == "STATUTORY_DEADLINE" and df.loc["2026Q1", "disclosure_date"] == pd.Timestamp("2026-05-15")
+    assert df.loc["2025Q2", "disclosure_source"] == "STATUTORY_DEADLINE" and df.loc["2025Q2", "disclosure_date"] == pd.Timestamp("2025-09-03")
+    assert set(df["data_source"]) == {"YAHOO"} and df["disclosure_time"].isna().all()
+    assert df.loc["2026Q2", "revenue"] == 2000.0 and df.loc["2026Q2", "total_financial_debt"] == 2000.0  # TL -> milyon TL
+
+
+def test_rows_from_frames_skips_periods_without_financials_and_pre_2025():
+    inc = pd.DataFrame({pd.Timestamp("2026-03-31"): [None, None, None], pd.Timestamp("2024-12-31"): [1e9, 1e8, 5e7]},
+                       index=["Total Revenue", "EBITDA", "Net Income"])
+    bal = pd.DataFrame({pd.Timestamp("2026-03-31"): [None, None, None]}, index=["Total Debt", "Cash And Cash Equivalents", "Stockholders Equity"])
+    assert D.rows_from_frames("THYAO", "INDUSTRIAL", inc, bal, [], pd.Timestamp("2026-11-21")).empty
+
+
+def test_manual_kap_row_overrides_statutory_row(tmp_path):
+    inc, bal = _frames(["2026-03-31"])
+    y = D.rows_from_frames("TUPRS", "INDUSTRIAL", inc, bal, [], pd.Timestamp("2026-11-21"))
+    m, _ = D.read_manual_csv(_csv(tmp_path, ["TUPRS,2026Q1,2026-03-31,2026-05-06,18:30,KAP,STANDALONE,true,111,1,1,1,1,1"]), load_universe())
+    out = D.merge_sources(y, m).iloc[0]
+    assert out["disclosure_source"] == "KAP_MANUAL" and out["disclosure_date"] == pd.Timestamp("2026-05-06")
