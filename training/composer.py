@@ -209,8 +209,8 @@ def compose_final(*, qtype: str, plan: dict[str, Any], ticker: str, label: A, ru
         block.append(UNSUPPORTED_NOTE[plan["kind"]])
     if qtype == "stale":
         block.append(STALE_NOTE)
+    block += notes or []           # bilanço: araç uyarılarından sayısız notlar; diğer tiplerde çağıranın verdiği (örn. eksik makro) notlar
     if qtype == "fundamental":
-        block += notes or []
         block.append(ASSOCIATION_NOTE)
     if label in (A.POTENTIAL_CATCH_UP_CANDIDATE, A.TECHNICAL_REVERSAL_CANDIDATE, A.FUNDAMENTAL_IMPROVEMENT_CANDIDATE) or "CANDIDATE_CAVEAT" in codes:
         block.append(CAVEAT)

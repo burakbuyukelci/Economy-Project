@@ -140,13 +140,15 @@ class OllamaBackend(LLMBackend):
     """POST {host}/api/chat (akış yok). Sıcaklık varsayılan 0, seed sabit; ayarlar settings'ten, parametreyle ezilebilir."""
 
     def __init__(self, *, host: str | None = None, model: str | None = None, temperature: float | None = None,
-                 num_ctx: int | None = None, seed: int | None = None, timeout: float | None = None, tool_mode: str | None = None) -> None:
+                 num_ctx: int | None = None, seed: int | None = None, timeout: float | None = None, tool_mode: str | None = None,
+                 max_new_tokens: int | None = None) -> None:
         self.host = _check_local(host if host is not None else settings.ollama_host())
         self.model = model or settings.llm_model()
         self.temperature = settings.llm_temperature() if temperature is None else temperature
         self.num_ctx = settings.llm_num_ctx() if num_ctx is None else num_ctx
         self.seed = settings.LLM_SEED if seed is None else seed
-        self.timeout = settings.LLM_TIMEOUT_S if timeout is None else timeout
+        self.timeout = settings.llm_timeout() if timeout is None else timeout
+        self.max_new_tokens = max_new_tokens    # None = sınırsız; şablon denetimi gibi yalnızca prompt_eval_count gereken çağrılarda 1
         self.tool_mode = tool_mode if tool_mode is not None else settings.llm_tool_mode()
         if self.tool_mode not in ("text", "native"):
             raise ValueError(f"tool_mode 'text' ya da 'native' olmalı: {self.tool_mode!r}")
@@ -159,6 +161,8 @@ class OllamaBackend(LLMBackend):
             "model": self.model, "messages": list(messages), "stream": False,
             "options": {"temperature": self.temperature, "num_ctx": self.num_ctx, "seed": self.seed},
         }
+        if self.max_new_tokens is not None:
+            body["options"]["num_predict"] = self.max_new_tokens
         if self.tool_mode == "text":     # araçlar istemde METİN; yalnızca system/user/assistant rolleri; uydurma araç sonucu yazılamaz
             body["messages"] = fold_system(encode_messages(messages, tools))
             body["options"]["stop"] = list(STOP_SEQUENCES)

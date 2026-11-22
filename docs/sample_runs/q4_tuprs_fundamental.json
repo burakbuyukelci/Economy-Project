@@ -1,0 +1,457 @@
+{
+  "as_of": "2026-09-10",
+  "checks": {
+    "any_result_after_as_of": false,
+    "invalid_tool_calls": 0,
+    "n_hallucinated": 0,
+    "n_number_claims": 13,
+    "n_unevidenced": 0,
+    "reproducible": true
+  },
+  "data_version": [
+    "snap_2026-11-20_v2"
+  ],
+  "final_status": "ACCEPTED",
+  "final_text": "TUPRS için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)\n- Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0\n- Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0\nDeğerlendirme: Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE.\nTemel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.\nAçıklama tarihleri Yahoo'dan alınan yaklaşık tarihlerdir; resmî KAP tarihi ve saati değildir.\nEnflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı.\nNet Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı.\nÇeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz.\nBilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.\nBu yalnızca tarihsel bir gözlemdir: örnek küçük, belirsizlik var; geçmiş kanıt gelecek getiri garantisi değildir.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
+  "gate_status": "PASS_WITH_WARNINGS",
+  "id": "q4_tuprs_fundamental",
+  "policy": {
+    "label": "FUNDAMENTAL_IMPROVEMENT_CANDIDATE",
+    "reasons": [
+      "THRESHOLDS_PROVISIONAL",
+      "CANDIDATE_CAVEAT"
+    ],
+    "rule_id": "F3_CANDIDATE"
+  },
+  "question": "Analiz tarihi: 10.09.2026\nTUPRS'un 01.01.2024 – 10.09.2026 döneminde kamuya açıklanan tüm çeyreklik bilançolarında FAVÖK marjı ve Net Borç/FAVÖK nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?",
+  "session_status": "DELIVERED",
+  "title": "Soru 4: TUPRS bilanço değişimi ve fiyat tepkisi",
+  "tool_calls": [
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "1526e55ea45e53bf3aecdf43187e76d1adf07f9a5dc643cdaaebd20f57a7d255",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "TUPRS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [
+        "fundamentals_2026-11-23_v1"
+      ],
+      "input_hash": "c5c7fa0ae3694e35abf03f59d9a1fbf1ad0f0e6ec1042c6545dfa2e2da4df491",
+      "key_figures": {
+        "disclosure_date": "2026-08-04",
+        "fiscal_period": "2026Q2",
+        "metrics": {
+          "DEBT_EQUITY": 0.1495,
+          "EBITDA": 57455.015,
+          "EBITDA_MARGIN": 14.8685,
+          "NET_DEBT_EBITDA": -0.7646,
+          "NET_PROFIT": 45877.721,
+          "NET_PROFIT_MARGIN": 11.8725,
+          "REVENUE": 386420.235
+        }
+      },
+      "max_result_date": "2026-08-04",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "as_of": "2026-09-10",
+        "period": null,
+        "ticker": "TUPRS"
+      },
+      "status": "OK",
+      "tool": "get_fundamental_metrics",
+      "warnings": [
+        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v1; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
+        "INSUFFICIENT_HISTORY: YAHOO_APPROX: 2026Q2 dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, yaklaşık) alındı; resmî KAP tarihi/saati değil"
+      ]
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [
+        "fundamentals_2026-11-23_v1"
+      ],
+      "input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+      "key_figures": {
+        "improvement_basis": "QOQ",
+        "improvement_metric": "EBITDA_MARGIN",
+        "n_quarters_disclosed_by_as_of": 4,
+        "n_quarters_excluded_not_yet_disclosed": 0,
+        "quarters": [
+          {
+            "EBITDA_MARGIN": {
+              "qoq_change": null,
+              "qoq_direction": null,
+              "value": 9.816,
+              "yoy_change": null
+            },
+            "NET_DEBT_EBITDA": {
+              "qoq_change": null,
+              "qoq_direction": null,
+              "value": -0.5136
+            },
+            "disclosure_date": "2025-10-31",
+            "fiscal_period": "2025Q3",
+            "reactions": [
+              {
+                "abnormal_vs_sector_pct": 0.2035,
+                "abnormal_vs_xu100_pct": -0.422,
+                "complete": true,
+                "horizon": 1,
+                "sector_return_pct": 0.6128,
+                "stock_return_pct": 0.8163,
+                "window_end_date": "2025-10-31",
+                "xu100_return_pct": 1.2383
+              },
+              {
+                "abnormal_vs_sector_pct": -0.082,
+                "abnormal_vs_xu100_pct": -1.0553,
+                "complete": true,
+                "horizon": 5,
+                "sector_return_pct": 1.2044,
+                "stock_return_pct": 1.1224,
+                "window_end_date": "2025-11-06",
+                "xu100_return_pct": 2.1777
+              },
+              {
+                "abnormal_vs_sector_pct": 0.2718,
+                "abnormal_vs_xu100_pct": -1.9168,
+                "complete": true,
+                "horizon": 20,
+                "sector_return_pct": -1.1902,
+                "stock_return_pct": -0.9184,
+                "window_end_date": "2025-11-27",
+                "xu100_return_pct": 0.9984
+              }
+            ]
+          },
+          {
+            "EBITDA_MARGIN": {
+              "qoq_change": 1.1304,
+              "qoq_direction": "IMPROVED",
+              "value": 10.9464,
+              "yoy_change": null
+            },
+            "NET_DEBT_EBITDA": {
+              "qoq_change": 0.1055,
+              "qoq_direction": "DETERIORATED",
+              "value": -0.4081
+            },
+            "disclosure_date": "2026-02-06",
+            "fiscal_period": "2025Q4",
+            "reactions": [
+              {
+                "abnormal_vs_sector_pct": -0.3805,
+                "abnormal_vs_xu100_pct": -1.0515,
+                "complete": true,
+                "horizon": 1,
+                "sector_return_pct": -1.1648,
+                "stock_return_pct": -1.5453,
+                "window_end_date": "2026-02-06",
+                "xu100_return_pct": -0.4938
+              },
+              {
+                "abnormal_vs_sector_pct": -4.5159,
+                "abnormal_vs_xu100_pct": -5.7648,
+                "complete": true,
+                "horizon": 5,
+                "sector_return_pct": 3.1031,
+                "stock_return_pct": -1.4128,
+                "window_end_date": "2026-02-12",
+                "xu100_return_pct": 4.352
+              },
+              {
+                "abnormal_vs_sector_pct": 0.1955,
+                "abnormal_vs_xu100_pct": 12.717,
+                "complete": true,
+                "horizon": 20,
+                "sector_return_pct": 8.767,
+                "stock_return_pct": 8.9625,
+                "window_end_date": "2026-03-05",
+                "xu100_return_pct": -3.7545
+              }
+            ]
+          },
+          {
+            "EBITDA_MARGIN": {
+              "qoq_change": -3.6928,
+              "qoq_direction": "DETERIORATED",
+              "value": 7.2536,
+              "yoy_change": null
+            },
+            "NET_DEBT_EBITDA": {
+              "qoq_change": 0.1192,
+              "qoq_direction": "DETERIORATED",
+              "value": -0.2889
+            },
+            "disclosure_date": "2026-05-06",
+            "fiscal_period": "2026Q1",
+            "reactions": [
+              {
+                "abnormal_vs_sector_pct": 0.0462,
+                "abnormal_vs_xu100_pct": -2.8161,
+                "complete": true,
+                "horizon": 1,
+                "sector_return_pct": 0.0461,
+                "stock_return_pct": 0.0923,
+                "window_end_date": "2026-05-06",
+                "xu100_return_pct": 2.9084
+              },
+              {
+                "abnormal_vs_sector_pct": -9.169,
+                "abnormal_vs_xu100_pct": -7.7771,
+                "complete": true,
+                "horizon": 5,
+                "sector_return_pct": 3.3518,
+                "stock_return_pct": -5.8172,
+                "window_end_date": "2026-05-12",
+                "xu100_return_pct": 1.9599
+              },
+              {
+                "abnormal_vs_sector_pct": 0.6088,
+                "abnormal_vs_xu100_pct": -7.4186,
+                "complete": true,
+                "horizon": 20,
+                "sector_return_pct": -12.4094,
+                "stock_return_pct": -11.8006,
+                "window_end_date": "2026-06-08",
+                "xu100_return_pct": -4.382
+              }
+            ]
+          },
+          {
+            "EBITDA_MARGIN": {
+              "qoq_change": 7.6149,
+              "qoq_direction": "IMPROVED",
+              "value": 14.8685,
+              "yoy_change": null
+            },
+            "NET_DEBT_EBITDA": {
+              "qoq_change": -0.4757,
+              "qoq_direction": "IMPROVED",
+              "value": -0.7646
+            },
+            "disclosure_date": "2026-08-04",
+            "fiscal_period": "2026Q2",
+            "reactions": [
+              {
+                "abnormal_vs_sector_pct": -1.4057,
+                "abnormal_vs_xu100_pct": -2.1546,
+                "complete": true,
+                "horizon": 1,
+                "sector_return_pct": 1.3196,
+                "stock_return_pct": -0.0861,
+                "window_end_date": "2026-08-04",
+                "xu100_return_pct": 2.0685
+              },
+              {
+                "abnormal_vs_sector_pct": 9.3322,
+                "abnormal_vs_xu100_pct": 14.0487,
+                "complete": true,
+                "horizon": 5,
+                "sector_return_pct": 7.7074,
+                "stock_return_pct": 17.0396,
+                "window_end_date": "2026-08-10",
+                "xu100_return_pct": 2.9909
+              },
+              {
+                "abnormal_vs_sector_pct": 16.3217,
+                "abnormal_vs_xu100_pct": 30.8926,
+                "complete": true,
+                "horizon": 20,
+                "sector_return_pct": 21.458,
+                "stock_return_pct": 37.7797,
+                "window_end_date": "2026-08-31",
+                "xu100_return_pct": 6.8871
+              }
+            ]
+          }
+        ],
+        "reaction_summary": [
+          {
+            "group": "IMPROVED",
+            "hit_rate_vs_xu100_pct": 0.0,
+            "horizon": 1,
+            "mean_abnormal_vs_sector_pct": -0.8931,
+            "mean_abnormal_vs_xu100_pct": -1.603,
+            "n": 2,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "NOT_IMPROVED",
+            "hit_rate_vs_xu100_pct": 0.0,
+            "horizon": 1,
+            "mean_abnormal_vs_sector_pct": 0.0462,
+            "mean_abnormal_vs_xu100_pct": -2.8161,
+            "n": 1,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "ALL",
+            "hit_rate_vs_xu100_pct": 0.0,
+            "horizon": 1,
+            "mean_abnormal_vs_sector_pct": -0.3841,
+            "mean_abnormal_vs_xu100_pct": -1.6111,
+            "n": 4,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "IMPROVED",
+            "hit_rate_vs_xu100_pct": 50.0,
+            "horizon": 5,
+            "mean_abnormal_vs_sector_pct": 2.4082,
+            "mean_abnormal_vs_xu100_pct": 4.1419,
+            "n": 2,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "NOT_IMPROVED",
+            "hit_rate_vs_xu100_pct": 0.0,
+            "horizon": 5,
+            "mean_abnormal_vs_sector_pct": -9.169,
+            "mean_abnormal_vs_xu100_pct": -7.7771,
+            "n": 1,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "ALL",
+            "hit_rate_vs_xu100_pct": 25.0,
+            "horizon": 5,
+            "mean_abnormal_vs_sector_pct": -1.1087,
+            "mean_abnormal_vs_xu100_pct": -0.1371,
+            "n": 4,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "IMPROVED",
+            "hit_rate_vs_xu100_pct": 100.0,
+            "horizon": 20,
+            "mean_abnormal_vs_sector_pct": 8.2586,
+            "mean_abnormal_vs_xu100_pct": 21.8048,
+            "n": 2,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "NOT_IMPROVED",
+            "hit_rate_vs_xu100_pct": 0.0,
+            "horizon": 20,
+            "mean_abnormal_vs_sector_pct": 0.6088,
+            "mean_abnormal_vs_xu100_pct": -7.4186,
+            "n": 1,
+            "n_excluded_incomplete_horizon": 0
+          },
+          {
+            "group": "ALL",
+            "hit_rate_vs_xu100_pct": 50.0,
+            "horizon": 20,
+            "mean_abnormal_vs_sector_pct": 4.3494,
+            "mean_abnormal_vs_xu100_pct": 8.5686,
+            "n": 4,
+            "n_excluded_incomplete_horizon": 0
+          }
+        ]
+      },
+      "max_result_date": "2026-08-31",
+      "n_events": 4,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "as_of": "2026-09-10",
+        "improvement_basis": "QOQ",
+        "improvement_metric": "EBITDA_MARGIN",
+        "metrics": null,
+        "periods": null,
+        "reaction_horizons": [
+          1,
+          5,
+          20
+        ],
+        "ticker": "TUPRS"
+      },
+      "status": "OK",
+      "tool": "calculate_fundamental_change",
+      "warnings": [
+        "INSUFFICIENT_HISTORY: NET_DEBT_EBITDA 2025Q3, 2025Q4, 2026Q1: 4 ardışık çeyrek yok; çeyreklik FAVÖK x4 (yıllıklandırılmış) kullanıldı",
+        "SMALL_PEER_GROUP: TUPRS peer grubu 2 hisse: sektör medyanı zayıf ölçüt",
+        "PRE_TMS29_NOT_COMPARABLE: 2025Q3, 2025Q4: önceki çeyrek/yıl TMS 29 öncesi (2025 öncesi) olduğundan ilgili QoQ/YoY değişim None (karşılaştırılamaz)",
+        "INSUFFICIENT_HISTORY: 1/4 çeyrekte EBITDA_MARGIN QOQ değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); bu çeyrekler IMPROVED/NOT_IMPROVED gruplarına girmedi, yalnız ALL'a girdi",
+        "FEW_EVENTS: n_quarters=4 < MIN_EVENTS=20; istatistik zayıf, örneklem dışı ayrımı yapılamaz",
+        "MULTIPLE_TESTING_RISK: 3 ufuk x 3 grup özet; çoklu karşılaştırma düzeltmesi yapılmadı",
+        "ASSOCIATION_NOT_CAUSATION: bilanço iyileşmesi ile fiyat tepkisi arasındaki ilişki gözlemdir; nedensellik iddia edilmez",
+        "HISTORICAL_ONLY: bilanço veri seti fundamentals_2026-11-23_v1; kaynak: YAHOO; geçmiş kanıt, gelecek garantisi değil",
+        "INSUFFICIENT_HISTORY: YAHOO_APPROX: 2025Q3, 2025Q4, 2026Q1, 2026Q2 dönemlerinin açıklama tarihi Yahoo'dan (ABD saatinden İstanbul'a çevrilmiş, yaklaşık) alındı; resmî KAP tarihi/saati değil"
+      ]
+    },
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "e636d3247d1341c390fe18b68dbccd1508375fd780fd8fe70bc717a48a7bd731",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "c5c7fa0ae3694e35abf03f59d9a1fbf1ad0f0e6ec1042c6545dfa2e2da4df491",
+            "max_result_date": "2026-08-04",
+            "n_events": null,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": null,
+            "tool": "get_fundamental_metrics"
+          },
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+            "max_result_date": "2026-08-31",
+            "n_events": 4,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": null,
+            "tool": "calculate_fundamental_change"
+          }
+        ],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "TUPRS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    }
+  ]
+}

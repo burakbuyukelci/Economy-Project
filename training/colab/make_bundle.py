@@ -1,6 +1,6 @@
 """Colab'a yüklenecek TEK zip'i hazırlar: eğitim kodu (training/colab, harness/text_protocol.py) + train/val JSONL.
 
-    python -m training.colab.make_bundle --data data/training/v1 --out colab_bundle.zip
+    python -m training.colab.make_bundle --data data/training/v2 --out colab_bundle.zip
 
 Zip içeriği, Colab'da açıldığında depo düzenini taklit eder (training/, harness/); `train_qlora.py` bu düzene göre çalışır. Veri dosyaları zip'in köküne konur.
 """
@@ -34,7 +34,7 @@ def make_bundle(data_dir: Path, out: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/training/v1")
+    ap.add_argument("--data", default="data/training/v2")
     ap.add_argument("--out", default="colab_bundle.zip")
     args = ap.parse_args(argv)
     names = make_bundle(Path(args.data), Path(args.out))

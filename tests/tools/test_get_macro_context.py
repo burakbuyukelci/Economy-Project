@@ -74,8 +74,9 @@ def test_missing_series_warns_and_all_missing_is_error(env):
     assert {s["series"] for s in e["results"]["series"]} == {"CPI_ANNUAL", "USDTRY"}
     w = [x for x in e["warnings"] if x.startswith("MACRO_DATA_MISSING")]
     assert len(w) == 1 and "FED_FUNDS_UPPER" in w[0] and "TCMB_POLICY_RATE" in w[0]
-    bad = _run(env, series=["FED_FUNDS_UPPER"])
-    assert bad["status"] == "ERROR" and bad["error"]["code"] == "NO_DATA"
+    bad = _run(env, series=["FED_FUNDS_UPPER"])        # hiçbir seri yok: hata DEĞİL, boş sonuç + MACRO_DATA_MISSING
+    assert bad["status"] == "OK" and bad["results"]["series"] == [] and any(w.startswith("MACRO_DATA_MISSING") for w in bad["warnings"])
+    validate_envelope(bad)
 
 
 def test_gaps_leading_and_none_for_dense_monthly(env):
@@ -90,8 +91,11 @@ def test_range_after_as_of_and_missing_dataset_error(env, tmp_path_factory):
     assert e["status"] == "ERROR" and e["error"]["code"] == "NO_DATA"
     empty = tmp_path_factory.mktemp("e")
     _prices(empty)  # makro veri seti yok
-    out = MC.run_on({"start": "2026-06-01", "end": "2026-09-10", "as_of": AS_OF}, snapshot_root=empty, data_version=DV)
-    assert out["status"] == "ERROR" and out["error"]["code"] == "NO_DATA"
+    out = MC.run_on({"start": "2026-06-01", "end": "2026-09-10", "as_of": AS_OF, "series": ["USDTRY", "TCMB_POLICY_RATE"]}, snapshot_root=empty, data_version=DV)
+    assert out["status"] == "OK" and out["results"]["series"] == []
+    w = [x for x in out["warnings"] if x.startswith("MACRO_DATA_MISSING")]
+    assert len(w) == 1 and "USDTRY" in w[0] and "TCMB_POLICY_RATE" in w[0] and "makro veri seti yok" in w[0]
+    validate_envelope(out)
 
 
 def test_determinism_and_hash_changes_with_params(env):

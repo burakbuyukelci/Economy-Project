@@ -1,0 +1,182 @@
+{
+  "as_of": "2026-09-10",
+  "checks": {
+    "any_result_after_as_of": false,
+    "invalid_tool_calls": 0,
+    "n_hallucinated": 0,
+    "n_number_claims": 15,
+    "n_unevidenced": 0,
+    "reproducible": true
+  },
+  "data_version": [
+    "snap_2026-11-20_v2"
+  ],
+  "final_status": "ACCEPTED",
+  "final_text": "THYAO hissesindeki haftalık örüntü araçla test edildi; bulgular aşağıda.\nKanıt (araç çıktıları):\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: kararlılık hükmü UNSTABLE, kodlar IS_NOT_SIGNIFICANT\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem içi: tamamlanmış hafta 85, tetik hafta 18, gerçekleşme 5, sonuç ortalama getirisi %1.3017, koşulsuza fark 0.5821, maliyet sonrası %0.8017, ham p 0.120488, düzeltilmiş p 0.120488\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem dışı: tamamlanmış hafta 26, tetik hafta 3, gerçekleşme 0, sonuç ortalama getirisi %0.1303, koşulsuza fark -0.5475, maliyet sonrası %-0.3697, ham p 0.656434, düzeltilmiş p 0.656434\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: çoklu test düzeltmesi bonferroni, bildirilen test sayısı 1, alfa 0.05, düzeltilmiş alfa 0.05\nDeğerlendirme: Örüntü istatistiksel olarak anlamlı değil ya da örneklem dışında devam etmiyor; sinyal reddedilir (REJECT_SIGNAL).\nÇoklu test riski (MULTIPLE_TESTING_RISK): örüntü tek hipotezdir; aynı veride başka örüntüler denenirse tesadüfi bulgu riski artar.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: REJECT_SIGNAL",
+  "gate_status": "INVESTIGATE",
+  "id": "q2_thyao_weekday",
+  "policy": {
+    "label": "REJECT_SIGNAL",
+    "reasons": [
+      "PATTERN_UNSTABLE"
+    ],
+    "rule_id": "W3_UNSTABLE"
+  },
+  "question": "Analiz tarihi: 10.09.2026\nTHYAO'da 01.01.2024 – 31.12.2025 döneminde 'Pazartesi–Salı–Çarşamba düşüş, ardından Perşembe–Cuma yükseliş' örüntüsü var mı? Bu örüntü 01.01.2026 – 10.09.2026 döneminde de devam ediyor mu?",
+  "session_status": "DELIVERED",
+  "title": "Soru 2: THYAO haftanın günü örüntüsü",
+  "tool_calls": [
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "THYAO"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+      "key_figures": {
+        "in_sample": {
+          "cost_adjusted_outcome_mean_return_pct": 0.8017,
+          "n_occurrences": 5,
+          "n_trigger_weeks": 18,
+          "n_weeks_complete": 85,
+          "outcome_mean_diff_vs_unconditional_pct": 0.5821,
+          "outcome_mean_return_pct": 1.3017,
+          "p_value_adjusted": 0.120488,
+          "p_value_raw": 0.120488
+        },
+        "n_tests_declared": 1,
+        "out_of_sample": {
+          "cost_adjusted_outcome_mean_return_pct": -0.3697,
+          "n_occurrences": 0,
+          "n_trigger_weeks": 3,
+          "n_weeks_complete": 26,
+          "outcome_mean_diff_vs_unconditional_pct": -0.5475,
+          "outcome_mean_return_pct": 0.1303,
+          "p_value_adjusted": 0.656434,
+          "p_value_raw": 0.656434
+        },
+        "pattern_label": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP",
+        "stability_verdict": "UNSTABLE",
+        "verdict_codes": [
+          "IS_NOT_SIGNIFICANT"
+        ]
+      },
+      "max_result_date": null,
+      "n_events": 5,
+      "n_excluded_incomplete_horizon": 1,
+      "params": {
+        "alpha": 0.05,
+        "as_of": "2026-09-10",
+        "conditioning": "NONE",
+        "in_sample_end": "2025-12-31",
+        "in_sample_start": "2024-01-01",
+        "n_tests_declared": 1,
+        "out_of_sample_end": "2026-09-10",
+        "out_of_sample_start": "2026-01-01",
+        "pattern": [
+          {
+            "direction": "DOWN",
+            "role": "TRIGGER",
+            "weekday": "MON"
+          },
+          {
+            "direction": "DOWN",
+            "role": "TRIGGER",
+            "weekday": "TUE"
+          },
+          {
+            "direction": "DOWN",
+            "role": "TRIGGER",
+            "weekday": "WED"
+          },
+          {
+            "direction": "UP",
+            "role": "OUTCOME",
+            "weekday": "THU"
+          },
+          {
+            "direction": "UP",
+            "role": "OUTCOME",
+            "weekday": "FRI"
+          }
+        ],
+        "slippage_bps": 5.0,
+        "ticker": "THYAO",
+        "transaction_cost_bps": 20.0
+      },
+      "status": "OK",
+      "tool": "test_weekday_pattern",
+      "warnings": [
+        "HOLIDAY_WEEKS_EXCLUDED: örneklem içi 20, dışı 9 hafta dışlandı (tatil, veri boşluğu veya pencere sınırını aşan hafta; 5 tanesi takvimde olup hissede veri yok)",
+        "INCOMPLETE_HORIZON_EXCLUDED: 1 hafta as_of=2026-09-10 itibarıyla tamamlanmadı (son örüntü günü as_of sonrası) ve dışlandı",
+        "UNSTABLE_PATTERN: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+        "MULTIPLE_TESTING_RISK: n_tests_declared=1; aynı veride başka örüntü/koşul denendiyse bu sayı artırılmalı (Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); beş günlük örüntü TEK birleşik testtir",
+        "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma kaynaklı bir ölçüm değil, varsayımdır",
+        "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. İlişki gözlemidir, nedensellik iddiası değildir."
+      ]
+    },
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "379629222a60959d729e6e3ab26a1d4f8aade7147689c42c1dcb183a0a3bca0d",
+      "key_figures": {
+        "gate_status": "INVESTIGATE"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+            "max_result_date": null,
+            "n_events": 5,
+            "n_excluded_incomplete_horizon": 1,
+            "signal_lag_days_applied": null,
+            "tool": "test_weekday_pattern"
+          }
+        ],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "THYAO"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    }
+  ]
+}

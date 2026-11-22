@@ -8,6 +8,11 @@ Kullanım (Colab hücresinde; ayrıntı training/README.md):
     python train_qlora.py --train train.jsonl --val val.jsonl --out outputs/v1                # eğitim + adaptör kaydı
     python train_qlora.py --train train.jsonl --val val.jsonl --dry-run                       # yalnızca tokenizasyon istatistiği (GPU gerekmez)
     python train_qlora.py --train train.jsonl --val val.jsonl --out outputs/v1 --gguf q4_k_m  # eğitim sonrası GGUF (Ollama)
+
+KESİLEBİLİR EĞİTİM (Colab oturumu düşebilir; float32 T4'te adım başına ~153 sn ölçüldü): `--save-steps N` her N adımda kontrol noktası yazar (`--checkpoint-dir` ile Drive gibi
+kalıcı bir klasöre), `--resume` en son TAMAMLANMIŞ kontrol noktasından devam eder (yoksa sıfırdan başlar ve söyler), `--max-steps K` epoch yerine K adımda durur
+(adaptör yine kaydedilir; sonra `--resume` ve daha büyük `--max-steps` ile sürdürülür). Çıktılar `--out` klasörüne yazılır.
+    python train_qlora.py --train train.jsonl --val val.jsonl --out /content/drive/MyDrive/bist/v2 --save-steps 5 --resume
 """
 from __future__ import annotations
 
@@ -19,7 +24,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))   # repo kökü (harness.text_protocol, training.colab.data); Colab paketinde de aynı düzen
 
-from training.colab.compat import first_supported  # noqa: E402
+from training.colab.compat import first_supported, latest_checkpoint  # noqa: E402
 from training.colab.data import IGNORE, build_examples, load_jsonl  # noqa: E402
 
 DEFAULT_MODEL = "unsloth/gemma-3-4b-it"
@@ -56,6 +61,17 @@ class PadCollator:
         return {"input_ids": ids, "labels": lab, "attention_mask": att}
 
 
+def schedule_kwargs(args: argparse.Namespace, out: Path) -> dict:
+    """Kesilebilir eğitim ayarları (SFTConfig alanları): `max_steps` (>0 ise epoch'u ezer), kontrol noktası sıklığı/klasörü. Saf; torch gerektirmez, testli."""
+    ckpt_dir = Path(args.checkpoint_dir) if args.checkpoint_dir else out / "checkpoints"
+    kw: dict = {"output_dir": str(ckpt_dir), "max_steps": args.max_steps}
+    if args.save_steps and args.save_steps > 0:
+        kw.update(save_strategy="steps", save_steps=args.save_steps, save_total_limit=args.save_total_limit)
+    else:
+        kw.update(save_strategy="no")
+    return kw
+
+
 def report(name: str, stats: dict) -> None:
     print(f"[{name}] kayıt {stats['n_in']} -> kullanılan {stats['n_kept']} (bağlam > {stats['max_len']} nedeniyle elenen {stats['n_dropped_long']}); "
           f"ortalama {stats['mean_len']} / en uzun {stats['longest']} token; eğitilen token payı {stats['train_token_share']:.1%}")
@@ -75,7 +91,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--grad-accum", type=int, default=8)
     ap.add_argument("--eval-steps", type=int, default=25)
     ap.add_argument("--seed", type=int, default=3407)
-    ap.add_argument("--out", default="outputs/v1")
+    ap.add_argument("--out", default="outputs/v1", help="adaptör, GGUF ve istatistiklerin yazılacağı klasör (Drive yolu olabilir)")
+    ap.add_argument("--max-steps", type=int, default=-1, help="> 0 ise epoch yerine bu kadar optimizer adımı (kısa/kesik koşular)")
+    ap.add_argument("--save-steps", type=int, default=0, help="> 0 ise her N adımda kontrol noktası yaz (resume için)")
+    ap.add_argument("--save-total-limit", type=int, default=2, help="diskte tutulacak en çok kontrol noktası")
+    ap.add_argument("--checkpoint-dir", default=None, help="kontrol noktası klasörü (varsayılan: <out>/checkpoints); kalıcı bir klasör verin")
+    ap.add_argument("--resume", action="store_true", help="kontrol noktası klasöründeki en son tamamlanmış kontrol noktasından devam et")
     ap.add_argument("--gguf", default=None, help="eğitim sonrası GGUF niceleme yöntemi (örn. q4_k_m)")
     ap.add_argument("--dry-run", action="store_true", help="yalnızca tokenizasyon/maske istatistiği; model yüklenmez")
     args = ap.parse_args(argv)
@@ -118,9 +139,9 @@ def main(argv: list[str] | None = None) -> int:
     val_ds = Dataset.from_list([{k: e[k] for k in cols} for e in val_ex]) if val_ex else None
     bf16 = torch.cuda.is_bf16_supported()
     base = dict(
-        output_dir=str(out / "checkpoints"), per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
+        per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
         num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="linear", warmup_steps=10, weight_decay=0.01, optim="adamw_8bit",
-        logging_steps=5, eval_strategy="steps" if val_ds is not None else "no", eval_steps=args.eval_steps, save_strategy="no", seed=args.seed,
+        logging_steps=5, eval_strategy="steps" if val_ds is not None else "no", eval_steps=args.eval_steps, seed=args.seed,
         fp16=not bf16, bf16=bf16, report_to="none", remove_unused_columns=False,
         dataset_kwargs={"skip_prepare_dataset": True},   # veri zaten tokenlanmış ve maskelenmiş
     )
@@ -128,9 +149,13 @@ def main(argv: list[str] | None = None) -> int:
     if seq_key is None:
         raise RuntimeError("SFTConfig ne max_seq_length ne max_length kabul ediyor: TRL sürümünü kontrol edin (training/README.md sorun giderme)")
     print(f"SFTConfig dizi uzunluğu alanı: {seq_key}")
-    cfg = SFTConfig(**base, **{seq_key: args.max_seq})
+    sched = schedule_kwargs(args, out)
+    cfg = SFTConfig(**base, **sched, **{seq_key: args.max_seq})
     trainer = SFTTrainer(model=model, tokenizer=tokenizer, train_dataset=train_ds, eval_dataset=val_ds, data_collator=PadCollator(pad_id), args=cfg)
-    result = trainer.train()
+    ckpt = latest_checkpoint(sched["output_dir"]) if args.resume else None
+    if args.resume:
+        print(f"devam edilen kontrol noktası: {ckpt}" if ckpt else f"kontrol noktası yok ({sched['output_dir']}): sıfırdan başlanıyor")
+    result = trainer.train(resume_from_checkpoint=str(ckpt)) if ckpt else trainer.train()
     (out / "train_result.json").write_text(json.dumps(result.metrics, indent=2), encoding="utf-8")
     model.save_pretrained(str(out / "adapter"))
     tokenizer.save_pretrained(str(out / "adapter"))

@@ -108,3 +108,121 @@ def test_real_tool_settings_are_restored_after_a_run():
     items, by_text = items_and_questions(1)
     run_matrix(items[:1], ["D"], {"iyi": good_factory(by_text)})
     assert (dict(settings.TOOL_BACKEND_OVERRIDES), settings.EXPOSED_TOOLS) == before
+
+
+# =============================== dayanıklılık: satır satır yazma, devam, bütçe, süre log'u ===============================
+from experiments.eval_runner import RowSink, load_prior, main as eval_main, row_key  # noqa: E402
+
+
+@needs_data
+def test_rows_are_written_after_each_session_and_a_resumed_run_skips_finished_rows(tmp_path):
+    items, by_text = items_and_questions(2)
+    sink = RowSink(tmp_path)
+    logs: list[str] = []
+    rows1 = run_matrix(items, ["D"], {"iyi": good_factory(by_text)}, progress=logs.append, on_row=sink)
+    n = len(items)
+    assert len(rows1) == n and len(load_prior(tmp_path)) == n
+    with (tmp_path / "results.csv").open(encoding="utf-8") as fh:
+        assert len(list(csv.DictReader(fh))) == n
+    assert all("sn" in m and "tahmini kalan" in m for m in logs) and logs[-1].startswith(f"[{n}/{n}]")
+    # yeniden başlat: aynı matris + bir profil daha; biten iki satır koşmaz, yalnız yenisi koşar
+    calls: list[str] = []
+
+    def counting(item, session):
+        calls.append(f"{session.profile.name}:{item['id']}")
+        return good_factory(by_text)(item, session)
+
+    rows2 = run_matrix(items, ["D", "E"], {"iyi": counting}, prior_rows=load_prior(tmp_path), on_row=sink)
+    assert len(rows2) == 2 * n and all(c.startswith("E:") for c in calls) and len(calls) == n
+    assert len({row_key(r) for r in rows2}) == 2 * n
+    assert len(load_prior(tmp_path)) == 2 * n
+
+
+def test_truncated_last_jsonl_line_is_ignored_on_resume(tmp_path):
+    (tmp_path / "results.jsonl").write_text('{"model": "m", "profile": "A", "question_id": "q", "repeat": 0}\n{"model": "m", "pro', encoding="utf-8")
+    assert [row_key(r) for r in load_prior(tmp_path)] == [("m", "A", "q", 0)]
+
+
+def test_row_sink_reset_and_fsync_append_only(tmp_path):
+    sink = RowSink(tmp_path)
+    sink({"model": "m", "profile": "A", "question_id": "q1", "repeat": 0, "status": "DELIVERED"})
+    sink({"model": "m", "profile": "A", "question_id": "q2", "repeat": 0, "status": "DELIVERED"})
+    assert len(load_prior(tmp_path)) == 2
+    assert (tmp_path / "results.csv").read_text(encoding="utf-8").count("\n") == 3   # başlık + 2 satır
+    RowSink(tmp_path, reset=True)
+    assert not (tmp_path / "results.jsonl").exists() and not (tmp_path / "results.csv").exists()
+
+
+@needs_data
+def test_main_max_runs_splits_a_run_into_two_invocations_and_completes_summary(tmp_path, monkeypatch):
+    items, by_text = items_and_questions(2)
+    qfile = tmp_path / "q.jsonl"
+    qfile.write_text("\n".join(json.dumps({"id": i["id"], "question": i["question"], "type": i["type"], "as_of": i["as_of"], "label": None}) for i in items) + "\n",
+                     encoding="utf-8")
+    import experiments.eval_runner as ER
+    monkeypatch.setattr(ER, "select_subset", lambda recs, n: recs)
+
+    class FakeBackend:
+        def __init__(self, **kw): pass
+    import harness.llm_backend as LB
+    monkeypatch.setattr(LB, "OllamaBackend", lambda **kw: ScriptedBackend([BAD]))
+    out = tmp_path / "out"
+    argv = ["--questions", str(qfile), "--models", "fake", "--profiles", "A", "--out", str(out)]
+    assert eval_main(argv + ["--max-runs", "1"]) == 0
+    meta = json.loads((out / "summary.json").read_text(encoding="utf-8"))["meta"]
+    assert meta["interrupted"] == "max-runs" and meta["n_rows"] == 1 and meta["complete"] is False
+    assert eval_main(argv) == 0   # ikinci çağrı kaldığı yerden devam eder
+    meta = json.loads((out / "summary.json").read_text(encoding="utf-8"))["meta"]
+    assert meta["n_rows"] == len(items) and meta["complete"] is True and meta["interrupted"] is None
+    with (out / "results.csv").open(encoding="utf-8") as fh:
+        assert len(list(csv.DictReader(fh))) == len(items)
+
+
+# =============================== HARNESS_LLM_TIMEOUT ve num_predict ===============================
+def test_llm_timeout_env_overrides_the_default_and_validates(monkeypatch):
+    from harness import settings
+    monkeypatch.delenv("HARNESS_LLM_TIMEOUT", raising=False)
+    assert settings.llm_timeout() == settings.LLM_TIMEOUT_S
+    monkeypatch.setenv("HARNESS_LLM_TIMEOUT", "900")
+    assert settings.llm_timeout() == 900.0
+    from harness.llm_backend import OllamaBackend
+    assert OllamaBackend(host="http://127.0.0.1:11434", model="m").timeout == 900.0
+    assert OllamaBackend(host="http://127.0.0.1:11434", model="m", timeout=5).timeout == 5
+    for bad in ("abc", "0", "-3"):
+        monkeypatch.setenv("HARNESS_LLM_TIMEOUT", bad)
+        with pytest.raises(ValueError):
+            settings.llm_timeout()
+
+
+def test_check_template_requests_num_predict_one_on_both_paths():
+    """Şablon denetimi yalnız prompt_eval_count ister: hem raw hem sohbet yolunda num_predict=1 (tam yanıt üretmek CPU'da dakikalar sürer)."""
+    import io
+    import urllib.request
+
+    from harness.llm_backend import OllamaBackend
+
+    bodies: list[dict] = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake_open(self, req, timeout=None):
+        bodies.append(json.loads(req.data.decode("utf-8")))
+        payload = {"message": {"role": "assistant", "content": "x"}, "prompt_eval_count": 7}
+        return Resp(json.dumps(payload).encode("utf-8"))
+
+    b = OllamaBackend(host="http://127.0.0.1:11434", model="m", tool_mode="native", max_new_tokens=1)
+    b._opener = type("O", (), {"open": fake_open})()
+    assert b.raw_prompt_tokens("merhaba") == 7
+    b.chat([{"role": "user", "content": "merhaba"}], None)
+    assert [x["options"]["num_predict"] for x in bodies] == [1, 1]
+    # varsayılan sohbet çağrısı sınırsızdır (num_predict gönderilmez)
+    bodies.clear()
+    OllamaBackend(host="http://127.0.0.1:11434", model="m", tool_mode="native")
+    b2 = OllamaBackend(host="http://127.0.0.1:11434", model="m", tool_mode="native")
+    b2._opener = b._opener
+    b2.chat([{"role": "user", "content": "x"}], None)
+    assert "num_predict" not in bodies[0]["options"]
+    import experiments.check_template as CT
+    assert "max_new_tokens=1" in Path(CT.__file__).read_text(encoding="utf-8")

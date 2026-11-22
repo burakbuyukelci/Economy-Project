@@ -3,7 +3,7 @@
 Veri: data/snapshots/macro_<tarih>_v<N>/macro.parquet (scripts/download_macro.py, TCMB/EVDS). Ağ yok.
 Hizalama YAYIN tarihine göredir (`publication_date <= as_of`); gözlem tarihi aralık filtresidir. Böylece ay sonu gözlemi (ör. Ağustos TÜFE)
 TÜİK açıklamasına (izleyen ayın 3'ü) kadar görünmez. `end > as_of` ise as_of'a kesilir (AS_OF_CLAMPED). İstenen ama veri setinde olmayan seri
-(ör. FED_*, kodu verilmemiş politika faizi) veya aralıkta noktası olmayan seri MACRO_DATA_MISSING uyarısı verir; hiçbiri yoksa NO_DATA.
+(ör. FED_*, kodu verilmemiş politika faizi) veya aralıkta noktası olmayan seri MACRO_DATA_MISSING uyarısı verir; hiçbiri yoksa (ya da makro veri seti yoksa) zarf YİNE OK: series=[] + MACRO_DATA_MISSING; aralık as_of sonrasındaysa NO_DATA.
 Boşluk (gap): ardışık noktalar arası > eşik (günlük 7, aylık 40 takvim günü) ile aralık başı/sonu boşlukları.
 """
 from __future__ import annotations
@@ -74,13 +74,21 @@ def _gaps(obs: list[date], start: date, end: date, freq: str) -> list[MacroGap]:
 
 
 def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None = None) -> ToolOutput:
-    m = load_macro(snap.root, macro_version)
     warnings: list[str] = []
+    try:
+        m: MacroData | None = load_macro(snap.root, macro_version)
+    except ToolFailure:
+        m = None                     # makro veri seti yok: boş sonuç + MACRO_DATA_MISSING (aşağıda)
     eff_end = min(p.end, p.as_of)
     if p.end > p.as_of:
         warnings.append(make_warning(WarningCode.AS_OF_CLAMPED, f"end={p.end.isoformat()} as_of={p.as_of.isoformat()} tarihine kesildi"))
     if p.start > eff_end:
         raise ToolFailure("NO_DATA", f"start={p.start} as_of={p.as_of} sonrası: aralık boş")
+    if m is None:
+        warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING,
+                                     f"makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: "
+                                     f"{', '.join(x.value for x in p.series)}"))
+        return ToolOutput(results=GetMacroContextResult(start=p.start, end=eff_end, series=[]), warnings=warnings)
     vis = enforce_as_of(m.table, p.as_of, "publication_date")  # YAYIN tarihine göre kes (revizyon/gelecek açıklama girmez)
     out: list[MacroSeriesData] = []
     missing: list[str] = []
@@ -97,8 +105,6 @@ def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None
             last_publication_date=sub["publication_date"].max().date(), gaps=_gaps(obs, p.start, eff_end, str(info["frequency"])),
             points=[MacroPoint(observation_date=o.date(), publication_date=q.date(), value=round(float(v), ROUND))
                     for o, q, v in zip(sub["observation_date"], sub["publication_date"], sub["value"])]))
-    if not out:
-        raise ToolFailure("NO_DATA", f"istenen serilerin hiçbiri için [{p.start}, {eff_end}] aralığında as_of={p.as_of} itibarıyla yayımlanmış veri yok")
     if missing:
         warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING,
                                      f"veri setinde yok veya aralıkta/as_of'ta yayımlanmış nokta yok: {', '.join(missing)}"))

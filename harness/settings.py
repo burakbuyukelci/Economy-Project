@@ -126,6 +126,7 @@ LLM_SEED = RANDOM_SEED             # config.settings.RANDOM_SEED (ortak, 42)
 OLLAMA_HOST = "http://127.0.0.1:11434"
 OLLAMA_HOST_ENV = "HARNESS_OLLAMA_HOST"
 LLM_TIMEOUT_S = 300.0
+LLM_TIMEOUT_ENV = "HARNESS_LLM_TIMEOUT"     # saniye; CPU'da Ollama yavaştır (prompt ~27 token/sn ölçüldü): uzun oturumlar için artırılır
 # Araç çağırma biçimi: "text" = araç tanımları istemde METİN, çağrılar yanıt metninden ayrıştırılır (harness/text_protocol.py; Gemma 3 için varsayılan,
 # çünkü Ollama gemma3 şablonunda yerel `tools` desteği yok/güvenilmez); "native" = Ollama'nın `tools` alanı (Qwen/Llama gibi destekleyen modeller).
 LLM_TOOL_MODE = "text"
@@ -154,6 +155,20 @@ def llm_temperature() -> float:
         raise ValueError(f"{LLM_TEMPERATURE_ENV}={raw!r} sayı olmalı") from None
     if t < 0:
         raise ValueError(f"{LLM_TEMPERATURE_ENV}={raw!r} negatif olamaz")
+    return t
+
+
+def llm_timeout() -> float:
+    """Tek Ollama isteğinin zaman aşımı (sn). Ortam değişkeni `HARNESS_LLM_TIMEOUT` varsa o; yoksa `LLM_TIMEOUT_S`."""
+    raw = os.environ.get(LLM_TIMEOUT_ENV, "").strip()
+    if not raw:
+        return LLM_TIMEOUT_S
+    try:
+        t = float(raw)
+    except ValueError:
+        raise ValueError(f"{LLM_TIMEOUT_ENV}={raw!r} sayı olmalı") from None
+    if t <= 0:
+        raise ValueError(f"{LLM_TIMEOUT_ENV}={raw!r} pozitif olmalı")
     return t
 
 

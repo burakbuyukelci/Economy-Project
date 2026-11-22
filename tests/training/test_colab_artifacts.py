@@ -84,3 +84,49 @@ def test_first_supported_picks_the_argument_name_the_installed_version_has():
         max_length: int = 1
     assert first_supported(Cfg, ("max_seq_length", "max_length")) == "max_length"
     assert kwargs_for(Cfg, seq=("max_seq_length", "max_length"), x=("zzz",)) == {"seq": "max_length", "x": None}
+
+
+# =============================== kesilebilir eğitim (--max-steps, --save-steps, --resume) ===============================
+def _ns(**kw):
+    import argparse
+    base = dict(max_steps=-1, save_steps=0, save_total_limit=2, checkpoint_dir=None)
+    base.update(kw)
+    return argparse.Namespace(**base)
+
+
+def test_schedule_kwargs_default_saves_nothing_and_uses_epochs(tmp_path):
+    from training.colab.train_qlora import schedule_kwargs
+    kw = schedule_kwargs(_ns(), tmp_path)
+    assert kw == {"output_dir": str(tmp_path / "checkpoints"), "max_steps": -1, "save_strategy": "no"}
+
+
+def test_schedule_kwargs_with_save_steps_max_steps_and_external_checkpoint_dir(tmp_path):
+    from training.colab.train_qlora import schedule_kwargs
+    kw = schedule_kwargs(_ns(max_steps=40, save_steps=5, save_total_limit=3, checkpoint_dir=str(tmp_path / "drive")), tmp_path)
+    assert kw["max_steps"] == 40 and kw["save_strategy"] == "steps" and kw["save_steps"] == 5 and kw["save_total_limit"] == 3
+    assert kw["output_dir"] == str(tmp_path / "drive")
+
+
+def test_latest_checkpoint_picks_the_highest_completed_step_and_ignores_partial_dirs(tmp_path):
+    from training.colab.compat import latest_checkpoint
+    assert latest_checkpoint(tmp_path / "yok") is None and latest_checkpoint(tmp_path) is None
+    for n, complete in ((5, True), (10, True), (15, False), (100, True)):
+        d = tmp_path / f"checkpoint-{n}"
+        d.mkdir()
+        if complete:
+            (d / "trainer_state.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "checkpoint-abc").mkdir()
+    (tmp_path / "notes").mkdir()
+    assert latest_checkpoint(tmp_path) == tmp_path / "checkpoint-100"          # 100 > 10 sayısal; 15 yarım olduğu için atlanır
+    (tmp_path / "checkpoint-100" / "trainer_state.json").unlink()
+    assert latest_checkpoint(tmp_path) == tmp_path / "checkpoint-10"
+
+
+def test_train_script_exposes_the_resume_flags_and_notebook_uses_them():
+    text = (REPO / "training" / "colab" / "train_qlora.py").read_text(encoding="utf-8")
+    for flag in ("--max-steps", "--save-steps", "--checkpoint-dir", "--resume", "--save-total-limit"):
+        assert flag in text
+    assert "resume_from_checkpoint" in text and "latest_checkpoint" in text
+    nb = json.loads((REPO / "training" / "colab" / "train_qlora.ipynb").read_text(encoding="utf-8"))
+    src = "\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+    assert "--save-steps" in src and "--resume" in src and "--checkpoint-dir" in src

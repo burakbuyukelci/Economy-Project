@@ -490,3 +490,27 @@ Eğitim bilanço oturumları AKBNK (10), FROTO (10), ASELS (9) hisselerinde yoğ
 `FUNDAMENTAL_IMPROVEMENT_CANDIDATE` yalnızca eğitimde ve 10 örnekle (doğrulama ve testte hiç yok): çünkü 4 çeyrek görünür olmadan etiket F1'dir ve eğitim tarih aralığı (ve 2025Q1/Q2'nin Yahoo'da bulunmaması) F3'ü sınırlar. `POLICY_MIN_QUARTERS = 4` ve F1–F4 GEÇİCİDİR; değiştirilmedi.
 Elle KAP CSV'si (TUPRS 2025Q1–2026Q3, kesin tarih/saat) gelince artımlı sürüm (`fundamentals_..._v2`) ve v2.1 veri üretimi yapılacaktır; makro snapshot'ı main'e girince Soru 5 oturumları da artımlı eklenecektir.
 
+### 14.5 Değerlendirme Colab GPU'da koşulur: CPU'da Ollama önek önbelleği sorunu, dayanıklı koşucu, paket ve koşu planı
+**Neden CPU değil.** Bilgisayar 1'de GPU yok (Ollama `size_vram: 0`). Ölçüm (2026-11-21): prompt işleme ~27 token/sn; `gemma3:4b` profil A tek soru ~114 sn; profil E (araç döngüsü, ~3,6 bin token, 11 tur) ~245 sn ve llama-server
+`GGML_ASSERT` ile çöktü (`MODEL_ERROR`). **Önek önbelleği (prefix cache) sorunu:** araç döngüsünde her tur tüm geçmişi yeniden gönderir; Ollama ardışık isteklerde ortak öneki KV önbelleğinden yeniden kullanır. CPU'da gözlenenler/riskler:
+(a) tur süreleri öngörülemez (önbellek isabeti/ıskası süreyi katlar); (b) önbellek isabetinde `prompt_eval_count` yalnızca YENİ işlenen tokenları sayabilir: `max_prompt_tokens` ve `prompt_eval_count >= num_ctx` bağlam denetimi gerçek bağlam uzunluğunu EKSİK görebilir
+(bağlam ölçümü önbelleksiz çağrıyla yapılır: `experiments.check_template` raw `/api/generate`, `num_predict=1`); (c) E profilindeki çökme önbellek yoluyla ilişkili bir llama.cpp CPU hatası olabilir, ama kök neden DOĞRULANMADI (hipotez). Sonuç: A–E değerlendirmesi
+**Colab GPU'da** (T4/L4/A100) koşulur; Bilgisayar 1'de yalnızca `--n 1` düzeyinde duman testi yapılır.
+**Dayanıklı koşucu (`experiments/eval_runner.py`).** Her oturumdan sonra satır `results.jsonl` (tipli; devam için) ve `results.csv`'ye (ekleme, fsync) yazılır; süre log'lanır (`[i/N] model profil soru durum sn, geçen/tahmini kalan dk`). Aynı `--out` ile yeniden başlatınca biten
+(model, profil, soru, tekrar) satırları atlanır (`--no-resume` sıfırlar); `--max-runs R` bu çağrıda en çok R yeni oturum koşar (iki Colab oturumuna bölmek için); Ctrl+C/bütçe sonunda `summary.json` (`meta.complete`, `meta.interrupted`) ve tekrarlanabilirlik sütunlu `results.csv` tüm satırlardan yeniden yazılır.
+Zaman aşımı `HARNESS_LLM_TIMEOUT` (sn; `settings.llm_timeout()`, varsayılan 300). `experiments/check_template.py` her iki yolda (raw ve sohbet) `num_predict=1` ister (`OllamaBackend(max_new_tokens=1)`); önceden sohbet yolu SINIRSIZ üretiyordu: düzeltildi ve testlendi.
+**Colab paketi.** `python -m experiments.colab.make_eval_bundle --out eval_bundle.zip`: repo kodu (harness, schemas, tools, config, training, experiments, scripts) + `data/snapshots/` altında YALNIZCA `LATEST`/`LATEST_FUNDAMENTALS`/`LATEST_MACRO` işaretçilerinin gösterdiği sürümler (v1 ham kaynak gerekmez)
++ `data/training/v2/{test,val}.jsonl` (+ rapor/manifest). `.git`, `.env*`, `.venv`, `__pycache__`, `tests/`, `reports/`, `data/raw`, `*.zip`, `*.gguf` HARİÇ (test: paket açılıp araçlar çalıştırılır). **Boyut:** kod 0,85 MB ham / 0,30 MB zip, snapshot'lar 0,93 / 0,70, sorular 3,60 / 0,20; toplam
+5,38 MB ham, **1,21 MB zip** (GGUF dahil değil: Drive'dan ya da yüklemeyle). Notebook `experiments/colab/eval_ollama.ipynb`: GPU + plan, Ollama kurulumu/sunucu (yalnızca 127.0.0.1), paket, temel `gemma3:4b` + ince ayarlı GGUF (`training/ollama/Modelfile`), şablon denetimi, A–E koşusu (sonuçlar Drive'a, devam), indirme.
+**Koşu planı (`python -m experiments.colab.plan --gpu T4|L4|A100`).** Süre = prompt/pp + üretim/tg + tur yükü + araç yükü; token yükü v2 test sorularının öğretmen oturumlarından; x1,5 güvenlik payı; hızlar gemma3:4b Q4_K_M için **VARSAYIMDIR** (GPU bu makinede yok; ilk ~6 koşudan sonra `--calibrate results.jsonl` ölçülen süreyi kullanır).
+Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bist) x 5 profil = 390 koşu:
+| GPU (varsayılan hız pp/tg tok/sn) | Toplam | Öneri | Toplamı <= 180 dk tutan en büyük --n |
+|---|---|---|---|
+| T4 (1000 / 30) | ~222 dk | 2 oturum x ~111 dk (`--max-runs 195`) | 30 |
+| L4 (1500 / 40) | ~171 dk | 2 oturum x ~86 dk (`--max-runs 195`) | 40 |
+| A100 (4000 / 100) | ~86 dk | 1 oturum | 85 (hepsi) |
+| CPU (27 / 4, ÖLÇÜM) | ~5441 dk (~91 saat) | pratik değil | 5 soru bile sığmaz |
+**Eğitim süresi (ölçüm, Colab T4).** T4 bf16 desteklemediği için Gemma 3 float32 eğitilir: adım başına ~153 sn (8192 bağlam, batch 1, grad accum 8); 75 adımlık 1 epoch ~3,2 saat. GPU seçimi bilinmiyor: eğitim süresi buna bağlı kabul edilir. `training/colab/train_qlora.py` artık kesilebilir:
+`--save-steps N` (kontrol noktası), `--checkpoint-dir` (Drive), `--resume` (en son TAMAMLANMIŞ kontrol noktasından), `--max-steps K` (epoch yerine K adım); çıktılar `--out` klasörüne.
+**Örnek soruların araç zinciri.** `python -m experiments.sample_runs` -> `docs/sample_runs/` (5 soru, gerçek veri, as_of 2026-09-10; bkz. oradaki README).
+

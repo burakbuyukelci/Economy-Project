@@ -47,6 +47,9 @@ python -m training.colab.make_bundle --data data/training/v2 --out colab_bundle.
 | Eğitim kaybı düşmüyor | `data_stats.json > train_token_share` çok küçükse (< %3) maske hatası olabilir: `pytest tests/training/test_colab_data.py`. |
 | Hepsi elendi (`eğitim örneği kalmadı`) | `--max-seq 8192` ve tokenizer: kayıtlar `tokens` alanıyla önceden süzülmüştür; farklı model/tokenizer kullandıysanız sayılar değişir. |
 
+**Kesilebilir eğitim.** Colab T4'te Gemma 3 float32 eğitilir (~153 sn/adım; 75 adımlık 1 epoch ~3,2 saat; GPU seçimine bağlı). `--save-steps 5 --checkpoint-dir /content/drive/MyDrive/bist_ckpt --resume` kontrol noktalarını Drive'a yazar ve oturum düşünce kaldığı yerden devam eder;
+`--max-steps K` epoch yerine K adımda durur (adaptör yine kaydedilir). Not defteri bu bayraklarla gelir.
+
 ## 4. Ollama'ya al (Bilgisayar 1)
 1. `result.zip`'i açın; GGUF'u `training/ollama/gemma3-bist-q4_k_m.gguf` olarak kaydedin.
 2. `ollama create gemma3-bist -f training/ollama/Modelfile` — `Modelfile` kendi sohbet şablonumuzu içerir (eğitim metniyle aynı: `<start_of_turn>user|model`; `system` rolü yok, harness sistem metnini ilk user mesajına ekler; `<bos>` şablonda YOK).
@@ -55,9 +58,9 @@ python -m training.colab.make_bundle --data data/training/v2 --out colab_bundle.
 4. Harness modeli: `set HARNESS_MODEL=gemma3-bist` (PowerShell: `$env:HARNESS_MODEL="gemma3-bist"`); araç modu varsayılan `text`.
 5. Bağlam: ilk gerçek koşuda `MODEL_TURN` olaylarındaki `prompt_tokens` (Ollama `prompt_eval_count`) ile `estimated_prompt_tokens`'ı karşılaştırın; sayılar ≤ 8192 olmalıdır (üretim payı için pratikte ≤ ~7500).
 
-## 5. Değerlendirme (A–E x temel/ince ayarlı)
+## 5. Değerlendirme (A–E x temel/ince ayarlı) — Colab GPU'da (`experiments/colab/eval_ollama.ipynb`, paket: `python -m experiments.colab.make_eval_bundle`; ayrıntı `docs/harness_design.md` §14.5)
 ```
-python -m experiments.eval_runner --questions data/training/v2/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out reports/eval_v1
+python -m experiments.eval_runner --questions data/training/v2/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out reports/eval_v2   # kesilirse aynı komut kaldığı yerden devam eder (--max-runs R ile bölünür)
 ```
 * `reports/eval_v1/results.csv` (soru x profil x model x tekrar) ve `summary.json` (model|profil başına: sayısal halüsinasyon oranı, geçersiz araç çağrısı oranı, kanıtsız sayı oranı,
   kural ihlali oranı (teslim ve deneme düzeyi), tavsiye dili, geri çekilme, zorunlu adım atlama, etiket uyumu, tekrarlanabilirlik, bağlam).

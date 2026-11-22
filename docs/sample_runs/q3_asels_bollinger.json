@@ -1,0 +1,560 @@
+{
+  "as_of": "2026-09-10",
+  "checks": {
+    "any_result_after_as_of": false,
+    "invalid_tool_calls": 0,
+    "n_hallucinated": 0,
+    "n_number_claims": 29,
+    "n_unevidenced": 0,
+    "reproducible": true
+  },
+  "data_version": [
+    "snap_2026-11-20_v2"
+  ],
+  "final_status": "ACCEPTED",
+  "final_text": "ASELS için sinyal olayları ve ileri getiriler araçla hesaplandı.\nKanıt (araç çıktıları):\n- ASELS son gün göstergeleri: kapanış 398.5, BB_BANDWIDTH_PCT_20_2.0 8.6758, BB_B_20_2.0 0.6331, BB_LOWER_20_2.0 376.8608, BB_MID_20_2.0 393.95, BB_UPPER_20_2.0 411.0392, ICHIMOKU_CHIKOU_VS_CLOSE_26 51.75, ICHIMOKU_KIJUN_26 378.75, ICHIMOKU_SENKOU_A_9_26 366.5, ICHIMOKU_SENKOU_B_52 372.375, ICHIMOKU_TENKAN_9 390.0, RSI_14 56.9157, SUPERTREND_10_3.0 363.2249, ichimoku_position ABOVE_CLOUD, supertrend BULLISH\n- BB_LOWER_TOUCH (single_indicator): tespit edilen olay 12, son olay tarihi 2026-06-04, ham olay günü 17, çakışan ileri pencere 5\n- BB_LOWER_TOUCH (single_indicator), ufuk 5: tamamlanmış olay 12, başarı 8, isabet %66.6667, ortalama getiri %2.9608, maliyet sonrası %2.4608, taban isabet %59.2204, örneklem içi: olay 9, isabet %66.6667, maliyet sonrası %2.594, örneklem dışı: olay 3, isabet %66.6667, maliyet sonrası %2.0614, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0\n- Backtest varyant B (REVERSAL), maliyet sonrası: kümülatif getiri %5.2464, Sharpe 0.2267, maksimum düşüş %-15.3305, isabet %66.6667, işlem 9\n- Backtest işlem özeti: kazanan 6, kaybeden 3, sinyal gecikmesi 1 gün, en geç çıkış tarihi 2026-06-12\nDeğerlendirme: Olay sayısı alt sınırın altında; sonuçlar belirsiz, daha fazla inceleme gerekir (INVESTIGATE).\nBacktest'te sinyal sayısı az; getiri güvenilir değil.\nÖrneklem dışı doğrulama yapılmadı.\nOlay sayısı az olduğundan sonuçlar belirsizdir.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: INVESTIGATE",
+  "gate_status": "INVESTIGATE",
+  "id": "q3_asels_bollinger",
+  "policy": {
+    "label": "INVESTIGATE",
+    "reasons": [
+      "BACKTEST_LOW_SIGNAL",
+      "OOS_VALIDATION_MISSING",
+      "FEW_EVENTS"
+    ],
+    "rule_id": "T1_FEW_EVENTS"
+  },
+  "question": "Analiz tarihi: 10.09.2026\nASELS'te 01.01.2024 – 10.09.2026 döneminde kaç kez alt Bollinger bandına dokunuldu? Bunların kaçında fiyat 5 gün içinde yükseldi? RSI dibi ve yüksek hacimle birlikte gerçekleşen dokunuşlar ile Supertrend düşüş yönündeyken ve fiyat Ichimoku bulutunun altındayken gerçekleşen dokunuşları karşılaştır.",
+  "session_status": "DELIVERED",
+  "title": "Soru 3: ASELS alt Bollinger dokunuşu (tekli + birleşik koşullar)",
+  "tool_calls": [
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "6e00622f2c8930969570fddad266a08d9b32bb232f4b1f93d4271734cccccf35",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "ASELS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "621a33067d22de811ce01f6b1a468b0c027182704b6d8fd07c0462af2e618064",
+      "key_figures": {
+        "latest": {
+          "close": 398.5,
+          "date": "2026-09-10",
+          "states": {
+            "ichimoku_position": "ABOVE_CLOUD",
+            "kama_slope": null,
+            "supertrend": "BULLISH",
+            "volume_regime": null
+          },
+          "values": {
+            "BB_BANDWIDTH_PCT_20_2.0": 8.6758,
+            "BB_B_20_2.0": 0.6331,
+            "BB_LOWER_20_2.0": 376.8608,
+            "BB_MID_20_2.0": 393.95,
+            "BB_UPPER_20_2.0": 411.0392,
+            "ICHIMOKU_CHIKOU_VS_CLOSE_26": 51.75,
+            "ICHIMOKU_KIJUN_26": 378.75,
+            "ICHIMOKU_SENKOU_A_9_26": 366.5,
+            "ICHIMOKU_SENKOU_B_52": 372.375,
+            "ICHIMOKU_TENKAN_9": 390.0,
+            "RSI_14": 56.9157,
+            "SUPERTREND_10_3.0": 363.2249
+          }
+        },
+        "n_latest_fields": 4,
+        "state_date": "2026-09-10"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "as_of": "2026-09-10",
+        "config": {
+          "atr_period": 14,
+          "bollinger_std": 2.0,
+          "bollinger_window": 20,
+          "ema_windows": [
+            12,
+            26
+          ],
+          "ichimoku_kijun": 26,
+          "ichimoku_senkou_b": 52,
+          "ichimoku_tenkan": 9,
+          "kama_er_window": 10,
+          "kama_fast": 2,
+          "kama_slow": 30,
+          "macd_fast": 12,
+          "macd_signal": 9,
+          "macd_slow": 26,
+          "rsi_period": 14,
+          "sma_windows": [
+            20,
+            50,
+            200
+          ],
+          "supertrend_atr_period": 10,
+          "supertrend_multiplier": 3.0,
+          "volume_zscore_window": 20
+        },
+        "end": "2026-09-10",
+        "include_columns_meta": false,
+        "indicators": [
+          "BOLLINGER",
+          "ICHIMOKU",
+          "RSI",
+          "SUPERTREND"
+        ],
+        "last_n_rows": 0,
+        "price_adjustment": "adjusted",
+        "start": "2024-01-01",
+        "ticker": "ASELS",
+        "value_columns": null
+      },
+      "status": "OK",
+      "tool": "calculate_indicators",
+      "warnings": [
+        "MISSING_TRADING_DAYS: ASELS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+      ]
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "483f2cb929269f6dc213b221051ff703e205f5eb7fc90b7c978c59e3695eef8f",
+      "key_figures": {
+        "groups": [
+          {
+            "label": "single_indicator",
+            "last_event_date": "2026-06-04",
+            "n_events_detected": 12,
+            "n_overlapping_forward_windows": 5,
+            "n_raw_event_days": 17,
+            "per_horizon": [
+              {
+                "baseline_hit_rate_pct": 52.608,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 0.368,
+                  "hit_rate_pct": 66.6667,
+                  "mean_return_pct": 0.868,
+                  "n_events_complete": 12,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 4,
+                  "n_success": 8
+                },
+                "horizon": 1
+              },
+              {
+                "baseline_hit_rate_pct": 58.296,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 1.4797,
+                  "hit_rate_pct": 66.6667,
+                  "mean_return_pct": 1.9797,
+                  "n_events_complete": 12,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 4,
+                  "n_success": 8
+                },
+                "horizon": 3
+              },
+              {
+                "baseline_hit_rate_pct": 59.2204,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 2.4608,
+                  "hit_rate_pct": 66.6667,
+                  "mean_return_pct": 2.9608,
+                  "n_events_complete": 12,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 4,
+                  "n_success": 8
+                },
+                "horizon": 5
+              },
+              {
+                "baseline_hit_rate_pct": 61.7825,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 2.2972,
+                  "hit_rate_pct": 50.0,
+                  "mean_return_pct": 2.7972,
+                  "n_events_complete": 12,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 6,
+                  "n_success": 6
+                },
+                "horizon": 10
+              }
+            ]
+          },
+          {
+            "label": "RSI dip + yüksek hacim",
+            "last_event_date": null,
+            "n_events_detected": 0,
+            "n_overlapping_forward_windows": 0,
+            "n_raw_event_days": 0,
+            "per_horizon": [
+              {
+                "baseline_hit_rate_pct": 52.608,
+                "full": {
+                  "cost_adjusted_mean_return_pct": null,
+                  "hit_rate_pct": null,
+                  "mean_return_pct": null,
+                  "n_events_complete": 0,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 0,
+                  "n_success": 0
+                },
+                "horizon": 1
+              },
+              {
+                "baseline_hit_rate_pct": 58.296,
+                "full": {
+                  "cost_adjusted_mean_return_pct": null,
+                  "hit_rate_pct": null,
+                  "mean_return_pct": null,
+                  "n_events_complete": 0,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 0,
+                  "n_success": 0
+                },
+                "horizon": 3
+              },
+              {
+                "baseline_hit_rate_pct": 59.2204,
+                "full": {
+                  "cost_adjusted_mean_return_pct": null,
+                  "hit_rate_pct": null,
+                  "mean_return_pct": null,
+                  "n_events_complete": 0,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 0,
+                  "n_success": 0
+                },
+                "horizon": 5
+              },
+              {
+                "baseline_hit_rate_pct": 61.7825,
+                "full": {
+                  "cost_adjusted_mean_return_pct": null,
+                  "hit_rate_pct": null,
+                  "mean_return_pct": null,
+                  "n_events_complete": 0,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 0,
+                  "n_success": 0
+                },
+                "horizon": 10
+              }
+            ]
+          },
+          {
+            "label": "Supertrend düşüş + bulut altı",
+            "last_event_date": "2025-11-11",
+            "n_events_detected": 5,
+            "n_overlapping_forward_windows": 1,
+            "n_raw_event_days": 7,
+            "per_horizon": [
+              {
+                "baseline_hit_rate_pct": 52.608,
+                "full": {
+                  "cost_adjusted_mean_return_pct": -0.0435,
+                  "hit_rate_pct": 60.0,
+                  "mean_return_pct": 0.4565,
+                  "n_events_complete": 5,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 2,
+                  "n_success": 3
+                },
+                "horizon": 1
+              },
+              {
+                "baseline_hit_rate_pct": 58.296,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 2.7456,
+                  "hit_rate_pct": 60.0,
+                  "mean_return_pct": 3.2456,
+                  "n_events_complete": 5,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 2,
+                  "n_success": 3
+                },
+                "horizon": 3
+              },
+              {
+                "baseline_hit_rate_pct": 59.2204,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 5.4652,
+                  "hit_rate_pct": 80.0,
+                  "mean_return_pct": 5.9652,
+                  "n_events_complete": 5,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 1,
+                  "n_success": 4
+                },
+                "horizon": 5
+              },
+              {
+                "baseline_hit_rate_pct": 61.7825,
+                "full": {
+                  "cost_adjusted_mean_return_pct": 4.1948,
+                  "hit_rate_pct": 60.0,
+                  "mean_return_pct": 4.6948,
+                  "n_events_complete": 5,
+                  "n_excluded_incomplete_horizon": 0,
+                  "n_false_positive": 2,
+                  "n_success": 3
+                },
+                "horizon": 10
+              }
+            ]
+          }
+        ],
+        "n_tests_declared": 3,
+        "split_date": "2026-01-01"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": 12,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_start": "2024-01-01",
+        "as_of": "2026-09-10",
+        "condition_sets": [
+          {
+            "ichimoku_state": null,
+            "kama_slope": null,
+            "label": "RSI dip + yüksek hacim",
+            "rsi_state": "LOCAL_LOW",
+            "supertrend_state": null,
+            "volume_regime": "HIGH"
+          },
+          {
+            "ichimoku_state": "BELOW_CLOUD",
+            "kama_slope": null,
+            "label": "Supertrend düşüş + bulut altı",
+            "rsi_state": null,
+            "supertrend_state": "BEARISH",
+            "volume_regime": null
+          }
+        ],
+        "event_family": "BB_LOWER_TOUCH",
+        "forward_horizons": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "indicator_config": {
+          "atr_period": 14,
+          "bollinger_std": 2.0,
+          "bollinger_window": 20,
+          "ema_windows": [
+            12,
+            26
+          ],
+          "ichimoku_kijun": 26,
+          "ichimoku_senkou_b": 52,
+          "ichimoku_tenkan": 9,
+          "kama_er_window": 10,
+          "kama_fast": 2,
+          "kama_slow": 30,
+          "macd_fast": 12,
+          "macd_signal": 9,
+          "macd_slow": 26,
+          "rsi_period": 14,
+          "sma_windows": [
+            20,
+            50,
+            200
+          ],
+          "supertrend_atr_period": 10,
+          "supertrend_multiplier": 3.0,
+          "volume_zscore_window": 20
+        },
+        "n_tests_declared": 3,
+        "slippage_bps": 5.0,
+        "split_date": "2026-01-01",
+        "ticker": "ASELS",
+        "touch_mode": "close",
+        "transaction_cost_bps": 20.0
+      },
+      "status": "OK",
+      "tool": "detect_reversal_events",
+      "warnings": [
+        "FEW_EVENTS: single_indicator: n_events_detected=12 < MIN_EVENTS=20",
+        "FEW_EVENTS: RSI dip + yüksek hacim: n_events_detected=0 < MIN_EVENTS=20",
+        "FEW_EVENTS: Supertrend düşüş + bulut altı: n_events_detected=5 < MIN_EVENTS=20",
+        "OOS_TOO_SMALL: single_indicator: OOS tamamlanmış olay sayısı MIN_OOS_EVENTS altında (h=1: n=3; h=3: n=3; h=5: n=3; h=10: n=3)",
+        "OOS_TOO_SMALL: RSI dip + yüksek hacim: OOS tamamlanmış olay sayısı MIN_OOS_EVENTS altında (h=1: n=0; h=3: n=0; h=5: n=0; h=10: n=0)",
+        "OOS_TOO_SMALL: Supertrend düşüş + bulut altı: OOS tamamlanmış olay sayısı MIN_OOS_EVENTS altında (h=1: n=0; h=3: n=0; h=5: n=0; h=10: n=0)",
+        "MULTIPLE_TESTING_RISK: n_tests_declared=3; 2 birleşik koşul aynı olay kümesinde ek karşılaştırmadır (çağıran sayıyı beyan eder; Bonferroni alpha/n). Bu araç p-değeri üretmez",
+        "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma varsayımdır. Olay kapanıştan ölçülür (işlem varsayımı değil)",
+        "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. Koşulsuz grupta 17 ham olay gününden 12 olay (ardışık serinin ilk günü); 5 olayın ileri penceresi bir sonraki olayla çakışıyor, bu yüzden olaylar tam bağımsız değildir",
+        "ASSOCIATION_NOT_CAUSATION: Olay sonrası getiri ilişki gözlemidir; nedensellik iddiası değildir"
+      ]
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "768e8897cae6dc45cf828efb0e1fa02162ec303560448a4441fc8e2258eb924d",
+      "key_figures": {
+        "benchmarks": [
+          {
+            "cumulative_return_diff_pct": -783.2825,
+            "name": "BUY_AND_HOLD",
+            "sharpe_diff": -1.9031
+          },
+          {
+            "cumulative_return_diff_pct": -86.31,
+            "name": "XU100",
+            "sharpe_diff": -0.9184
+          }
+        ],
+        "last_exit_date": "2026-06-12",
+        "low_signal_flag": true,
+        "n_excluded_incomplete_horizon": 0,
+        "n_signals": 9,
+        "oos_degradation_flag": false,
+        "signal_type": "REVERSAL",
+        "splits": [
+          {
+            "benchmark_diff_pct": -405.4676,
+            "n_signals": 7,
+            "name": "TRAIN"
+          },
+          {
+            "benchmark_diff_pct": -77.301,
+            "n_signals": 2,
+            "name": "TEST"
+          }
+        ],
+        "strategy_net": {
+          "cumulative_return_pct": 5.2464,
+          "max_drawdown_pct": -15.3305,
+          "n_trades": 9,
+          "sharpe_ratio": 0.2267,
+          "win_rate_pct": 66.6667
+        }
+      },
+      "max_result_date": "2026-06-12",
+      "n_events": 9,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "as_of": "2026-09-10",
+        "end": "2026-09-10",
+        "start": "2024-01-01",
+        "strategy": {
+          "benchmarks": [
+            "BUY_AND_HOLD",
+            "XU100"
+          ],
+          "holding_days": 5,
+          "signal_lag_days": 1,
+          "signal_params": {
+            "event_family": "BB_LOWER_TOUCH"
+          },
+          "signal_type": "REVERSAL",
+          "slippage_bps": 5.0,
+          "train_end": "2025-12-31",
+          "transaction_cost_bps": 20.0,
+          "validation_end": null,
+          "variant": "B",
+          "walk_forward": false
+        },
+        "universe": [
+          "ASELS"
+        ]
+      },
+      "status": "OK",
+      "tool": "run_backtest",
+      "warnings": [
+        "SOLO_PEER_GROUP: ASELS: tek hisseli grup; sektör filtresi uygulanmadı",
+        "OOS_TOO_SMALL: OOS işlem sayısı 2 < MIN_OOS_EVENTS; oos_degradation_flag=false",
+        "LOW_SIGNAL_COUNT: n_signals=9 < MIN_EVENTS=20; az sinyalden gelen getiri güvenilir değildir",
+        "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma varsayımdır; giriş/çıkış adjusted kapanışta, borç/vergi yok, yalnızca uzun yön",
+        "MULTIPLE_TESTING_RISK: araç parametre taraması yapmaz; aynı veride birden çok strateji/parametre denendiyse seçim yanlılığı oluşur ve sonuç iyimser olur",
+        "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. 3 sinyal açık pozisyon nedeniyle alınmadı"
+      ]
+    },
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "ad87e7dc97e98611f72c27da42bf8bf2c88303753f1821a7f202a828709fb940",
+      "key_figures": {
+        "gate_status": "INVESTIGATE"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "621a33067d22de811ce01f6b1a468b0c027182704b6d8fd07c0462af2e618064",
+            "max_result_date": "2026-09-10",
+            "n_events": null,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": null,
+            "tool": "calculate_indicators"
+          },
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "483f2cb929269f6dc213b221051ff703e205f5eb7fc90b7c978c59e3695eef8f",
+            "max_result_date": "2026-09-10",
+            "n_events": 12,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": null,
+            "tool": "detect_reversal_events"
+          },
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "768e8897cae6dc45cf828efb0e1fa02162ec303560448a4441fc8e2258eb924d",
+            "max_result_date": "2026-06-12",
+            "n_events": 9,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": 1,
+            "tool": "run_backtest"
+          }
+        ],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "ASELS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    }
+  ]
+}

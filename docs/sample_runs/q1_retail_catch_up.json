@@ -1,0 +1,349 @@
+{
+  "as_of": "2026-09-10",
+  "checks": {
+    "any_result_after_as_of": false,
+    "invalid_tool_calls": 0,
+    "n_hallucinated": 0,
+    "n_number_claims": 21,
+    "n_unevidenced": 0,
+    "reproducible": true
+  },
+  "data_version": [
+    "snap_2026-11-20_v2"
+  ],
+  "final_status": "ACCEPTED",
+  "final_text": "Sektör içi göreli performans ve geçmiş geride kalmalar hesaplandı.\nKanıt (araç çıktıları):\n- retail grubu (3 hisse), 20 işlem günü: sektör medyan getirisi %-1.8116, XU100 %1.8518, fark -3.6634 pp, sektör gücü WEAK\n- MAVI: 20 işlem günü getirisi %-5.0568, sektör medyanına göre -3.2452 pp (geride kalan), sıra 3\n- Geçmiş geride kalma, ufuk 5: tamamlanmış olay 43, başarı 20, yanlış pozitif 23, isabet %46.5116, maliyet sonrası ortalama %-0.6828, medyan kapanma 1.7752 pp, taban isabet %49.6742, örneklem içi: olay 33, isabet %48.4848, maliyet sonrası %-0.4826, örneklem dışı: olay 10, isabet %40.0, maliyet sonrası %-1.3434, örneklem dışı bozulma işareti false\n- Backtest varyant B (CATCH_UP), maliyet sonrası: kümülatif getiri %9.3125, Sharpe 0.2574, maksimum düşüş %-33.9517, isabet %49.3333, işlem 75\n- Backtest işlem özeti: kazanan 37, kaybeden 38, sinyal gecikmesi 1 gün, en geç çıkış tarihi 2026-08-18\nDeğerlendirme: Tarihsel doğrulama başarısız: geride kalmalar çoğu ufukta taban oranı aşamadı ve/veya örneklem dışında bozuldu; sinyal reddedilir (REJECT_SIGNAL).\nTarihsel doğrulama başarısız oldu.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: REJECT_SIGNAL",
+  "gate_status": "PASS_WITH_WARNINGS",
+  "id": "q1_retail_catch_up",
+  "policy": {
+    "label": "REJECT_SIGNAL",
+    "reasons": [
+      "SUBJECT_EVENT_COUNT",
+      "HISTORICAL_VALIDATION_FAILED"
+    ],
+    "rule_id": "C4_REJECT_HISTORY"
+  },
+  "question": "Analiz tarihi: 10.09.2026\nPerakende sektöründe (BIMAS, MGROS, MAVI) 10.09.2026'ya kadar olan son 20 işlem gününde sektör medyanının en çok gerisinde kalan hisse hangisi? 01.01.2024 – 10.09.2026 döneminde benzer geride kalmalar 5, 10 ve 20 gün içinde kapanmış mı? Hisse POTENTIAL_CATCH_UP_CANDIDATE olarak etiketlenebilir mi?",
+  "session_status": "DELIVERED",
+  "title": "Soru 1: Perakende catch-up (BIMAS, MGROS, MAVI)",
+  "tool_calls": [
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "5162ced035b11f0161f5a348c9f5f7af268e758ea38a6a2acda275ef7227076a",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "BIMAS",
+          "MAVI",
+          "MGROS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "2afccf46b8a96bafc6242bf78075727333ff3b03c265e700d6d83514b5ba2777",
+      "key_figures": {
+        "historical_catch_up": [
+          {
+            "baseline_hit_rate_pct": 49.6742,
+            "full": {
+              "cost_adjusted_mean_return_pct": -0.6828,
+              "hit_rate_pct": 46.5116,
+              "mean_return_pct": -0.1828,
+              "n_events_complete": 43,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 23,
+              "n_success": 20
+            },
+            "horizon": 5,
+            "in_sample": {
+              "cost_adjusted_mean_return_pct": -0.4826,
+              "hit_rate_pct": 48.4848,
+              "mean_return_pct": 0.0174,
+              "n_events_complete": 33,
+              "n_excluded_incomplete_horizon": 0,
+              "n_false_positive": 17,
+              "n_success": 16
+            },
+            "out_of_sample": {
+              "cost_adjusted_mean_return_pct": -1.3434,
+              "hit_rate_pct": 40.0,
+              "mean_return_pct": -0.8434,
+              "n_events_complete": 10,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 6,
+              "n_success": 4
+            }
+          },
+          {
+            "baseline_hit_rate_pct": 50.5556,
+            "full": {
+              "cost_adjusted_mean_return_pct": -0.8852,
+              "hit_rate_pct": 48.8372,
+              "mean_return_pct": -0.3852,
+              "n_events_complete": 43,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 22,
+              "n_success": 21
+            },
+            "horizon": 10,
+            "in_sample": {
+              "cost_adjusted_mean_return_pct": -0.5206,
+              "hit_rate_pct": 51.5152,
+              "mean_return_pct": -0.0206,
+              "n_events_complete": 33,
+              "n_excluded_incomplete_horizon": 0,
+              "n_false_positive": 16,
+              "n_success": 17
+            },
+            "out_of_sample": {
+              "cost_adjusted_mean_return_pct": -2.0882,
+              "hit_rate_pct": 40.0,
+              "mean_return_pct": -1.5882,
+              "n_events_complete": 10,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 6,
+              "n_success": 4
+            }
+          },
+          {
+            "baseline_hit_rate_pct": 48.7179,
+            "full": {
+              "cost_adjusted_mean_return_pct": 0.6596,
+              "hit_rate_pct": 48.8372,
+              "mean_return_pct": 1.1596,
+              "n_events_complete": 43,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 22,
+              "n_success": 21
+            },
+            "horizon": 20,
+            "in_sample": {
+              "cost_adjusted_mean_return_pct": 1.1252,
+              "hit_rate_pct": 51.5152,
+              "mean_return_pct": 1.6252,
+              "n_events_complete": 33,
+              "n_excluded_incomplete_horizon": 0,
+              "n_false_positive": 16,
+              "n_success": 17
+            },
+            "out_of_sample": {
+              "cost_adjusted_mean_return_pct": -0.8768,
+              "hit_rate_pct": 40.0,
+              "mean_return_pct": -0.3768,
+              "n_events_complete": 10,
+              "n_excluded_incomplete_horizon": 1,
+              "n_false_positive": 6,
+              "n_success": 4
+            }
+          }
+        ],
+        "ranking": [
+          {
+            "is_laggard": false,
+            "lag_score_pp": 16.0214,
+            "rank": 1,
+            "return_pct": 14.2098,
+            "ticker": "BIMAS"
+          },
+          {
+            "is_laggard": false,
+            "lag_score_pp": 0.0,
+            "rank": 2,
+            "return_pct": -1.8116,
+            "ticker": "MGROS"
+          },
+          {
+            "is_laggard": true,
+            "lag_score_pp": -3.2452,
+            "rank": 3,
+            "return_pct": -5.0568,
+            "ticker": "MAVI"
+          }
+        ],
+        "sector_median_vs_xu100_pp": -3.6634,
+        "sector_strength": "WEAK",
+        "window": [
+          "2026-08-14",
+          "2026-09-10"
+        ]
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": 43,
+      "n_excluded_incomplete_horizon": 1,
+      "params": {
+        "analysis_start": "2024-01-01",
+        "as_of": "2026-09-10",
+        "forward_horizons": [
+          5,
+          10,
+          20
+        ],
+        "horizon": 20,
+        "lag_threshold_pp": 3.0,
+        "sector": "retail",
+        "split_date": "2026-01-01"
+      },
+      "status": "OK",
+      "tool": "rank_sector_relative_strength",
+      "warnings": [
+        "MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25",
+        "INCOMPLETE_HORIZON_EXCLUDED: ufku as_of'u aşan olaylar istatistiğe katılmadı (ufuk: dışlanan): 5g: 1, 10g: 1, 20g: 1",
+        "OOS_DEGRADATION: örneklem dışı bozulma (ufuk 20 gün)",
+        "HISTORICAL_ONLY: geçmiş kanıt, gelecek garantisi değil; tespit: grup medyanı (kendisi dahil); sonuç: kendisi hariç peer medyanı; ham laggard hisse-günü: BIMAS 43, MAVI 227, MGROS 128 (toplam 398); bağımsızlaştırma sonrası olay (hisse bazında cooldown=20 gün): BIMAS 9, MAVI 21, MGROS 14 (toplam 44); sektörün güçlü olup olmadığı olay kuralında aranmadı; hisseler arası olay bağımlılığı kalır",
+        "MULTIPLE_TESTING_RISK: 3 ileri ufuk aynı veride denendi (ayrıca lag penceresi ve eşik seçimi); çoklu test düzeltmesi uygulanmadı"
+      ]
+    },
+    {
+      "actor": "model",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "1b131f97eb8e345a855f8500378073aefa7393e1d76d063991114e26022b3ea5",
+      "key_figures": {
+        "benchmarks": [
+          {
+            "cumulative_return_diff_pct": -94.9271,
+            "name": "BUY_AND_HOLD",
+            "sharpe_diff": -0.8291
+          },
+          {
+            "cumulative_return_diff_pct": -83.3728,
+            "name": "XU100",
+            "sharpe_diff": -0.896
+          }
+        ],
+        "last_exit_date": "2026-08-18",
+        "low_signal_flag": false,
+        "n_excluded_incomplete_horizon": 0,
+        "n_signals": 75,
+        "oos_degradation_flag": true,
+        "signal_type": "CATCH_UP",
+        "splits": [
+          {
+            "benchmark_diff_pct": -37.8353,
+            "n_signals": 58,
+            "name": "TRAIN"
+          },
+          {
+            "benchmark_diff_pct": -36.8511,
+            "n_signals": 17,
+            "name": "TEST"
+          }
+        ],
+        "strategy_net": {
+          "cumulative_return_pct": 9.3125,
+          "max_drawdown_pct": -33.9517,
+          "n_trades": 75,
+          "sharpe_ratio": 0.2574,
+          "win_rate_pct": 49.3333
+        }
+      },
+      "max_result_date": "2026-08-18",
+      "n_events": 75,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "as_of": "2026-09-10",
+        "end": "2026-09-10",
+        "start": "2024-01-01",
+        "strategy": {
+          "benchmarks": [
+            "BUY_AND_HOLD",
+            "XU100"
+          ],
+          "holding_days": 5,
+          "signal_lag_days": 1,
+          "signal_params": {},
+          "signal_type": "CATCH_UP",
+          "slippage_bps": 5.0,
+          "train_end": "2025-12-31",
+          "transaction_cost_bps": 20.0,
+          "validation_end": null,
+          "variant": "B",
+          "walk_forward": false
+        },
+        "universe": [
+          "BIMAS",
+          "MAVI",
+          "MGROS"
+        ]
+      },
+      "status": "OK",
+      "tool": "run_backtest",
+      "warnings": [
+        "OOS_DEGRADATION: OOS performansı bozuldu (IS 58 işlem, OOS 17 işlem)",
+        "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma varsayımdır; giriş/çıkış adjusted kapanışta, borç/vergi yok, yalnızca uzun yön",
+        "MULTIPLE_TESTING_RISK: araç parametre taraması yapmaz; aynı veride birden çok strateji/parametre denendiyse seçim yanlılığı oluşur ve sonuç iyimser olur",
+        "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. 185 sinyal açık pozisyon nedeniyle alınmadı; 161 sinyal sektör filtresiyle elendi"
+      ]
+    },
+    {
+      "actor": "harness",
+      "after_as_of": false,
+      "dataset_versions": [],
+      "input_hash": "b2e7e0077c76567babe16ede39ffafb2079afe05f47f71a5264c166ef7eba45a",
+      "key_figures": {
+        "gate_status": "PASS_WITH_WARNINGS"
+      },
+      "max_result_date": "2026-09-10",
+      "n_events": null,
+      "n_excluded_incomplete_horizon": 0,
+      "params": {
+        "analysis_bundle": [
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "2afccf46b8a96bafc6242bf78075727333ff3b03c265e700d6d83514b5ba2777",
+            "max_result_date": "2026-09-10",
+            "n_events": 43,
+            "n_excluded_incomplete_horizon": 1,
+            "signal_lag_days_applied": null,
+            "tool": "rank_sector_relative_strength"
+          },
+          {
+            "as_of": "2026-09-10",
+            "data_version": "snap_2026-11-20_v2",
+            "input_hash": "1b131f97eb8e345a855f8500378073aefa7393e1d76d063991114e26022b3ea5",
+            "max_result_date": "2026-08-18",
+            "n_events": 75,
+            "n_excluded_incomplete_horizon": 0,
+            "signal_lag_days_applied": 1,
+            "tool": "run_backtest"
+          }
+        ],
+        "as_of": "2026-09-10",
+        "checks": null,
+        "end": "2026-09-10",
+        "include_index": true,
+        "price_jump_limit_pct": 10.0,
+        "start": "2024-01-01",
+        "tickers": [
+          "BIMAS",
+          "MAVI",
+          "MGROS"
+        ]
+      },
+      "status": "OK",
+      "tool": "check_data_quality",
+      "warnings": []
+    }
+  ]
+}

@@ -38,7 +38,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host", default=None)
     args = ap.parse_args(argv)
 
-    backend = OllamaBackend(model=args.model, host=args.host, tool_mode="native")      # native: mesajlar OLDUĞU GİBİ gider (zaten kodlanmış metin mesajları)
+    # native: mesajlar OLDUĞU GİBİ gider (zaten kodlanmış metin mesajları). max_new_tokens=1: yalnızca prompt_eval_count gerekir; tam yanıt üretmek CPU'da dakikalar sürer.
+    backend = OllamaBackend(model=args.model, host=args.host, tool_mode="native", max_new_tokens=1)
     records = [json.loads(line) for line in Path(args.records).read_text(encoding="utf-8").splitlines() if line.strip()][: args.n]
     bad = 0
     for rec in records:

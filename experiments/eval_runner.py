@@ -5,6 +5,10 @@ GERÇEK oturum ve harness'in `final_metrics()` çıktısıyla sayılır. Ollama 
 
     python -m experiments.eval_runner --questions data/training/v1/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out reports/eval_v1
 
+DAYANIKLILIK (Colab/CPU'da koşular kesilir): her oturumdan sonra satır `results.jsonl` (tipli, devam için) ve `results.csv` (ekleme) dosyalarına YAZILIR ve süre log'lanır
+(`[i/N] model profil soru durum 12.3sn, geçen/tahmini kalan`); aynı `--out` ile yeniden başlatınca biten (model, profil, soru, tekrar) satırları ATLANIR (`--no-resume` sıfırdan başlatır).
+Bitişte (ya da Ctrl+C ile) `summary.json` ve tekrarlanabilirlik sütunlu `results.csv` tüm satırlardan yeniden yazılır. Zaman aşımı: `HARNESS_LLM_TIMEOUT` (sn).
+
 Metrikler (satır = soru x profil x model x tekrar): sayısal halüsinasyon (teslim ve deneme düzeyi), geçersiz araç çağrısı oranı, kanıtsız sayı, kural ihlalleri, etiket uyumu
 (politika ve veri kümesi beklentisi), zorunlu adım atlama, geri çekilme, tekrarlanabilirlik (tekrar >= 2 ise), bağlam (prompt token), süre.
 """
@@ -14,6 +18,7 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 import random
 import time
 from collections import defaultdict
@@ -156,19 +161,78 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def row_key(r: dict[str, Any]) -> tuple[str, str, str, int]:
+    return (str(r["model"]), str(r["profile"]), str(r["question_id"]), int(r["repeat"]))
+
+
 def run_matrix(items: Sequence[dict[str, Any]], profiles: Sequence[str], factories: dict[str, BackendFactory], repeats: int = 1,
-               progress: Callable[[str], None] | None = None) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+               progress: Callable[[str], None] | None = None, *, prior_rows: Sequence[dict[str, Any]] = (),
+               on_row: Callable[[dict[str, Any]], None] | None = None) -> list[dict[str, Any]]:
+    """Matris koşusu. `prior_rows`: önceki (kesilen) koşudan biten satırlar; aynı (model, profil, soru, tekrar) ATLANIR ve sonuca eklenir.
+    `on_row(row)`: her YENİ satırdan hemen sonra çağrılır (CSV/JSONL'a ekleme için). Dönüş: önceki + yeni satırlar (tekrarlanabilirlik hesaplanmış)."""
+    done = {row_key(r) for r in prior_rows}
+    rows: list[dict[str, Any]] = [dict(r) for r in prior_rows]
+    total = len(factories) * len(profiles) * len(items) * repeats
+    n_new, t0 = 0, time.time()
     with real_tools():
         for model, factory in factories.items():
             for profile in profiles:
                 for item in items:
                     for rep in range(repeats):
-                        rows.append(run_one(item, profile, model, factory, rep))
+                        if (model, profile, str(item["id"]), rep) in done:
+                            continue
+                        row = run_one(item, profile, model, factory, rep)
+                        rows.append(row)
+                        n_new += 1
+                        if on_row:
+                            on_row(row)
                         if progress:
-                            progress(f"{model} {profile} {item['id']} {rows[-1]['status']}")
+                            elapsed = time.time() - t0
+                            left = total - len(done) - n_new
+                            eta = elapsed / n_new * left
+                            progress(f"[{len(done) + n_new}/{total}] {model} {profile} {item['id']} {row['status']} {row['seconds']}sn "
+                                     f"(geçen {elapsed / 60:.1f} dk, tahmini kalan {eta / 60:.1f} dk)")
     add_reproducibility(rows)
     return rows
+
+
+def load_prior(out: Path) -> list[dict[str, Any]]:
+    """`results.jsonl` (tipli) -> önceki satırlar. Bozuk son satır (yazım sırasında kesilmiş) sessizce atlanır."""
+    path = out / "results.jsonl"
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+class RowSink:
+    """Her satırı hemen `results.jsonl`'a (devam için) ve `results.csv`'ye (ekleme) yazar; dosyalar her satırdan sonra flush+fsync edilir."""
+
+    def __init__(self, out: Path, *, reset: bool = False) -> None:
+        out.mkdir(parents=True, exist_ok=True)
+        self.jsonl, self.csv = out / "results.jsonl", out / "results.csv"
+        if reset:
+            for f in (self.jsonl, self.csv):
+                f.unlink(missing_ok=True)
+
+    def __call__(self, row: dict[str, Any]) -> None:
+        with self.jsonl.open("a", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        new = not self.csv.exists() or self.csv.stat().st_size == 0
+        with self.csv.open("a", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=CSV_COLUMNS + ["reproducible"], extrasaction="ignore")
+            if new:
+                w.writeheader()
+            w.writerow(row)
+            fh.flush()
+            os.fsync(fh.fileno())
 
 
 def write_outputs(out: Path, rows: list[dict[str, Any]], summary: dict[str, Any], meta: dict[str, Any]) -> None:
@@ -183,26 +247,62 @@ def write_outputs(out: Path, rows: list[dict[str, Any]], summary: dict[str, Any]
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="A–E deney koşucusu (yerel Ollama)")
-    ap.add_argument("--questions", default="data/training/v1/test.jsonl")
+    ap.add_argument("--questions", default="data/training/v2/test.jsonl")
     ap.add_argument("--n", type=int, default=40)
     ap.add_argument("--models", nargs="+", required=True, help="Ollama model adları (örn. gemma3:4b gemma3-bist)")
     ap.add_argument("--profiles", nargs="+", default=list(PROFILES), choices=list(PROFILES))
     ap.add_argument("--repeats", type=int, default=1)
     ap.add_argument("--host", default=None, help="yalnızca localhost/127.0.0.1 (varsayılan: HARNESS_OLLAMA_HOST)")
-    ap.add_argument("--out", default="reports/eval_v1")
+    ap.add_argument("--out", default="reports/eval_v2")
+    ap.add_argument("--no-resume", action="store_true", help="önceki sonuçları sil, sıfırdan başla (varsayılan: kaldığı yerden devam)")
+    ap.add_argument("--max-runs", type=int, default=None, help="bu çağrıda en çok bu kadar YENİ oturum koş (iki Colab oturumuna bölmek için); sonra temiz çıkar")
     args = ap.parse_args(argv)
 
     from harness.llm_backend import OllamaBackend
 
+    out = Path(args.out)
     records = [json.loads(line) for line in Path(args.questions).read_text(encoding="utf-8").splitlines() if line.strip()]
     items = select_subset(records, args.n)
     factories = {m: (lambda item, session, _m=m: OllamaBackend(model=_m, host=args.host)) for m in args.models}
-    rows = run_matrix(items, args.profiles, factories, args.repeats, progress=lambda s: print(s, flush=True))
-    summary = summarize(rows)
-    write_outputs(Path(args.out), rows, summary, {"n_questions": len(items), "profiles": args.profiles, "models": args.models, "repeats": args.repeats,
-                                                  "question_ids": [i["id"] for i in items]})
+    prior = [] if args.no_resume else load_prior(out)
+    sink = RowSink(out, reset=args.no_resume)
+    if prior:
+        print(f"devam: {len(prior)} biten satır bulundu ({out / 'results.jsonl'}); atlanacak", flush=True)
+    budget = {"left": args.max_runs}
+
+    def on_row(row: dict[str, Any]) -> None:
+        sink(row)
+        if budget["left"] is not None:
+            budget["left"] -= 1
+            if budget["left"] <= 0:
+                raise _BudgetReached()
+
+    rows: list[dict[str, Any]] = list(prior)
+    interrupted = None
+    try:
+        rows = run_matrix(items, args.profiles, factories, args.repeats, progress=lambda s: print(s, flush=True), prior_rows=prior, on_row=on_row)
+    except _BudgetReached:
+        interrupted = "max-runs"
+        rows = load_prior(out)
+    except KeyboardInterrupt:
+        interrupted = "KeyboardInterrupt"
+        rows = load_prior(out)
+    add_reproducibility(rows)
+    summary = summarize(rows) if rows else {}
+    total = len(args.models) * len(args.profiles) * len(items) * args.repeats
+    write_outputs(out, rows, summary, {"n_questions": len(items), "profiles": args.profiles, "models": args.models, "repeats": args.repeats,
+                                       "question_ids": [i["id"] for i in items], "n_rows": len(rows), "n_expected_rows": total,
+                                       "complete": len(rows) >= total, "interrupted": interrupted,
+                                       "total_seconds": round(sum(r.get("seconds") or 0 for r in rows), 1)})
     print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+    if interrupted:
+        print(f"KESİLDİ ({interrupted}): {len(rows)}/{total} satır yazıldı; aynı komutla yeniden çalıştırın", flush=True)
+        return 130 if interrupted == "KeyboardInterrupt" else 0
     return 0
+
+
+class _BudgetReached(Exception):
+    """--max-runs bütçesi doldu (hata değil: bölünmüş koşu)."""
 
 
 if __name__ == "__main__":
