@@ -138,7 +138,8 @@ def test_plans_follow_the_tool_guide_rules_for_every_type():
             if name == "rank_sector_relative_strength":
                 assert p["split_date"] == f"{q.as_of.year}-01-01"
     order = {"get_stock_history": 0, "get_index_history": 0, "calculate_indicators": 1, "find_support_resistance": 1,
-             "rank_sector_relative_strength": 2, "detect_reversal_events": 3, "test_weekday_pattern": 3, "run_backtest": 4}
+             "rank_sector_relative_strength": 2, "detect_reversal_events": 3, "test_weekday_pattern": 3,
+                 "get_fundamental_metrics": 3, "calculate_fundamental_change": 3, "run_backtest": 4}
     for q in qs:
         seq = [order[n] for n, _ in plan_calls(q)]
         assert seq == sorted(seq), (q.type, [n for n, _ in plan_calls(q)])            # durum makinesi sırası (geri dönüş yok)

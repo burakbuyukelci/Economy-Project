@@ -35,7 +35,8 @@ def test_only_real_tools_are_exposed_and_gate_tools_are_not():
     from schemas.enums import ToolName as T
 
     assert spec.REAL_TOOLS == frozenset({T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CALCULATE_INDICATORS, T.FIND_SUPPORT_RESISTANCE,
-                                         T.RANK_SECTOR_RELATIVE_STRENGTH, T.DETECT_REVERSAL_EVENTS, T.TEST_WEEKDAY_PATTERN, T.RUN_BACKTEST})
+                                         T.RANK_SECTOR_RELATIVE_STRENGTH, T.DETECT_REVERSAL_EVENTS, T.TEST_WEEKDAY_PATTERN, T.RUN_BACKTEST,
+                                         T.GET_FUNDAMENTAL_METRICS, T.CALCULATE_FUNDAMENTAL_CHANGE})
 
 
 # =============================== hisse/grup bölmesi ===============================

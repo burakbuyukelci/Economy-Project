@@ -20,7 +20,7 @@ from harness.session import HarnessSession
 from harness.text_protocol import TOOL_CALL_OPEN, parse_reply
 from schemas.enums import AllowedAction as A, ToolName as T
 from training import spec
-from training.composer import compose_final
+from training.composer import compose_final, fundamental_notes
 from training.questions import Question
 
 Call = tuple[str, dict[str, Any]]
@@ -96,6 +96,10 @@ def plan_calls(q: Question) -> list[Call]:
         if p["variant"] == "reversal":
             return _reversal_calls(q, "BB_LOWER_TOUCH", [], True)
         return [_indicators(q, ["RSI", "BOLLINGER"])]
+    if q.type == "fundamental":
+        # YoY için 2024 verisi yok (TMS 29 öncesi alınmaz): soruda temel belirtilmemişse QOQ. Banka için iyileşme metriği NET_PROFIT (şema varsayılanı EBITDA_MARGIN bankada geçersiz).
+        return [("get_fundamental_metrics", {"as_of": a, "ticker": t}),
+                ("calculate_fundamental_change", {"as_of": a, "ticker": t, "improvement_metric": p["metric"], "improvement_basis": p["basis"] or "QOQ"})]
     if q.type == "unsupported":
         return [_indicators(q, ["RSI"])]
     if q.type == "stale":
@@ -146,8 +150,10 @@ def build_steps(q: Question, session: HarnessSession, recovery: str | None = Non
         rule = pol.rule_id                      # G5_COMBINE'da politika kimliği zaten belirleyici senaryonunkidir
         snap = session.evidence_snapshot()
         evidence = snap["committed_evidence_set"] if snap else []
+        warns = [str(w) for r in session.store.records if str(r.envelope["tool"]).startswith(("calculate_fundamental", "get_fundamental"))
+                 for w in (r.envelope.get("warnings") or [])]
         return compose_final(qtype=q.type, plan=q.plan, ticker=q.plan.get("ticker") or "", label=pol.label, rule_id=rule, reasons=reasons,
-                             evidence=evidence, rng=rng, claim=q.plan.get("claim"))
+                             evidence=evidence, rng=rng, claim=q.plan.get("claim"), notes=fundamental_notes(warns))
 
     steps: list[Any] = []
     bad: list[int] = []

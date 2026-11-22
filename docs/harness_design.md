@@ -460,3 +460,33 @@ Eğitim hedefi büyük ölçüde protokol/biçim/ret davranışı (araç çağı
   (INVESTIGATE 52, REJECT_SIGNAL 42, WATCH 17, TECHNICAL_REVERSAL_CANDIDATE **9**); ayrıca tavsiye 60, gösterge 72, destek/direnç 42, geçmiş 42, araçta olmayan veri 48, bayat veri 48. Doğrulama 50, test 100 (test: catch-up 10, haftanın günü 18, teknik dönüş 20; TR adayı 4).
   Hata-kurtarma: eğitimde 49 oturum (%8,2), maskeli.
 
+### 14.4 v2: bilanço oturumları (Soru 4), veri seti sürümü uygunluğu ve kapsam sınırı (`GENERATOR_VERSION = "2"`)
+**Eklenenler.** `spec.REAL_TOOLS` + `get_fundamental_metrics`, `calculate_fundamental_change` (modele gösterilen araç sayısı 8 -> 10; makro YOK). Yeni tip `fundamental` (pay 0,12; diğer tiplerin payları yeniden dağıtıldı: haftalık 0,15, teknik dönüş 0,17, göstergeler 0,10,
+destek/direnç 0,06, geçmiş 0,06, tavsiye 0,08; catch-up/araçta olmayan/bayat değişmedi). Soru şablonları Soru 4 biçiminde ("... tüm çeyreklik bilançolarında FAVÖK marjı ve Net Borç/FAVÖK nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler
+XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?"; ~%38'i "son çeyrek" sorusu; banka hissesi (AKBNK) için ayrı şablon: net faiz geliri + net kâr). Test şablonları (sıra % 4 == 3) yalnızca testte; hisseler peer grubu bazında bölünür (bölme kuralları değişmedi).
+`unsupported` tipindeki iki "fundamental" şablon, aracın artık yanıtladığı soruları (FAVÖK/net borç, net kâr/ROE) sormasın diye aracın KAPSAMADIĞI oranlarla (PD/DD, FD/FAVÖK, cari/likidite oranı) değiştirildi.
+**İki aşamalı protokol (değişmedi).** Araç aşaması (`LOAD_FUNDAMENTALS`: metrik + değişim çağrıları; kapı ve kanıt paketi harness'in) -> açıklama aşaması (`HAZIR` -> politika bloğu -> nihai metin). Etiket her zaman `label_policy` F1–F4'ten (GEÇİCİ eşikler); öğretmen etiket yazmaz.
+**Öğretmen planı.** `get_fundamental_metrics(ticker, as_of)` + `calculate_fundamental_change(ticker, as_of, improvement_metric, improvement_basis)`. Soruda temel belirtilmemişse `QOQ` (YoY için 2024 verisi yok: TMS 29 öncesi alınmaz); sanayide EBITDA_MARGIN/NET_PROFIT_MARGIN, bankada NET_PROFIT.
+Soru tarihi, hissenin bilançosunun GÖRÜNÜR olduğu ilk günden (en erken `disclosure_date`) önce olamaz; soruların %70'i mümkünse 4. çeyreğin görünür olduğu tarihten sonraya kurulur (`POLICY_MIN_QUARTERS = 4` öncesi etiket hep F1/INVESTIGATE).
+**Model görünümü ilkesi (bilanço).** Model yalnızca kanıtın alıntılayabildiği alanları görür: SON açıklanmış çeyrek (değer, QoQ/YoY değişim, birim, yön, TMS 29 bayrağı), çeyrek sayıları, tepki özeti (ufuk, grup, n, ortalama anormal getiri, isabet, ufku dolmamış dışlanan).
+Çeyrek bazlı tepkiler, medyanlar, sektör anormal getirisi, ölçüt tanımı ve veri seti sürüm uyarısı atılır (`view_trimmed: fundamental_view`); açıklama tarihi belirsizliği uyarıları (`YAHOO_APPROX`, `STATUTORY_DEADLINE`: "açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı") modele GİDER.
+Sınama: `tests/training/test_view_visibility.py` (tüm tiplerde, bilanço dahil, nihai metindeki her sayı/tarih görünümde) ve `tests/training/test_fundamental_sessions.py`.
+**Açıklama.** Kanıt cümleleri (iyileşme metriği, Net Borç/FAVÖK, çeyrek sayıları, 1/5/20 gün tepki özeti: IMPROVED ve NOT_IMPROVED, ikisi de boşsa ALL) + F1–F4 gerekçe cümlesi + sayısız notlar (yasal süre/yaklaşık tarih, dışlanan açıklanmamış bilanço,
+ufku dolmamış pencere, TMS 29, yıllıklandırılmış FAVÖK, az çeyrek, banka kümesi) + "nedensellik iddia edilmez" + (aday etikette) tarihsel gözlem notu. Türetilmiş sayı yazılmaz; notlarda rakam yoktur.
+**Veri seti sürümü uygunluğu (kural 12'nin bilanço karşılığı).** Zarftaki `data_version` fiyat sürümüdür; bilanço sürümü `HISTORICAL_ONLY: bilanço veri seti fundamentals_YYYY-MM-DD_vN` uyarısında. `harness.mock_tools.assert_training_eligible` bunu regex ile çeker, TAM BİR sürüm ve
+`harness.settings.ACCEPTED_FUNDAMENTALS_VERSIONS` (şu an yalnızca `fundamentals_2026-11-23_v1`) içinde olmasını ister; makro için aynı kural `ACCEPTED_MACRO_VERSIONS` (boş: makro zarflı kayıt reddedilir). Kayıtta `versions.fundamentals`; doğrulama hattı kabul dışı sürümü ve
+sürümsüz bilanço oturumunu eler.
+**Üretim sonucu (tohum 42; `data/training/v2/report.json`, commit edilmez; token sayımı karakter tahmini: gerçek Gemma tokenizer bu makinede yok, Colab'da yeniden süzülür).** Eğitim 600 / doğrulama 50 / test 100 oturum, eksik 0, bağlam nedeniyle elenen 0 (en uzun 7535 tahmini token),
+tek etiket payı %57,1 (INVESTIGATE). Etiketler (toplam 750): INVESTIGATE 428, REJECT_SIGNAL 163, ANALYSIS_UNSAFE 60, WATCH 40, HOLD 39, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 10, TECHNICAL_REVERSAL_CANDIDATE 10.
+| Bölme | Tipler (bilanço) | Bilanço etiketleri | Bilanço kuralları |
+|---|---|---|---|
+| eğitim | 72 | INVESTIGATE 30, REJECT_SIGNAL 18, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 10, WATCH 14 | F1 30, F2 18, F3 10, F4 14 |
+| doğrulama | 6 | INVESTIGATE 2, WATCH 4 | F1 2, F4 4 |
+| test | 12 | REJECT_SIGNAL 5, WATCH 6, INVESTIGATE 1 | F2 5, F4 6, F1 1 |
+Diğer tiplerin oturum sayıları (eğitim): teknik dönüş 102, haftalık 90, catch-up 60, göstergeler 60, tavsiye 48, araçta olmayan 48, bayat 48, destek/direnç 36, geçmiş 36 (doğrulama 50, test 100'de orantılı). Hata-kurtarma eğitimde 54 oturum (%9,0), maskeli.
+**KAPSAM SINIRI (dürüstlük).** Yahoo bilanço verisinin yalnızca ~%16'sında (159 satırın 25'i) açıklama tarihi eşleşti: bu satırlar `YAHOO_APPROX`, kalanı `STATUTORY_DEADLINE` (görünürlük = dönem sonu + yasal süre; fiyat tepkisine girmez).
+Bu yüzden bilanço oturumlarının çoğunda tepki istatistiği YOKTUR: eğitimde 72 oturumun 18'inde tepki özeti n >= 1, 54'ünde "ALL grubu: gözlem 0"; doğrulamada 6'dan 3'ünde, testte 12'den 2'sinde tepki verisi var (tepkisi olan hisseler: TUPRS, EREGL, AKBNK, kısmen BIMAS, TCELL, ASELS).
+Eğitim bilanço oturumları AKBNK (10), FROTO (10), ASELS (9) hisselerinde yoğunlaşır; test hisseleri (TURSG, ISMEN, TRALT, TCELL, TTKOM) ve doğrulama hisseleri (ENKAI, GUBRF, ARCLK) tamamen yasal süre görünürlüğüne dayanır. TUPRS (Soru 4'ün hissesi) eğitim bölmesindedir.
+`FUNDAMENTAL_IMPROVEMENT_CANDIDATE` yalnızca eğitimde ve 10 örnekle (doğrulama ve testte hiç yok): çünkü 4 çeyrek görünür olmadan etiket F1'dir ve eğitim tarih aralığı (ve 2025Q1/Q2'nin Yahoo'da bulunmaması) F3'ü sınırlar. `POLICY_MIN_QUARTERS = 4` ve F1–F4 GEÇİCİDİR; değiştirilmedi.
+Elle KAP CSV'si (TUPRS 2025Q1–2026Q3, kesin tarih/saat) gelince artımlı sürüm (`fundamentals_..._v2`) ve v2.1 veri üretimi yapılacaktır; makro snapshot'ı main'e girince Soru 5 oturumları da artımlı eklenecektir.
+

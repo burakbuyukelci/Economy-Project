@@ -11,7 +11,8 @@ from collections import Counter
 from typing import Any
 
 from harness.action_guard import check_final_output
-from harness.mock_tools import is_training_eligible
+from harness import settings
+from harness.mock_tools import aux_dataset_versions, is_training_eligible
 from harness.number_verifier import verify_session
 from schemas.common import SCHEMA_VERSION
 from training import spec
@@ -45,7 +46,7 @@ def session_problems(g: Generated) -> list[str]:
     for r in s.store.records:
         env = r.envelope
         if not is_training_eligible(env):
-            out.append(f"eğitime uygun olmayan zarf: {env['tool']} {env['data_version']}")
+            out.append(f"eğitime uygun olmayan zarf: {env['tool']} {env['data_version']} {aux_dataset_versions(env)}")
         if env.get("schema_version") != SCHEMA_VERSION:
             out.append(f"şema sürümü {env.get('schema_version')} != {SCHEMA_VERSION}: {env['tool']}")
         if env["status"] != "OK":
@@ -87,6 +88,11 @@ def dataset_problems(records: list[dict[str, Any]], questions: list[Any], *, max
     for r in records:
         if r["versions"]["schema"] != SCHEMA_VERSION or any(not v.startswith("snap_") or not v.endswith("_v2") for v in r["versions"]["data"]):
             out.append(f"{r['id']}: sürüm alanları geçersiz {r['versions']}")
+        bad_aux = [v for v in r["versions"].get("fundamentals", []) if v not in settings.ACCEPTED_FUNDAMENTALS_VERSIONS]
+        if bad_aux:
+            out.append(f"{r['id']}: kabul edilmeyen bilanço veri seti sürümü {bad_aux}")
+        if r["type"] == "fundamental" and not r["versions"].get("fundamentals"):
+            out.append(f"{r['id']}: bilanço oturumunda bilanço veri seti sürümü yok")
         if len(r["train_mask"]) != len(r["text_messages"]) or not any(r["train_mask"]):
             out.append(f"{r['id']}: kayıp maskesi geçersiz")
     return out

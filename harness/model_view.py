@@ -20,6 +20,9 @@ Kurallar:
   * haftalık örüntü pencereleri yalnızca kanıtın alıntıladığı alanlara iner (`per_day`, `t_stat`, doluluk oranları vb. atılır); reversal olayları yalnızca SON olayın tarihi;
     geçmiş serilerinde ilk 2 + son 3 satırın yanında dönemin EN YÜKSEK ve EN DÜŞÜK kapanış satırları kalır (kanıt bunları alıntılar).
   * SIKI MOD (`settings.MODEL_VIEW_TIGHT`, 6144 geri dönüşü): ufuk blokları yalnızca kanıtın seçtiği ufuklarla (reversal 5; rank 5 ve 20) sınırlanır.
+  * bilanço (calculate_fundamental_change / get_fundamental_metrics): yalnızca SON açıklanmış çeyrek (metrikler: değer, QoQ/YoY değişim, birim, yön) + çeyrek sayıları + tepki özeti
+    (ufuk, grup, n, ortalama anormal getiri, isabet, ufku dolmamış dışlanan); çeyrek bazlı tepkiler, medyanlar, sektör anormal getirisi ve ölçüt tanımı atılır (kanıt alıntılamaz).
+    Veri seti sürüm uyarısı (HISTORICAL_ONLY, "bilanço veri seti ...") modele gösterilmez (eğitim uygunluk denetimi TAM zarftan okur).
 Özne: soruda tek hisse varsa o, aksi halde sıralamadaki en çok geride kalan (label_policy ile aynı kural).
 """
 from __future__ import annotations
@@ -141,6 +144,32 @@ def _tight_horizons(tool: str, results: dict[str, Any]) -> list[str]:
     return ["tight_horizons"] if hit else []
 
 
+_FUND_TOOLS = ("calculate_fundamental_change", "get_fundamental_metrics")
+_FUND_METRIC_KEEP = ("name", "value", "qoq_change", "yoy_change", "change_unit", "qoq_direction", "yoy_direction")
+_FUND_QUARTER_KEEP = ("fiscal_period", "disclosure_date", "tms29_comparable")
+_FUND_REACTION_KEEP = ("horizon", "group", "n", "mean_abnormal_vs_xu100_pct", "hit_rate_vs_xu100_pct", "n_excluded_incomplete_horizon")
+
+
+def _slim_fundamental(tool: str, results: dict[str, Any]) -> list[str]:
+    """Kanıtın alıntıladığı alanlar (harness/evidence.py `_fundamental_change` / `_fundamental_metrics`); gerisi atılır."""
+    before = json.dumps(results, sort_keys=True)
+    if tool == "get_fundamental_metrics":
+        for k in ("period_end_date", "tms29_comparable", "metric_set"):
+            results.pop(k, None)
+    else:
+        results.pop("benchmark_definition", None)
+        results.pop("metric_set", None)
+        quarters = results.get("quarters") or []
+        if quarters:
+            latest = max(quarters, key=lambda q: q.get("fiscal_period") or "")
+            kept = {k: latest[k] for k in _FUND_QUARTER_KEEP if k in latest}
+            kept["metrics"] = [{k: m[k] for k in _FUND_METRIC_KEEP if k in m} for m in latest.get("metrics") or []]
+            results["quarters"] = [kept]
+        if isinstance(results.get("reaction_summary"), list):
+            results["reaction_summary"] = [{k: r[k] for k in _FUND_REACTION_KEEP if k in r} for r in results["reaction_summary"]]
+    return ["fundamental_view"] if json.dumps(results, sort_keys=True) != before else []
+
+
 def _tight() -> bool:
     from harness import settings
 
@@ -152,6 +181,8 @@ def _is_boilerplate(w: str, tool: str) -> bool:
     if w.startswith(_BOILERPLATE_WARNINGS):
         return True
     if w.startswith("HISTORICAL_ONLY"):
+        if tool in _FUND_TOOLS and "bilanço veri seti" in w:
+            return True   # sürüm bilgisi eğitim uygunluk denetimi içindir (tam zarftan okunur); modele gerekmez
         return tool == "rank_sector_relative_strength" or not any(ch.isdigit() for ch in w)
     return False
 _STAT_KEEP = ("n_events_complete", "n_excluded_incomplete_horizon", "n_success", "n_false_positive", "hit_rate_pct", "mean_return_pct",
@@ -253,6 +284,8 @@ def model_view(envelope: dict[str, Any], *, subject: str | None) -> dict[str, An
             trimmed += _tight_horizons(tool, results)
         if tool in ("get_stock_history", "get_index_history"):
             trimmed += _trim_rows(results)
+        if tool in _FUND_TOOLS:
+            trimmed += _slim_fundamental(tool, results)
         if trimmed:
             view["view_trimmed"] = trimmed
     return view

@@ -29,9 +29,10 @@ LABEL_QUOTAS: dict[str, dict[str, float]] = {
     "reversal": {"REJECT_SIGNAL": 0.35, "INVESTIGATE": 0.25, "WATCH": 0.20, "TECHNICAL_REVERSAL_CANDIDATE": 0.20},
     "catch_up": {"HOLD": 0.35, "REJECT_SIGNAL": 0.35, "INVESTIGATE": 0.30},
     "advice": {"INVESTIGATE": 0.80, "WATCH": 0.20},
+    "fundamental": {"INVESTIGATE": 0.30, "REJECT_SIGNAL": 0.25, "FUNDAMENTAL_IMPROVEMENT_CANDIDATE": 0.25, "WATCH": 0.20},
 }
 OVERSAMPLE = {"weekday": 2.5, "reversal": 6.0, "catch_up": 4.0, "indicators": 1.4, "support_resistance": 1.4, "history": 1.4, "advice": 4.0,
-              "unsupported": 1.4, "stale": 1.4}
+              "unsupported": 1.4, "stale": 1.4, "fundamental": 5.0}
 
 
 def _candidates(split: str, seed: int) -> list[Question]:

@@ -39,6 +39,14 @@ RULE_SENTENCES: dict[str, list[str]] = {
     "C5S_SUBJECT_CAP": ["Havuzlu kanıt olumlu olsa da hisse bazlı tutarlılık denetimi başarısız (olay sayısı az ya da kendi geçmişi bazın altında); aday etiket verilmez, izleme (WATCH)."],
     "C6_VALIDATION_MISSING": ["Örneklem dışı doğrulama ya da uygun backtest eksik (OOS doğrulaması yapılmadı); aday etiket verilemez (INVESTIGATE)."],
     "C7_WATCH": ["Kanıt karışık: aday koşulları sağlanmıyor, izleme (WATCH) etiketi verilir."],
+    "F1_INSUFFICIENT": ["Açıklanmış çeyrek sayısı ya da karşılaştırılabilir veri yetersiz; bilanço değişimi güvenilir biçimde değerlendirilemez (INVESTIGATE).",
+                        "Bilanço kanıtı yetersiz (çeyrek sayısı az, karşılaştırma yok ya da enflasyon muhasebesi sonrası karşılaştırılabilirlik sağlanmıyor); daha fazla inceleme gerekir (INVESTIGATE)."],
+    "F2_REJECT": ["İyileşme metriği kötüleşiyor ve borçluluk göstergesi de iyileşmiyor; temel veri bir iyileşme sinyalini desteklemiyor, sinyal reddedilir (REJECT_SIGNAL).",
+                  "Son bilançoda iyileşme metriği geriledi ve borçluluk tarafında da destekleyici değişim yok; iyileşme sinyali reddedilir (REJECT_SIGNAL)."],
+    "F3_CANDIDATE": ["İyileşme metriği iyileşiyor ve borçluluk göstergesi kötüleşmiyor; bu nedenle FUNDAMENTAL_IMPROVEMENT_CANDIDATE etiketi verilir.",
+                     "Son bilançoda iyileşme metriği olumlu yönde ve borçluluk göstergesi bozulmadı; etiket FUNDAMENTAL_IMPROVEMENT_CANDIDATE."],
+    "F4_WATCH": ["Bilanço görünümü karışık ya da düz; aday koşulları sağlanmıyor, yalnızca izleme (WATCH) uygundur.",
+                 "Metrikler çelişiyor ya da yön belirsiz; kanıt karışık olduğundan izleme (WATCH) etiketi verilir."],
     "G1_GATE_UNSAFE": ["Veri kalitesi kapısı analizin güvenli olmadığını gösteriyor; araç sonucu üretilmedi ve etiket ANALYSIS_UNSAFE olur."],
     "G2_GATE_MISSING": ["Kalite kapısı sonucu yok; güvenli varsayılan INVESTIGATE."],
     "G3_GATE_INVESTIGATE": ["Kalite kapısı INVESTIGATE verdiği için aday etiket verilemez; etiket INVESTIGATE."],
@@ -61,7 +69,30 @@ REASON_SENTENCES = {
     "SUBJECT_BELOW_BASELINE": "Hisse kendi geçmişinde çoğu ufukta kendi taban oranının altında kaldı.",
     "SUBJECT_BREAKDOWN_MISSING": "Hisse bazlı kırılım olmadığından tutarlılık doğrulanamadı.",
     "SMALL_PEER_GROUP": "Peer grubu küçük olduğundan karşılaştırma zayıf.",
+    "FEW_QUARTERS": "Açıklanmış çeyrek sayısı az olduğundan sonuçlar belirsizdir.",
+    "PRE_TMS29_NOT_COMPARABLE": "Son çeyrek enflasyon muhasebesi sonrası karşılaştırılabilir değil.",
+    "IMPROVEMENT_METRIC_MISSING": "İyileşme metriği son çeyrekte yok; değerlendirme yapılamadı.",
+    "FUNDAMENTALS_DETERIORATING": "İyileşme metriği kötüleşiyor ve ikinci ana metrik de iyileşmiyor.",
+    "LATEST_REACTION_INCOMPLETE": "Son çeyreğin bazı fiyat tepki pencereleri analiz tarihi itibarıyla tamamlanmadı; bu eksik veri olarak belirtilir ve analiz tarihinden sonraki fiyat kullanılmadı.",
+    "THRESHOLDS_PROVISIONAL": "Temel veri eşikleri geçicidir; sonuç bu geçici kurallara göre verildi ve kesin değildir.",
 }
+ASSOCIATION_NOTE = "Bilanço değişimi ile fiyat tepkisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez."
+# Bilanço araç uyarısı (WarningCode ön eki / etiketi) -> sayısız açıklama cümlesi (modele giden uyarıdan türer; sayı içermez)
+FUNDAMENTAL_WARNING_NOTES = [
+    ("STATUTORY_DEADLINE", "Bazı çeyreklerin açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı; bu çeyrekler fiyat tepkisi istatistiğine girmedi."),
+    ("YAHOO_APPROX", "Açıklama tarihleri Yahoo'dan alınan yaklaşık tarihlerdir; resmî KAP tarihi ve saati değildir."),
+    ("NOT_YET_DISCLOSED_EXCLUDED", "Dönem sonu geçmiş ama analiz tarihinde henüz açıklanmamış bilançolar dışlandı."),
+    ("PRE_TMS29_NOT_COMPARABLE", "Enflasyon muhasebesi öncesi dönemler karşılaştırılamaz; ilgili çeyreklerde değişim hesaplanamadı."),
+    ("yıllıklandırılmış", "Net Borç/FAVÖK bazı çeyreklerde dört çeyrek bulunmadığı için yıllıklandırılmış çeyreklik FAVÖK ile hesaplandı."),
+    ("INCOMPLETE_HORIZON_EXCLUDED", "Ufku analiz tarihini aşan fiyat tepki pencereleri eksik veri olarak dışlandı."),
+    ("FEW_EVENTS", "Çeyrek sayısı az olduğundan istatistik zayıftır ve örneklem dışı ayrımı yapılamaz."),
+    ("BANK_METRIC_SET", "Banka için sanayi oranları (FAVÖK marjı, Net Borç/FAVÖK gibi) kullanılmadı."),
+]
+
+
+def fundamental_notes(warnings: list[str]) -> list[str]:
+    """Bilanço araçlarının uyarılarından, açıklamaya girecek sayısız not cümleleri (sıra sabit, tekrarsız)."""
+    return [text for key, text in FUNDAMENTAL_WARNING_NOTES if any(key in w for w in warnings)]
 DISCLAIMER = ["Bu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.",
               "Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir."]
 OPENINGS = {
@@ -75,6 +106,8 @@ OPENINGS = {
     "unsupported": ["Sorulan bilgi bu sistemde mevcut araçlarla doğrulanamıyor; yalnızca {T} için teknik durum alınabildi.",
                     "Bu soru mevcut araç çıktılarıyla yanıtlanamıyor; elde yalnızca {T} için teknik gösterge verisi var."],
     "stale": ["{T} için analiz denendi ancak veri kalitesi kapısı engelledi.", "{T} analizi için çağrı yapıldı; kalite kapısı veriyi güvenli bulmadı."],
+    "fundamental": ["{T} için bilanço metrikleri ve açıklama sonrası fiyat tepkisi araçla, açıklama tarihine göre hizalanarak incelendi.",
+                    "{T} bilançosundaki değişim ve açıklama sonrası tepki araçla hesaplandı; hizalama dönem sonuna değil açıklama tarihine göredir."],
 }
 UNSUPPORTED_NOTE = {
     "fundamental": "Bilanço ve oran verileri (FAVÖK, F/K, kâr, borçluluk) için kullanılabilir bir araç yok; bu nedenle bu sayılar verilemez.",
@@ -115,6 +148,10 @@ def _pick(items: list[dict[str, Any]], qtype: str, plan: dict[str, Any]) -> list
             sector = [i for i in its if _val(i, "peer_group_size") is not None and _val(i, "horizon") is None][:1]
             lag = [i for i in its if _val(i, "lag_score_pp") is not None][:1]
             out += sector + lag + horizons(its, (20, 5))[:1]
+        elif tool == "calculate_fundamental_change":
+            out += _pick_fundamental(its)
+        elif tool == "get_fundamental_metrics":
+            pass   # aynı değerler calculate_fundamental_change kanıtında (son çeyrek) zaten var
         elif tool == "calculate_indicators":
             out += its[:1]
         elif tool in ("get_stock_history", "get_index_history"):
@@ -124,8 +161,29 @@ def _pick(items: list[dict[str, Any]], qtype: str, plan: dict[str, Any]) -> list
     return out
 
 
+def _pick_fundamental(its: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Son çeyrek: iyileşme metriği + ikinci ana metrik (NET_DEBT_EBITDA; bankada NET_INTEREST_INCOME), açıklanmış çeyrek sayıları ve
+    1/5/20 günlük tepki özeti (IMPROVED ve NOT_IMPROVED grupları; ikisi de boşsa ALL). Hepsi committed kanıttır."""
+    counts = next((i for i in its if _val(i, "improvement_metric") is not None), None)
+    chosen: list[dict[str, Any]] = []
+    if counts is not None:
+        wanted = {_val(counts, "improvement_metric"), "NET_DEBT_EBITDA", "NET_INTEREST_INCOME"}
+        chosen += [i for i in its if _val(i, "fiscal_period") is not None and any(_val(i, m) is not None for m in wanted)]
+        chosen.append(counts)
+    react = [i for i in its if _val(i, "horizon") is not None and _val(i, "n") is not None]
+
+    def group(i: dict[str, Any]) -> str:
+        return next((g for g in ("NOT_IMPROVED", "IMPROVED", "ALL") if f"grup {g}:" in i["statement"]), "ALL")
+
+    for h in (1, 5, 20):
+        rows = [i for i in react if _val(i, "horizon") == h]
+        split = [i for i in rows if group(i) in ("IMPROVED", "NOT_IMPROVED") and (_val(i, "n") or 0) > 0]
+        chosen += split or [i for i in rows if group(i) == "ALL"]
+    return chosen
+
+
 def compose_final(*, qtype: str, plan: dict[str, Any], ticker: str, label: A, rule_id: str, reasons: list[tuple[str, str]], evidence: list[dict[str, Any]],
-                  rng: random.Random, claim: str | None = None) -> str:
+                  rng: random.Random, claim: str | None = None, notes: list[str] | None = None) -> str:
     """Nihai metin: açılış, kanıt maddeleri, değerlendirme, sınırlamalar, uyarı, `EYLEM:` satırı."""
     lines = [rng.choice(OPENINGS[qtype]).format(T=ticker)]
     picked = _pick(evidence, qtype, plan)
@@ -151,6 +209,9 @@ def compose_final(*, qtype: str, plan: dict[str, Any], ticker: str, label: A, ru
         block.append(UNSUPPORTED_NOTE[plan["kind"]])
     if qtype == "stale":
         block.append(STALE_NOTE)
+    if qtype == "fundamental":
+        block += notes or []
+        block.append(ASSOCIATION_NOTE)
     if label in (A.POTENTIAL_CATCH_UP_CANDIDATE, A.TECHNICAL_REVERSAL_CANDIDATE, A.FUNDAMENTAL_IMPROVEMENT_CANDIDATE) or "CANDIDATE_CAVEAT" in codes:
         block.append(CAVEAT)
     if not (qtype == "stale"):

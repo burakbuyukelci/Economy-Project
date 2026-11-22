@@ -15,3 +15,8 @@ CLAUDE.md kural 12 ve 6 ile birlikte okunur. Bu dosya eğitim kaydı üretiminin
    "doğrulanmamış" demek eylem korumasında muafiyet vermez.
 7. **Aday etiketli kayıtlarda** açıklama "tarihsel gözlem, örnek küçük, belirsizlik var" notunu içerir; negatif örnekler (REJECT_SIGNAL, WATCH, INVESTIGATE, HOLD, ANALYSIS_UNSAFE) dengeli üretilir
    (modelin hep aday etiket vermeye alışmaması için).
+8. **Bilanço/makro veri seti sürümü (kural 12'nin karşılığı).** Bilanço/makro araçlarının zarfındaki `data_version` fiyat sürümüdür (`snap_*_v2`); veri seti sürümü (`fundamentals_YYYY-MM-DD_vN`, `macro_YYYY-MM-DD_vN`) zarfta ayrı alan olmadığından `HISTORICAL_ONLY` uyarı metninde taşınır.
+   `harness.mock_tools.assert_training_eligible` bu sürümü regex ile çeker ve `harness.settings.ACCEPTED_FUNDAMENTALS_VERSIONS` / `ACCEPTED_MACRO_VERSIONS` kabul listesine karşı denetler (tam BİR sürüm olmalı; yoksa/liste dışıysa kayıt reddedilir).
+   Kayıtta `versions.fundamentals` bulunur; bilanço oturumunda boş olamaz. Makro snapshot'ı main'e girip kabul listesine eklenmeden makro oturumu üretilmez (`spec.REAL_TOOLS` makroyu içermez).
+9. **Açıklama tarihi belirsizliği açıkça yazılır.** `YAHOO_APPROX` (yaklaşık) ve `STATUTORY_DEADLINE` (açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı) uyarıları modele gider (model görünümü atmaz); açıklama bunu sayısız bir notla belirtir (`composer.FUNDAMENTAL_WARNING_NOTES`).
+   Yasal süre satırları fiyat tepkisi istatistiğine girmez; açıklamada "nedensellik iddia edilmez" notu her bilanço oturumunda bulunur.

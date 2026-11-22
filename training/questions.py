@@ -9,6 +9,7 @@ import hashlib
 import random
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from functools import lru_cache
 from typing import Any, Callable
 
 from training import spec
@@ -241,7 +242,7 @@ def _q_advice(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple
 
 # =============================== araçta olmayan veri / gelecek ===============================
 _UNSUPPORTED = [
-    ("fundamental", "{T} şirketinin son çeyrek FAVÖK marjı ve net borç/FAVÖK oranı nedir?"),
+    ("fundamental", "{T} hissesinin PD/DD ve FD/FAVÖK çarpanları nedir?"),
     ("macro", "Dolar/TL ve TCMB faizi {T} getirisini nasıl etkiledi? {D} itibarıyla USD/TRY kaç?"),
     ("news", "{T} hakkında son KAP açıklamaları ve haberler neler?"),
     ("future", "{T} hissesi önümüzdeki hafta kaç TL'den kapanacak? Analiz tarihinden sonraki fiyatı tahmin et."),
@@ -251,7 +252,7 @@ _UNSUPPORTED = [
     ("fundamental", "{T} hissesinin F/K oranı kaç, bilançoları iyileşiyor mu?"),
     ("news", "{T} için son KAP bildirimleri ve analist yorumları neler söylüyor?"),
     ("future", "{T} hissesinin bir hafta sonraki kapanışı ne olacak?"),
-    ("fundamental", "{T} şirketinin net kârı ve özsermaye getirisi son çeyrekte nasıl değişti?"),
+    ("fundamental", "{T} şirketinin cari oranı ve likidite oranı son çeyrekte nasıl?"),
     ("macro", "{D} itibarıyla dolar kuru ve enflasyon verisi {T} hissesini nasıl etkiliyor?"),
     ("future", "{T} gelecek ay hangi seviyeye çıkar? Net bir fiyat ver."),
     ("fundamental", "{T} hissesinin temettü verimi ve borçluluk oranı nedir?"),
@@ -280,9 +281,90 @@ def _q_stale(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple[
     return _STALE[idx].format(T=ticker, D=fd(as_of)), idx, {"indicators": ["RSI", "BOLLINGER"]}
 
 
+# =============================== bilanço (Soru 4) ===============================
+BASIS_TEXT = {"QOQ": " bir önceki çeyreğe göre", "YOY": " geçen yılın aynı çeyreğine göre", None: ""}
+METRIC_TEXT = {"EBITDA_MARGIN": "FAVÖK marjı", "NET_PROFIT_MARGIN": "net kâr marjı", "NET_PROFIT": "net kâr"}
+# Şablonlar Soru 4 (docs/ornek_test_sorulari.txt) biçiminde: tüm çeyreklik bilançolar + 1/5/20 günlük tepki + "iyileşen çeyrekler daha iyi tepki almış mı".
+# 0-4: "tüm çeyrekler", 5-7: "son çeyrek". Sıra % 4 == 3 (3, 7) yalnızca testte.
+_FUNDAMENTAL = [
+    "{T} hissesinin {S} – {D} döneminde kamuya açıklanan tüm çeyreklik bilançolarında {M} ve Net Borç/FAVÖK{B} nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?{EXTRA}",
+    "{T} için {S} – {D} arasında açıklanan çeyreklik bilançoları incele: {M} ve Net Borç/FAVÖK{B} ne yönde değişti? Açıklama sonrası 1, 5 ve 20 günlük tepkiyi XU100 ve sektörle karşılaştır; iyileşen çeyrekler daha iyi tepki almış mı?{EXTRA}",
+    "{T} bilançolarında ({S} – {D}) {M} ve Net Borç/FAVÖK{B} nasıl bir seyir izledi? Her açıklamadan sonraki 1, 5 ve 20 günde hisse XU100'e ve sektöre göre ne yaptı? İyileşen çeyreklerde tepki daha mı iyi?{EXTRA}",
+    "{S} – {D} döneminde açıklanan tüm çeyreklik bilançolarda {T} hissesinin {M} ve Net Borç/FAVÖK{B} nasıl değişti; açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl? İyileşen çeyrekler daha iyi tepki almış mı?{EXTRA}",
+    "{T} şirketinin {S} – {D} aralığındaki bilançolarında {M} ve Net Borç/FAVÖK{B} iyileşti mi? Açıklama sonrası 1, 5 ve 20 günlük anormal getiriyi (XU100 ve sektöre göre) iyileşen ve iyileşmeyen çeyrekler için ver.{EXTRA}",
+    "{T} şirketinin son açıklanan bilançosunda {M} ve Net Borç/FAVÖK{B} nasıl değişti? Bilanço açıklamasından sonraki 1, 5 ve 20 günde hisse XU100'e ve sektöre göre nasıl hareket etti?{EXTRA}",
+    "{D} itibarıyla açıklanmış son bilançoda {T} hissesinin {M} ve Net Borç/FAVÖK değişimi{B} nedir? Açıklama sonrası 1, 5 ve 20 günlük tepki XU100 ve sektöre göre nasıl?{EXTRA}",
+    "{T}: son bilançonun {M} ve Net Borç/FAVÖK görünümü{B} nedir, açıklamanın ardından fiyat XU100 ve sektöre göre nasıl davrandı (1, 5, 20 gün)?{EXTRA}",
+]
+_FUNDAMENTAL_BANK = [
+    "{T} bankasının {S} – {D} döneminde açıklanan tüm çeyreklik bilançolarında net faiz geliri ve net kâr{B} nasıl değişti? Her açıklamadan sonraki 1, 5 ve 20 günlük getiriler XU100'e göre nasıl oldu? İyileşen çeyrekler daha iyi tepki almış mı?{EXTRA}",
+    "{T} için {S} – {D} arasındaki bilançolarda net faiz geliri ve net kâr{B} iyileşti mi? Açıklama sonrası 1, 5 ve 20 günde hisse XU100'e göre nasıl hareket etti?{EXTRA}",
+    "{T} bankası bilançoları ({S} – {D}): net faiz geliri ve net kâr{B} ne yönde? Açıklamadan sonra fiyat XU100'e göre ne yaptı (1, 5, 20 gün)? İyileşen çeyreklerde tepki daha mı iyi?{EXTRA}",
+    "{D} itibarıyla {T} bankasının açıklanmış son bilançosunda net kâr ve net faiz geliri{B} nedir? Açıklama sonrası 1, 5 ve 20 günlük tepki XU100'e göre nasıl?{EXTRA}",
+]
+
+
+def _is_bank(ticker: str) -> bool:
+    from config.universe import load_universe
+    u = load_universe().set_index("ticker")
+    return "bank" in str(u.loc[ticker, "sector_label"]).lower()
+
+
+@lru_cache(maxsize=None)
+def first_visible_date(ticker: str) -> date | None:
+    """Bilanço veri setinde hissenin İLK görünür tarihi (en erken disclosure_date): öncesinde araç NO_DATA verir, soru kurulmaz."""
+    from tools._fundamentals import load_fundamentals
+    t = load_fundamentals().table
+    d = t.loc[t["ticker"] == ticker, "disclosure_date"].min()
+    return None if d is None or str(d) == "NaT" else d.date()
+
+
+@lru_cache(maxsize=None)
+def fourth_visible_date(ticker: str) -> date | None:
+    """Hissenin 4. çeyreğinin görünür olduğu ilk tarih (POLICY_MIN_QUARTERS=4: bundan önce etiket her zaman F1/INVESTIGATE)."""
+    from tools._fundamentals import load_fundamentals
+    t = load_fundamentals().table
+    ds = sorted(t.loc[t["ticker"] == ticker, "disclosure_date"])
+    return ds[3].date() if len(ds) >= 4 else None
+
+
+FOURTH_QUARTER_BIAS = 0.7      # soruların bu payı, mümkünse 4. çeyreğin görünür olduğu tarihten sonraya kurulur (F2-F4 örnekleri için)
+
+
+def pick_fundamental_date(split: str, rng: random.Random, ticker: str) -> date | None:
+    """Bölme aralığında, hissenin bilançosunun görünür olduğu bir iş günü; yoksa None."""
+    lo, hi = spec.DATE_RANGES[split]
+    fv = first_visible_date(ticker)
+    if fv is None:
+        return None
+    lo = max(lo, fv)
+    if lo > hi:
+        return None
+    f4 = fourth_visible_date(ticker)
+    if f4 is not None and rng.random() < FOURTH_QUARTER_BIAS and max(lo, f4) <= hi:
+        lo = max(lo, f4)
+    while True:
+        d = lo + timedelta(days=rng.randint(0, (hi - lo).days))
+        if d.weekday() < 5:
+            return d
+
+
+def _q_fundamental(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple[str, int, dict[str, Any]]:
+    bank = _is_bank(ticker)
+    basis = rng.choice(["QOQ", "QOQ", "YOY", None])   # None: soruda belirtilmemiş (öğretmen QOQ kullanır: YoY için 2024 verisi yok)
+    metric = "NET_PROFIT" if bank else rng.choice(["EBITDA_MARGIN", "EBITDA_MARGIN", "NET_PROFIT_MARGIN"])
+    extra = " FUNDAMENTAL_IMPROVEMENT_CANDIDATE olarak etiketlenebilir mi?" if rng.random() < 0.4 else ""
+    bank_templates = _FUNDAMENTAL_BANK
+    templates = bank_templates if bank else _FUNDAMENTAL
+    idx = _template_index(split, len(templates), rng)
+    text = templates[idx].format(T=ticker, M=METRIC_TEXT[metric], B=BASIS_TEXT[basis], S=fd(date(2024, 1, 1)), D=fd(as_of), EXTRA=extra)
+    return text, idx, {"basis": basis, "metric": metric, "bank": bank, "label_question": bool(extra)}
+
+
 BUILDERS: dict[str, Callable[..., tuple[str, int, dict[str, Any]]]] = {
     "weekday": _q_weekday, "reversal": _q_reversal, "catch_up": _q_catch_up, "indicators": _q_indicators,
     "support_resistance": _q_sr, "history": _q_history, "advice": _q_advice, "unsupported": _q_unsupported, "stale": _q_stale,
+    "fundamental": _q_fundamental,
 }
 
 
@@ -300,8 +382,14 @@ def build_questions(split: str, seed: int, allocation: dict[str, int]) -> list[Q
         for i in range(n):
             for attempt in range(200):
                 rng = _rng(seed, split, qtype, i, attempt)
-                as_of = pick_trading_date(split, rng, stale=(qtype == "stale"))
-                ticker = rng.choice(pool)
+                if qtype == "fundamental":   # önce hisse, sonra hissenin bilançosunun görünür olduğu tarih (diğer tiplerin rastgele akışı DEĞİŞMEZ)
+                    ticker = rng.choice(pool)
+                    as_of = pick_fundamental_date(split, rng, ticker)
+                    if as_of is None:
+                        continue
+                else:
+                    as_of = pick_trading_date(split, rng, stale=(qtype == "stale"))
+                    ticker = rng.choice(pool)
                 hints: dict[str, Any] = {}
                 if qtype == "reversal":   # sorunun ~%50'si hissede GERÇEKTEN taze sinyal olan günlere kurulur (signal_dates.py)
                     hints["family"] = rng.choice(list(_FAMILY_TEXT))

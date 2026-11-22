@@ -38,6 +38,11 @@ def backend_for(tool: ToolName) -> str:
 MOCK_DATA_VERSION = "snap_1900-01-01_v0"
 # CLAUDE.md kural 12: eğitim verisi yalnızca snap_<tarih>_v<N> ile N >= bu değer olan sürümlerden (v1 ham kaynaktır).
 MIN_TRAINING_SNAPSHOT_VERSION = 2
+# Bilanço/makro veri setleri fiyat snapshot'ından AYRI sürümlenir; zarfta ikincil sürüm alanı yok, sürüm `HISTORICAL_ONLY` uyarı metninde taşınır
+# (docs/schema_wishlist.md §12). Eğitim uygunluğu: uyarıdan regex ile çekilen sürüm bu kabul listesinde olmalı (CLAUDE.md kural 12'nin bilanço/makro karşılığı).
+# `fundamentals_2026-11-21_v1` KABUL EDİLMEZ (yalnızca 10 hisse, açıklama tarihi eşleşmesiyle sınırlı; yasal süre görünürlüğü yok).
+ACCEPTED_FUNDAMENTALS_VERSIONS: frozenset[str] = frozenset({"fundamentals_2026-11-23_v1"})
+ACCEPTED_MACRO_VERSIONS: frozenset[str] = frozenset()   # makro snapshot'ı main'e girince buraya eklenir; o zamana kadar makro zarflı kayıt reddedilir
 # schemas/examples.py fixture'larındaki en geç tarih; as_of bundan öncesiyse mock ERROR döner.
 MOCK_FIXTURE_LAST_DATE = date(2026, 9, 10)
 MOCK_AS_OF_ERROR_CODE = "MOCK_FIXTURE_AFTER_AS_OF"  # ToolError.code serbest metindir, şema değişmedi

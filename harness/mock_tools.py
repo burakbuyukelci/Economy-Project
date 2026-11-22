@@ -21,6 +21,11 @@ from schemas.registry import validate_envelope, validate_params
 
 
 _DATA_VERSION_RE = re.compile(r"^snap_\d{4}-\d{2}-\d{2}_v(\d+)$")
+_FUND_VERSION_RE = re.compile(r"fundamentals_\d{4}-\d{2}-\d{2}_v\d+")
+_MACRO_VERSION_RE = re.compile(r"macro_\d{4}-\d{2}-\d{2}_v\d+")
+# Bilanço/makro araçlarının sürümü: araçlar sürümü `HISTORICAL_ONLY` uyarı metninde taşır (zarfta ikincil sürüm alanı yok).
+_AUX_TOOLS = {"get_fundamental_metrics": ("fundamentals", _FUND_VERSION_RE), "calculate_fundamental_change": ("fundamentals", _FUND_VERSION_RE),
+              "get_macro_context": ("macro", _MACRO_VERSION_RE)}
 
 
 class TrainingEligibilityError(ValueError):
@@ -44,13 +49,36 @@ def assert_not_mock(env: dict[str, Any]) -> None:
         )
 
 
+def aux_dataset_versions(env: dict[str, Any]) -> list[str]:
+    """Bilanço/makro araç zarfının veri seti sürümleri (HISTORICAL_ONLY uyarılarından regex ile). Başka araçlar için boş liste."""
+    kind = _AUX_TOOLS.get(str(env.get("tool")))
+    if kind is None:
+        return []
+    found: list[str] = []
+    for w in env.get("warnings") or []:
+        if str(w).startswith("HISTORICAL_ONLY"):
+            found += kind[1].findall(str(w))
+    return sorted(set(found))
+
+
+def _aux_eligible(env: dict[str, Any]) -> bool:
+    """Bilanço/makro zarfı: status OK ise tam BİR sürüm bulunmalı ve kabul listesinde olmalı (hata zarfı sürüm taşımaz; zaten ayrıca elenir)."""
+    kind = _AUX_TOOLS.get(str(env.get("tool")))
+    if kind is None or env.get("status") != "OK":
+        return True
+    accepted = settings.ACCEPTED_FUNDAMENTALS_VERSIONS if kind[0] == "fundamentals" else settings.ACCEPTED_MACRO_VERSIONS
+    versions = aux_dataset_versions(env)
+    return len(versions) == 1 and versions[0] in accepted
+
+
 def is_training_eligible(env: dict[str, Any]) -> bool:
     """CLAUDE.md kural 12: yalnızca snap_<tarih>_v<N>, N >= MIN_TRAINING_SNAPSHOT_VERSION (v2 ve sonrası).
 
     Mock (v0), v1 ve biçimi bozuk/eksik data_version False döner. Sürüm numarası SAYISAL karşılaştırılır (v10 > v2).
     """
     match = _DATA_VERSION_RE.match(str(env.get("data_version") or ""))
-    return bool(match) and not is_mock_envelope(env) and int(match.group(1)) >= settings.MIN_TRAINING_SNAPSHOT_VERSION
+    return (bool(match) and not is_mock_envelope(env) and int(match.group(1)) >= settings.MIN_TRAINING_SNAPSHOT_VERSION
+            and _aux_eligible(env))
 
 
 def assert_training_eligible(env: dict[str, Any]) -> None:
@@ -59,7 +87,8 @@ def assert_training_eligible(env: dict[str, Any]) -> None:
     if not is_training_eligible(env):
         raise TrainingEligibilityError(
             f"{env.get('tool')}: eğitim verisi yalnızca snap_*_v{settings.MIN_TRAINING_SNAPSHOT_VERSION} ve sonraki "
-            f"üretilmiş sürümlerden olabilir (data_version={env.get('data_version')!r})"
+            f"üretilmiş sürümlerden olabilir (data_version={env.get('data_version')!r}); bilanço/makro zarflarında ayrıca veri seti sürümü "
+            f"kabul listesinde olmalı (bulunan: {aux_dataset_versions(env)})"
         )
 
 

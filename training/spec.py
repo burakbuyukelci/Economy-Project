@@ -9,7 +9,7 @@ from datetime import date
 
 from schemas.enums import ToolName as T
 
-GENERATOR_VERSION = "1"
+GENERATOR_VERSION = "2"   # v2: bilanço oturumları (Soru 4), unsupported şablonları güncel, tip payları yeniden dağıtıldı
 SEED = 42
 SPLITS = ("train", "val", "test")
 SIZES = {"train": 600, "val": 50, "test": 100}
@@ -27,21 +27,24 @@ STALE_RANGES = {
     "test": (date(2027, 8, 2), date(2027, 12, 31)),
 }
 
+# Makro (get_macro_context) BİLİNÇLİ OLARAK yok: makro snapshot'ı main'de yok (Soru 5 oturumları snapshot gelince artımlı v2.1).
 # Gerçek (mock olmayan) araçlar: modele yalnızca bunlar gösterilir. Kapı ve kanıt paketi harness'indir.
 REAL_TOOLS = frozenset({T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CALCULATE_INDICATORS, T.FIND_SUPPORT_RESISTANCE,
-                        T.RANK_SECTOR_RELATIVE_STRENGTH, T.DETECT_REVERSAL_EVENTS, T.TEST_WEEKDAY_PATTERN, T.RUN_BACKTEST})
+                        T.RANK_SECTOR_RELATIVE_STRENGTH, T.DETECT_REVERSAL_EVENTS, T.TEST_WEEKDAY_PATTERN, T.RUN_BACKTEST,
+                        T.GET_FUNDAMENTAL_METRICS, T.CALCULATE_FUNDAMENTAL_CHANGE})
 
 # Soru tipi payları (toplam 1). Etiket dağılımı üretimde kota ile dengelenir (training/build_dataset.py).
 TYPE_SHARES = {
-    "weekday": 0.18,
-    "reversal": 0.20,
+    "weekday": 0.15,
+    "reversal": 0.17,
     "catch_up": 0.10,
-    "indicators": 0.12,
-    "support_resistance": 0.07,
-    "history": 0.07,
-    "advice": 0.10,
+    "indicators": 0.10,
+    "support_resistance": 0.06,
+    "history": 0.06,
+    "advice": 0.08,
     "unsupported": 0.08,
     "stale": 0.08,
+    "fundamental": 0.12,
 }
 RECOVERY_SHARE = 0.10          # hata-kurtarma yörüngeleri (hatalı asistan turu kayıptan MASKELİ)
 TEST_TEMPLATE_MOD = 4          # şablon sırası % 4 == 3 olanlar yalnızca TEST'te kullanılır
