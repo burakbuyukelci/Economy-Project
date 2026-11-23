@@ -24,7 +24,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))   # repo kökü (harness.text_protocol, training.colab.data); Colab paketinde de aynı düzen
 
-from training.colab.compat import first_supported, latest_checkpoint  # noqa: E402
+from training.colab.compat import bf16_native, first_supported, latest_checkpoint  # noqa: E402
 from training.colab.data import IGNORE, build_examples, load_jsonl  # noqa: E402
 
 DEFAULT_MODEL = "unsloth/gemma-3-4b-it"
@@ -137,7 +137,8 @@ def main(argv: list[str] | None = None) -> int:
     cols = ("input_ids", "labels", "attention_mask")
     train_ds = Dataset.from_list([{k: e[k] for k in cols} for e in train_ex])
     val_ds = Dataset.from_list([{k: e[k] for k in cols} for e in val_ex]) if val_ex else None
-    bf16 = torch.cuda.is_bf16_supported()
+    bf16 = bf16_native(torch.cuda.get_device_capability(0), torch.cuda.is_bf16_supported())   # T4'te emüle bf16 KULLANILMAZ (compat.bf16_native)
+    print(f"GPU capability {torch.cuda.get_device_capability(0)} | bf16={bf16}")
     base = dict(
         per_device_train_batch_size=1, per_device_eval_batch_size=1, gradient_accumulation_steps=args.grad_accum,
         num_train_epochs=args.epochs, learning_rate=args.lr, lr_scheduler_type="linear", warmup_steps=10, weight_decay=0.01, optim="adamw_8bit",

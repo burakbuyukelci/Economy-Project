@@ -50,3 +50,12 @@ def latest_checkpoint(root: str | Path) -> Path | None:
         if m and d.is_dir() and (d / "trainer_state.json").exists() and (best is None or int(m.group(1)) > best[0]):
             best = (int(m.group(1)), d)
     return best[1] if best else None
+
+
+def bf16_native(capability: tuple[int, int], torch_says_supported: bool) -> bool:
+    """bf16 yalnızca YERLEŞİK donanım desteğiyle (compute capability >= 8: Ampere ve sonrası) seçilir.
+
+    Neden: yeni torch sürümlerinde `torch.cuda.is_bf16_supported()` T4'te (capability 7.5) EMÜLASYONLA True döner;
+    emüle bf16 çok yavaştır (eğitim süresini kat kat uzatır, Kaggle 9 saat sınırını aşabilir). T4/P100'de fp16/float32 yolu kullanılır.
+    """
+    return bool(torch_says_supported) and capability[0] >= 8

@@ -25,3 +25,15 @@ def test_notebook_pins_single_gpu_and_has_no_colab_only_calls():
     assert "google.colab" not in src and "/content/" not in src
     assert all("CUDA_VISIBLE_DEVICES=0" in l for s in _code() for l in s.splitlines() if l.startswith("!") and "train_qlora.py" in l)
     assert "--out /tmp/" in src and "/kaggle/working/ckpt" in src   # büyük dosyalar /tmp'de, kontrol noktası kalıcı klasörde
+
+
+def test_bf16_requires_native_hardware_support_not_emulation():
+    """Kaggle'ın yeni torch'unda T4'te is_bf16_supported() emülasyonla True döner (çok yavaş); yalnızca compute capability >= 8 bf16 sayılır."""
+    from training.colab.compat import bf16_native
+
+    assert bf16_native((7, 5), True) is False      # T4 (emülasyon True dese de)
+    assert bf16_native((6, 0), True) is False      # P100
+    assert bf16_native((8, 0), True) is True       # A100
+    assert bf16_native((8, 9), True) is True       # L4
+    assert bf16_native((8, 0), False) is False     # torch desteklemiyorsa asla
+    assert "bf16_native(" in SCRIPT and "torch.cuda.is_bf16_supported()\n" not in SCRIPT.replace("torch.cuda.is_bf16_supported())", "")
