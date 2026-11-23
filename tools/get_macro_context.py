@@ -24,15 +24,19 @@ from pathlib import Path
 
 import pandas as pd
 
-from config.settings import SNAPSHOT_DIR
+from config.settings import MIN_EVENTS, SNAPSHOT_DIR
+from config.universe import load_universe
+from schemas.common import MultipleTesting, make_cost_model
 from schemas.enums import MacroSeries, ToolName, WarningCode
 from schemas.envelope import make_warning
 from schemas.params import GetMacroContextParams
 from schemas.results import GetMacroContextResult, MacroGap, MacroPoint, MacroSeriesData
+from tools.macro_relation import compute_relation, macro_value_on
 from tools.common import Snapshot, ToolFailure, ToolOutput, enforce_as_of, run_tool, trading_calendar
 
 TOOL = ToolName.GET_MACRO_CONTEXT
 GAP_DAYS = {"daily": 7, "monthly": 40}
+MONTHLY_SERIES = {MacroSeries.CPI_MONTHLY, MacroSeries.CPI_ANNUAL}
 ROUND = 6
 MISSING_LIST_LIMIT = 5   # uyarıda en çok bu kadar tatil dışı eksik gün yazılır (toplam sayı her zaman yazılır)
 
@@ -164,13 +168,61 @@ def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None
                                      f"veri setinde yok veya aralıkta/as_of'ta yayımlanmış nokta yok: {', '.join(missing)}"))
     if gap_notes:
         warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING, "; ".join(gap_notes) + " (doldurulmadı)"))
+    relations, rel_missing, rel_warn = [], [], []
+    if p.relate_to:
+        cost = make_cost_model()
+        uni = load_universe().set_index("ticker")
+        for spec in p.relate_to:
+            if spec.macro_series in MONTHLY_SERIES:
+                raise ToolFailure("UNSUPPORTED_RELATION", f"{spec.macro_series.value} aylık bir seridir: relate_to yalnızca günlük serileri destekler "
+                                  f"(USDTRY, EURTRY, TCMB_FUNDING_COST)")
+            if spec.ticker not in uni.index:
+                raise ToolFailure("UNKNOWN_TICKER", f"{spec.ticker} evrende (config/universe.csv) yok")
+            mrows = vis.loc[(vis["series"] == spec.macro_series.value) & (vis["observation_date"] <= pd.Timestamp(eff_end))].sort_values("publication_date")
+            if mrows.empty:
+                rel_missing.append(spec.macro_series.value)
+                continue
+            stock = enforce_as_of(snap.stocks.loc[snap.stocks["ticker"] == spec.ticker], p.as_of)
+            stock = stock.loc[stock["date"] <= pd.Timestamp(eff_end)].sort_values("date")
+            if stock.empty:
+                raise ToolFailure("NO_DATA", f"{spec.ticker} için snapshot {snap.data_version} içinde aralıkta veri yok")
+            days = stock["date"].to_numpy(dtype="datetime64[D]")
+            mon = macro_value_on(days, mrows["publication_date"].to_numpy(dtype="datetime64[D]"), mrows["value"].to_numpy(float))
+            rel, info = compute_relation(spec, days, stock["adj_close"].to_numpy(float), mon, start=p.start, eff_end=eff_end,
+                                         n_tests=p.n_tests_declared, alpha=p.alpha, cost_pct=cost.round_trip_cost_pct)
+            relations.append(rel)
+            tag = f"{spec.ticker}~{spec.macro_series.value} h={spec.horizon} lag={spec.lag_days}"
+            if info["few_events"]:
+                rel_warn.append(make_warning(WarningCode.FEW_EVENTS, f"{tag}: n_obs={rel.full.n_obs} < MIN_EVENTS={MIN_EVENTS}"))
+            if info["oos_too_small"]:
+                rel_warn.append(make_warning(WarningCode.OOS_TOO_SMALL, f"{tag}: örneklem dışı n_obs={rel.out_of_sample.n_obs} küçük; oos_degradation_flag=false bozulma yok demek değildir"))
+            if rel.oos_degradation_flag:
+                rel_warn.append(make_warning(WarningCode.OOS_DEGRADATION, f"{tag}: örneklem dışı ilişki işaret değiştirdi ya da belirgin zayıfladı"))
+            if rel.full.n_excluded_incomplete_horizon:
+                rel_warn.append(make_warning(WarningCode.INCOMPLETE_HORIZON_EXCLUDED,
+                                             f"{tag}: aralık sonunu ({eff_end.isoformat()}) aşan kısmi blok istatistiğe katılmadı"))
+        if rel_missing:
+            warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING, f"relate_to: veri setinde yok veya aralıkta nokta yok: {', '.join(sorted(set(rel_missing)))}"))
+        if relations:
+            warnings.extend(rel_warn)
+            warnings.append(make_warning(WarningCode.ASSOCIATION_NOT_CAUSATION, "ilişki gözlemidir, nedensellik iddiası değildir; makro blok değişimi ve hisse blok getirisi arasındadır"))
+            warnings.append(make_warning(WarningCode.MULTIPLE_TESTING_RISK,
+                                         f"n_tests_declared={p.n_tests_declared}; aynı veride başka ilişki/koşul denendiyse bu sayı artırılmalı "
+                                         f"(Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); örtüşmeyen bloklar kullanıldı"))
+            warnings.append(make_warning(WarningCode.COST_ASSUMPTIONS,
+                                         f"koşullu getiriler uzun pozisyon ve tur maliyeti {cost.round_trip_cost_pct} pp = 2 x "
+                                         f"({cost.transaction_cost_bps_per_side} + {cost.slippage_bps_per_side} bps) ile; kayma varsayımdır"))
     note = f"makro veri seti {m.version}; kaynak TCMB/EVDS; yayın tarihi kurallı türetilmiştir (bkz. data_dictionary §22)"
     if carried_notes:
         note += "; resmî tatil iş günleri son gözlemle ileri dolduruldu (geriye doldurma yok): " + "; ".join(carried_notes)
     if any(x.series == MacroSeries.TCMB_FUNDING_COST for x in out):
         note += "; TCMB_FUNDING_COST politika faizi değil, TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir"
     warnings.append(make_warning(WarningCode.HISTORICAL_ONLY, note))
-    return ToolOutput(results=GetMacroContextResult(start=p.start, end=eff_end, series=out), warnings=warnings)
+    n_excl = max((r.full.n_excluded_incomplete_horizon for r in relations), default=0)
+    res = GetMacroContextResult(start=p.start, end=eff_end, series=out, relations=relations,
+                                multiple_testing=MultipleTesting(n_tests_declared=p.n_tests_declared, alpha=p.alpha, adjusted_alpha=p.alpha / p.n_tests_declared) if relations else None,
+                                cost_model=cost if relations else None)
+    return ToolOutput(results=res, n_events=min((r.full.n_obs for r in relations), default=None), n_excluded_incomplete_horizon=n_excl, warnings=warnings)
 
 
 def run(params: dict) -> dict:

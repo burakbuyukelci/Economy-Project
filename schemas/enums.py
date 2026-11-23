@@ -311,6 +311,12 @@ class MacroSeries(StrEnum):
     CPI_ANNUAL = "CPI_ANNUAL"
 
 
+class MacroTransform(StrEnum):
+    """1.5.0: makro serinin ufuk boyunca dönüşümü (relate_to)."""
+    PCT_CHANGE = "PCT_CHANGE"    # (son / ilk - 1) x 100, yüzde (kur gibi seviye serileri)
+    LEVEL_DIFF = "LEVEL_DIFF"    # son - ilk, seri biriminde (faiz gibi yüzde serileri; yüzde puan)
+
+
 class NewsCategory(StrEnum):
     EARNINGS = "EARNINGS"
     REGULATION = "REGULATION"

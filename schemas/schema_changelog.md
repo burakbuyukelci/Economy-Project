@@ -87,3 +87,17 @@ Eklemelidir (1.3.0 zarfları geçerli kalır). Etkilenen araç: `get_macro_conte
   `input_hash`'i değişir (varsayılan liste bir üye büyüdü). Açık `series` verenlerin hash'i değişmez. `schema_version` hash'e girmez.
 - Sonuç şekli değişmedi. Davranış (araç, şema değil): resmî tatil iş günleri son gözlemle ileri doldurulur (`docs/data_dictionary.md` §22).
 
+
+## 1.5.0 — 2026-11-23 (insan onayı: 2026-11-23; `get_macro_context.relate_to`; docs/schema_wishlist.md §3, §6)
+Eklemelidir (1.4.0 zarfları geçerli kalır). Etkilenen araç: `get_macro_context`. Soru 5: "kur artışı ile EREGL getirisi arasındaki tarihsel ilişki araç çıktısıyla gösterilmeli".
+- **Params:** `relate_to: list[RelationSpec] = []` (en çok 5; sıralı-tekil), `n_tests_declared: int = 1`, `alpha: float = 0.05`. `RelationSpec`: `ticker`, `macro_series`, `horizon` (= 5, işlem günü),
+  `lag_days` (>= 0, = 0; 0 eş zamanlı, = horizon öncü), `transform: MacroTransform` (`PCT_CHANGE` | `LEVEL_DIFF`), `split_date | None`. Yeni enum `MacroTransform`.
+- **Sonuç:** `relations: list[MacroRelation] = []`, `multiple_testing: MultipleTesting | None`, `cost_model: CostModel | None` (relations varken ikisi de dolu: doğrulayıcı).
+  `MacroRelation`: `ticker`, `macro_series`, `horizon`, `lag_days`, `transform`, `full`, `in_sample`/`out_of_sample` (split_date varsa, birlikte dolu/None), `oos_degradation_flag`, `sample_last_date`.
+  `RelationWindowResult`: `window`, `n_obs`, `n_excluded_incomplete_horizon`, `correlation` (Pearson, **birimsiz**: `_pct` kuralının bilinçli istisnası), `beta`, `p_value_raw`
+  (permütasyon, B=10000, tohum 481, çift yönlü), `p_value_adjusted` (Bonferroni), `significant_after_correction`, `macro_up`/`macro_down`/`unconditional` (`RelationGroupStats`: `n`, ortalama/medyan, maliyet sonrası ortalama).
+  Doğrulayıcı: `unconditional.n == n_obs`, `macro_up.n + macro_down.n <= n_obs`.
+- **Örneklem (araç, şema değil):** `horizon` işlem günlük ÖRTÜŞMEYEN bloklar; kısmi son blok istatistiğe girmez (`n_excluded_incomplete_horizon`); yalnızca GÜNLÜK seriler (aylık TÜFE `UNSUPPORTED_RELATION`).
+  Ayrıntı: `docs/data_dictionary.md` §22.2.
+- **Registry:** `sample_last_date` `_PAST_ONLY_KEYS`'e eklendi (look-ahead taraması).
+- **`input_hash` etkisi:** `get_macro_context` TÜM çağrılarının hash'i değişir (üç yeni varsayılanlı param kanonik params'a girer). `schema_version` hash'e girmez.

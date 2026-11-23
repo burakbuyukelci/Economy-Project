@@ -42,6 +42,7 @@ from schemas.enums import (
     IndicatorName,
     KamaSlope,
     MacroSeries,
+    MacroTransform,
     PatternRole,
     PeerGroup,
     PriceAdjustment,
@@ -305,10 +306,34 @@ class CalculateFundamentalChangeParams(ToolParams):
 
 
 # 10 --------------------------------------------------------------------
+class RelationSpec(Strict):
+    """1.5.0: makro seri ile hisse getirisi arasında ilişki tanımı (get_macro_context.relate_to).
+
+    Örneklem: [start, min(end, as_of)] içinde `horizon` işlem günlük, ÖRTÜŞMEYEN ardışık bloklar. Blok k için y = hissenin blok getirisi (%),
+    x = makro dönüşümü (`transform`) blok başlangıç/bitişinden `lag_days` işlem günü ÖNCEKİ iki tarihte (lag 0: eş zamanlı; lag = horizon: bir önceki blok = öncü).
+    """
+
+    ticker: Ticker
+    macro_series: MacroSeries
+    horizon: Horizon = Field(default=5, description="Blok uzunluğu, işlem günü")
+    lag_days: int = Field(default=0, ge=0, le=120, description="Makro penceresinin hisse penceresinden önce olduğu işlem günü sayısı (look-ahead yok)")
+    transform: MacroTransform = MacroTransform.PCT_CHANGE
+    split_date: date | None = Field(default=None, description="Örneklem içi/dışı ayrımı: blok bitişi < split_date = IS; blok başlangıcı >= split_date = OOS")
+
+
 class GetMacroContextParams(ToolParams):
     start: date
     end: date
     series: list[MacroSeries] = Field(default_factory=lambda: list(MacroSeries))
+    relate_to: list[RelationSpec] = Field(default_factory=list, max_length=5, description="1.5.0: ilişki hesapları (en çok 5; sıralı-tekil)")
+    n_tests_declared: int = Field(default=1, ge=1, description="1.5.0: aynı veride denenen toplam ilişki/koşul sayısı (Bonferroni)")
+    alpha: float = Field(default=0.05, gt=0, lt=1)
+
+    @field_validator("relate_to")
+    @classmethod
+    def _rel(cls, v: list[RelationSpec]) -> list[RelationSpec]:
+        key = lambda r: (r.ticker, r.macro_series.value, r.horizon, r.lag_days, r.transform.value, r.split_date or date.min)  # noqa: E731
+        return sorted({key(r): r for r in v}.values(), key=key)   # determinizm: sıralı ve tekil
 
     @field_validator("series")
     @classmethod

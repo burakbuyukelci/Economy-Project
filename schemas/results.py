@@ -51,6 +51,7 @@ from schemas.enums import (
     KamaSlope,
     LevelType,
     MacroSeries,
+    MacroTransform,
     MarketRegime,
     MetricDirection,
     MetricSet,
@@ -634,10 +635,75 @@ class MacroSeriesData(Strict):
     points: list[MacroPoint]
 
 
+class RelationGroupStats(Strict):
+    """Bir koşul grubunda (makro yükselen / düşen blok; koşulsuz) hissenin blok getirisi. Maliyet: uzun pozisyon, tur maliyeti düşülür."""
+
+    n: int = Field(ge=0)
+    mean_return_pct: float | None = None
+    median_return_pct: float | None = None
+    cost_adjusted_mean_return_pct: float | None = Field(default=None, description="mean_return_pct - tur maliyeti (cost_model.round_trip_cost_pct)")
+
+
+class RelationWindowResult(Strict):
+    """Tek örneklem (tüm dönem / örneklem içi / örneklem dışı) için ilişki istatistiği; bloklar örtüşmez."""
+
+    window: SampleWindow
+    n_obs: int = Field(ge=0, description="Tamamlanmış blok sayısı (x ve y tanımlı)")
+    n_excluded_incomplete_horizon: int = Field(ge=0, description="Aralık sonunu (min(end, as_of)) aşan kısmi blok sayısı (kural 2)")
+    correlation: float | None = Field(default=None, ge=-1, le=1, description="Pearson, BİRİMSİZ (_pct kuralının bilinçli istisnası); n < 3 veya sabit seride None")
+    beta: float | None = Field(default=None, description="OLS eğimi: hisse blok getirisi (pp) / makro dönüşümü (birim: transform'a göre pp); sabit x'te None")
+    p_value_raw: float | None = Field(default=None, ge=0, le=1, description="Permütasyon (B=10000, tohum 481), çift yönlü, korelasyon istatistiği")
+    p_value_adjusted: float | None = Field(default=None, ge=0, le=1, description="min(1, p_value_raw x n_tests_declared) (Bonferroni)")
+    significant_after_correction: bool | None = Field(default=None, description="p_value_adjusted < alpha; p yoksa None")
+    macro_up: RelationGroupStats = Field(description="x > 0 olan bloklar")
+    macro_down: RelationGroupStats = Field(description="x < 0 olan bloklar")
+    unconditional: RelationGroupStats = Field(description="tüm bloklar")
+
+    @model_validator(mode="after")
+    def _counts(self):
+        if self.unconditional.n != self.n_obs:
+            raise ValueError("unconditional.n n_obs'a eşit olmalı")
+        if self.macro_up.n + self.macro_down.n > self.n_obs:
+            raise ValueError("macro_up.n + macro_down.n n_obs'u aşamaz")
+        return self
+
+
+class MacroRelation(Strict):
+    """1.5.0: relate_to tanımının sonucu. İlişki gözlemidir, nedensellik iddiası değildir (ASSOCIATION_NOT_CAUSATION)."""
+
+    ticker: Ticker
+    macro_series: MacroSeries
+    horizon: Horizon
+    lag_days: int = Field(ge=0)
+    transform: MacroTransform
+    full: RelationWindowResult
+    in_sample: RelationWindowResult | None = Field(default=None, description="split_date varsa")
+    out_of_sample: RelationWindowResult | None = Field(default=None, description="split_date varsa")
+    oos_degradation_flag: bool | None = Field(default=None, description="split_date yoksa None; OOS n_obs < MIN_OOS_EVENTS ise False + OOS_TOO_SMALL")
+    sample_last_date: date | None = Field(default=None, description="Son tamamlanmış bloğun bitiş tarihi (<= as_of)")
+
+    @model_validator(mode="after")
+    def _split(self):
+        if (self.in_sample is None) != (self.out_of_sample is None):
+            raise ValueError("in_sample ve out_of_sample birlikte dolu ya da birlikte None olmalı")
+        if self.in_sample is None and self.oos_degradation_flag is not None:
+            raise ValueError("split_date yokken oos_degradation_flag None olmalı")
+        return self
+
+
 class GetMacroContextResult(Strict):
     start: date
     end: date
     series: list[MacroSeriesData]
+    relations: list[MacroRelation] = Field(default_factory=list, description="1.5.0: relate_to sonuçları (parametre sırasıyla)")
+    multiple_testing: MultipleTesting | None = Field(default=None, description="1.5.0: relations varsa dolu")
+    cost_model: CostModel | None = Field(default=None, description="1.5.0: relations varsa dolu (varsayılan tur maliyeti)")
+
+    @model_validator(mode="after")
+    def _rel(self):
+        if self.relations and (self.multiple_testing is None or self.cost_model is None):
+            raise ValueError("relations varken multiple_testing ve cost_model dolu olmalı")
+        return self
 
 
 # ======================================================================

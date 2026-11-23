@@ -189,8 +189,12 @@ def test_oos_rule_is_a_short_note_on_the_oos_parameters_only():
         note = tools[name].input_schema["properties"][key]["description"]
         assert "Jan 1 of the as_of year" in note and "stated in the question" in note, name
     assert "day before" in tools["run_backtest"].input_schema["properties"]["strategy"]["properties"]["train_end"]["description"]
-    for name in ("get_stock_history", "calculate_indicators", "get_macro_context"):
+    for name in ("get_stock_history", "calculate_indicators"):
         assert "Jan 1" not in json.dumps(tools[name].input_schema)
+    # şema 1.5.0: get_macro_context.relate_to[].split_date de OOS parametresidir ve aynı kısa notu taşır (yalnızca orada)
+    macro = tools["get_macro_context"].input_schema
+    assert "Jan 1 of the as_of year" in json.dumps(macro["properties"]["relate_to"])
+    assert "Jan 1" not in json.dumps({k: v for k, v in macro["properties"].items() if k != "relate_to"})
 
 
 def test_calculate_indicators_schema_is_light_and_hides_advanced_parameters():

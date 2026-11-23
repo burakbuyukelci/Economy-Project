@@ -125,6 +125,7 @@ _PAST_ONLY_KEYS = {
     "publication_date", "observation_date", "published_date", "signal_date", "entry_date", "exit_date",
     "last_publication_date", "last_touch_date", "window_end_date", "max_abs_daily_return_date",
     "state_date", "history_first_date", "first_valid_date",  # calculate_indicators (1.1.0)
+    "sample_last_date",  # get_macro_context.relations (1.5.0): son bloğun bitiş tarihi
     "last_exit_date",  # run_backtest (1.3.0): en geç çıkış; trade_log kısaltılsa bile max_result_date'i besler
 }
 
