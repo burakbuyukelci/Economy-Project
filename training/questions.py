@@ -52,9 +52,16 @@ def _template_index(split: str, n_templates: int, rng: random.Random) -> int:
 
 
 # =============================== haftanın günü ===============================
+WEEKDAY_MULTI_TRIGGER_BIAS = False   # v2.3 (opsiyonel): örüntülerin çoğu 2-3 tetik günlü ("Pzt–Sal–Çar düşüş, ardından Per–Cum yükseliş" biçimi; v2.1 modeli rolleri karıştırdı)
+
+
 def _weekday_pattern(rng: random.Random) -> list[tuple[str, str, str]]:
-    cut = rng.randint(1, 4)                                    # tetik günleri [0, cut), sonuç günleri [cut, 5)
-    n_trig = rng.randint(1, min(3, cut))
+    if WEEKDAY_MULTI_TRIGGER_BIAS:
+        n_trig = rng.choice([2, 3, 3])
+        cut = rng.randint(n_trig, 4)
+    else:
+        cut = rng.randint(1, 4)                                # tetik günleri [0, cut), sonuç günleri [cut, 5)
+        n_trig = rng.randint(1, min(3, cut))
     trig = sorted(rng.sample(range(cut), n_trig))
     n_out = rng.randint(1, min(2, 5 - cut))
     out = sorted(rng.sample(range(cut, 5), n_out))

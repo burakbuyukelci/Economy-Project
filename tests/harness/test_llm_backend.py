@@ -102,6 +102,12 @@ def test_non_local_hosts_are_rejected_at_construction(host):
         OllamaBackend(host=host, model="m")
 
 
+@pytest.fixture(autouse=True)
+def _chat_path_for_these_tests(monkeypatch):
+    """Bu dosya `/api/chat` yolunu sınar; varsayılan ham yol (`/api/generate raw=true`) tests/harness/test_raw_prompt.py'de sınanır."""
+    monkeypatch.setenv("HARNESS_RAW_PROMPT", "0")
+
+
 # =============================== yerel sahte Ollama sunucusu ===============================
 class _Server:
     def __init__(self):

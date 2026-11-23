@@ -47,6 +47,7 @@ TYPE_SHARES = {
     "macro": 0.12,
 }
 RECOVERY_SHARE = 0.10          # hata-kurtarma yörüngeleri (hatalı asistan turu kayıptan MASKELİ)
+TOOL_ERROR_SHARE = 0.0         # v2.3 (opsiyonel, `build_dataset --tool-errors`): ilk araç çağrısı araç hatası verir, model düzeltip yeniden çağırır; 0 = kapalı (v2.2 aynen üretilir)
 TEST_TEMPLATE_MOD = 4          # şablon sırası % 4 == 3 olanlar yalnızca TEST'te kullanılır
 
 MAX_TOKENS = 8192              # Colab seq len (T4, batch 1 + grad accum); gerçek Gemma tokenizer ile Colab'da yeniden süzülür

@@ -6,6 +6,7 @@ Yeni araç eklemek: `plan_calls`'a tip için çağrı listesi, `composer._pick`'
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import random
 from contextlib import contextmanager
@@ -25,6 +26,7 @@ from training.questions import Question
 
 Call = tuple[str, dict[str, Any]]
 RECOVERY_KINDS = ("as_of", "malformed", "early", "final_violation")
+TOOL_ERROR_TYPES = ("weekday", "reversal", "catch_up", "indicators", "support_resistance", "history", "fundamental", "macro", "advice")
 
 
 def iso(d: date) -> str:
@@ -132,8 +134,37 @@ def _rng(q: Question, salt: str) -> random.Random:
     return random.Random(int(hashlib.sha256(f"{spec.SEED}:{salt}:{q.id}".encode()).hexdigest()[:16], 16))
 
 
+def corrupt_call(name: str, params: dict[str, Any]) -> dict[str, Any]:
+    """İlk çağrıyı KASITLI ve belirlenimli olarak bozar: araç geçerli değerleri listeleyen/nedeni söyleyen bir hata döndürür (kurtarma yörüngesi için).
+    v2.1 modelinin Soru 2'deki gerçek hatası (haftalık örüntüde TRIGGER günlerinin OUTCOME yapılması) ve şema doğrulama hataları (geçersiz sıralı değer, ters tarih) kapsanır."""
+    p = copy.deepcopy(params)
+    if name == "test_weekday_pattern":
+        for d in p["pattern"]:
+            d["role"] = "OUTCOME"                                   # TRIGGER yok -> UNSUPPORTED_PATTERN (araç hatası)
+    elif name == "detect_reversal_events":
+        p["event_family"] = {"BB_LOWER_TOUCH": "BOLLINGER_ALT_BANT", "RSI_LOCAL_TROUGH": "RSI_DIP"}.get(p["event_family"], "TEKNIK_DONUS")
+    elif name == "rank_sector_relative_strength":
+        p["sector"] = "perakende"
+    elif name == "calculate_fundamental_change":
+        p["improvement_basis"] = "YILLIK"
+    elif name == "calculate_indicators":
+        p["indicators"] = ["RSI14"] + [i for i in p["indicators"] if i != "RSI"]
+    elif name == "get_macro_context":
+        p["relate_to"][0]["macro_series"] = "USDTRY_KUR"
+    elif name in ("find_support_resistance", "get_stock_history", "get_index_history"):
+        p["start"], p["end"] = p["end"], p["start"]               # start > end
+    elif name == "get_fundamental_metrics":
+        p["ticker"] = p["ticker"] + ".IS"
+    else:  # pragma: no cover
+        raise ValueError(f"bozma tanımlı değil: {name}")
+    return p
+
+
 def recovery_kind(q: Question) -> str | None:
-    """Belirlenimli: soruların ~%10'una kurtarma yörüngesi atanır (kimlikten türer, bölme içinde sıradan bağımsız)."""
+    """Belirlenimli: soruların ~%10'una kurtarma yörüngesi atanır (kimlikten türer, bölme içinde sıradan bağımsız).
+    `spec.TOOL_ERROR_SHARE` > 0 ise uygun tiplerde o oranda `tool_error` (araç hatasından sonra düzeltme) önce çekilir."""
+    if spec.TOOL_ERROR_SHARE > 0 and q.type in TOOL_ERROR_TYPES and _rng(q, "toolerr").random() < spec.TOOL_ERROR_SHARE:
+        return "tool_error"
     rng = _rng(q, "recovery")
     if rng.random() >= spec.RECOVERY_SHARE:
         return None
@@ -179,6 +210,9 @@ def build_steps(q: Question, session: HarnessSession, recovery: str | None = Non
     elif recovery == "early":
         bad.append(len(steps))
         steps.append("HAZIR")
+    elif recovery == "tool_error":                      # ilk çağrı bozuk (araç hata döndürür), hatalı tur maskeli; sonra doğru çağrı
+        bad.append(len(steps))
+        steps.append(ModelReply(tool_calls=(ToolCall(first_name, corrupt_call(first_name, first_params)),)))
     for name, params in calls:
         steps.append(ModelReply(tool_calls=(ToolCall(name, params),)))
     steps.append("HAZIR")

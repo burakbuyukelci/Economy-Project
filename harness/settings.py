@@ -141,6 +141,20 @@ def llm_tool_mode() -> str:
     return mode
 
 
+LLM_RAW_ENV = "HARNESS_RAW_PROMPT"
+
+
+def llm_raw() -> bool:
+    """Metin-protokolü modunda istem biçimi. True (varsayılan): harness konuşmayı EĞİTİM metniyle birebir biçimlendirip `/api/generate raw=true` gönderir
+    (Ollama `/api/chat` yolu eğitim metninden fazla token üretiyordu: tek mesajda +3, asistan turu başına +4). False: `/api/chat` (Modelfile şablonu)."""
+    v = os.environ.get(LLM_RAW_ENV, "").strip().lower()
+    if v in ("", "1", "true", "evet"):
+        return True
+    if v in ("0", "false", "hayir", "hayır"):
+        return False
+    raise ValueError(f"{LLM_RAW_ENV}={v!r} geçersiz; geçerli: 1/0")
+
+
 def llm_model() -> str:
     return os.environ.get(LLM_MODEL_ENV, "").strip() or LLM_MODEL
 

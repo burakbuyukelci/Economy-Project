@@ -1,0 +1,5 @@
+TAM advice       test-advice-0000-e483440b  
+TAM advice       test-advice-0001-28faaef7  
+YANLIŞ advice       test-advice-0002-99921f70  araç adı: öğretmen=calculate_indicators model=run_backtest
+YANLIŞ catch_up     test-catch_up-0000-1caa4692  araç çağrısı yok
+TAM catch_up     test-catch_up-0001-63b12f93  

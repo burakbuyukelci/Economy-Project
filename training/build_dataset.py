@@ -146,6 +146,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--splits", nargs="+", default=list(spec.SPLITS), choices=list(spec.SPLITS))
     ap.add_argument("--seed", type=int, default=spec.SEED)
     ap.add_argument("--max-tokens", type=int, default=None, help=f"oturum token sınırı (varsayılan {spec.MAX_TOKENS})")
+    ap.add_argument("--tool-errors", type=float, default=0.0, help="v2.3: uygun tiplerde araç-hata-kurtarma yörüngesi payı (0 = kapalı; örn. 0.12)")
+    ap.add_argument("--weekday-boost", action="store_true", help="v2.3: haftalık örüntü payı 0.14 -> 0.18 (azalan: yansıma/göstergeler/bayat) ve örüntülerin çoğu 2-3 tetik günlü")
     ap.add_argument("--tight", action="store_true", help="model görünümü SIKI MOD (6144 geri dönüşü; canlıda HARNESS_VIEW_TIGHT=1 ile aynı olmalı)")
     args = ap.parse_args(argv)
     spec.SEED = args.seed
@@ -155,6 +157,15 @@ def main(argv: list[str] | None = None) -> int:
         from harness import settings
 
         settings.MODEL_VIEW_TIGHT = True
+    if args.tool_errors > 0 or args.weekday_boost:
+        spec.GENERATOR_VERSION = "2.3"
+    if args.tool_errors > 0:
+        spec.TOOL_ERROR_SHARE = args.tool_errors
+    if args.weekday_boost:
+        from training import questions as _q
+
+        _q.WEEKDAY_MULTI_TRIGGER_BIAS = True
+        spec.TYPE_SHARES.update({"weekday": 0.18, "reversal": 0.13, "indicators": 0.07, "stale": 0.06})
     splits = tuple(args.splits)
     built = build(splits, args.seed, progress=True)
     rep = report(built, splits)

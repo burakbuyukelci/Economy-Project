@@ -1,0 +1,62 @@
+{"analysis_id": "2026-09-10-f7544a4d2520", "as_of": "2026-09-10", "as_of_source": "question", "kind": "SESSION_START", "order_mode": "strict", "seq": 1, "stage": "D"}
+{"from": "START", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 2, "to": "SELECT_UNIVERSE"}
+{"from": "SELECT_UNIVERSE", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 3, "to": "LOAD_MARKET_DATA"}
+{"kind": "UNIVERSE_SELECTED", "seq": 4, "tickers_in_question": ["THYAO"]}
+{"completion_tokens": 192, "estimated_prompt_tokens": 3484, "kind": "MODEL_TURN", "n_tool_calls": 1, "prompt_tokens": 2908, "seq": 5, "turn": 1}
+{"from": "LOAD_MARKET_DATA", "kind": "STATE_TRANSITION", "reason": "tool_call:check_data_quality", "seq": 6, "to": "CHECK_DATA_QUALITY"}
+{"from": "CHECK_DATA_QUALITY", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 7, "to": "CALCULATE_TECHNICALS"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7", "kind": "TOOL_CALL", "seq": 8, "state_after": "CALCULATE_TECHNICALS", "state_before": "LOAD_MARKET_DATA", "status": "OK", "step_state": "CHECK_DATA_QUALITY", "tool": "check_data_quality"}
+{"from": "CALCULATE_TECHNICALS", "kind": "STATE_TRANSITION", "reason": "tool_call:test_weekday_pattern", "seq": 9, "to": "RUN_PATTERN_AND_REVERSAL_ANALYSIS"}
+{"actor": "model", "data_version": "snap_2026-11-20_v2", "input_hash": "876898228323b9cb475db60c7bebbf87aceab94a246e02379b26e7f40d6679e4", "kind": "TOOL_CALL", "seq": 10, "state_after": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "state_before": "CALCULATE_TECHNICALS", "status": "ERROR", "tool": "test_weekday_pattern"}
+{"completion_tokens": 4, "estimated_prompt_tokens": 3815, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 3222, "seq": 11, "turn": 2}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 12, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 178, "estimated_prompt_tokens": 3900, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 3287, "seq": 13, "turn": 3}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 14, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 161, "estimated_prompt_tokens": 4146, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 3526, "seq": 15, "turn": 4}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 16, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 4367, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 3748, "seq": 17, "turn": 5}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 18, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 4601, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 3983, "seq": 19, "turn": 6}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 20, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 4835, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4218, "seq": 21, "turn": 7}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 22, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 5069, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4453, "seq": 23, "turn": 8}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 24, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 5303, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4688, "seq": 25, "turn": 9}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 26, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 5537, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4923, "seq": 27, "turn": 10}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 28, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 5771, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 5158, "seq": 29, "turn": 11}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 30, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 6005, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 5393, "seq": 31, "turn": 12}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 32, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 6239, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 5628, "seq": 33, "turn": 13}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 34, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 6473, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 5863, "seq": 35, "turn": 14}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 36, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 6707, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6098, "seq": 37, "turn": 15}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 38, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 6941, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6333, "seq": 39, "turn": 16}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 40, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 7175, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6568, "seq": 41, "turn": 17}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 42, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 7409, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6803, "seq": 43, "turn": 18}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 44, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 7643, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7038, "seq": 45, "turn": 19}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 46, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 7877, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7273, "seq": 47, "turn": 20}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 48, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 8111, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7508, "seq": 49, "turn": 21}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 50, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 8345, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7743, "seq": 51, "turn": 22}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 52, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 8579, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7978, "seq": 53, "turn": 23}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 54, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 8813, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4099, "seq": 55, "turn": 24}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 56, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 9047, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4099, "seq": 57, "turn": 25}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 58, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 9281, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4099, "seq": 59, "turn": 26}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 60, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 174, "estimated_prompt_tokens": 9515, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4099, "seq": 61, "turn": 27}
+{"code": "PRECONDITION_FAILED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)", "seq": 62, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}

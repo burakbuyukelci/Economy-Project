@@ -49,7 +49,7 @@ def session_problems(g: Generated) -> list[str]:
             out.append(f"eğitime uygun olmayan zarf: {env['tool']} {env['data_version']} {aux_dataset_versions(env)}")
         if env.get("schema_version") != SCHEMA_VERSION:
             out.append(f"şema sürümü {env.get('schema_version')} != {SCHEMA_VERSION}: {env['tool']}")
-        if env["status"] != "OK":
+        if env["status"] != "OK" and not (g.recovery == "tool_error" and (env.get("error") or {}).get("code") == "UNSUPPORTED_PATTERN"):
             out.append(f"hata zarfı: {env['tool']} {env.get('error')}")
     for r in s.store.records:               # RULES.md kural 2: relate_to[].split_date = as_of yılının 1 Ocak'ı (ya da sorudaki OOS başlangıcı)
         if r.envelope["tool"] == "get_macro_context":
@@ -58,7 +58,12 @@ def session_problems(g: Generated) -> list[str]:
                     out.append(f"relate_to split_date {rel.get('split_date')} != {g.question.as_of.year}-01-01")
     expected = EXPECTED_ERRORS.get(g.recovery or "")
     codes = [e.get("code") for e in s.events if e["kind"] == "INVALID_TOOL_CALL"]
-    if codes != ([expected] if expected else []):
+    if g.recovery == "tool_error":
+        # şema doğrulama hatası (INVALID_PARAMS, geçersiz çağrı olayı) YA DA araç hatası (UNSUPPORTED_PATTERN; ERROR zarfı): tam biri, ve ardından aynı araç BAŞARILI çağrılmalı
+        n_err = [r for r in s.store.records if r.envelope["status"] == "ERROR" and r.actor == "model"]
+        if not ((codes == ["INVALID_PARAMS"] and not n_err) or (codes == [] and len(n_err) == 1 and n_err[0].envelope["error"]["code"] == "UNSUPPORTED_PATTERN")):
+            out.append(f"tool_error yörüngesi: geçersiz çağrılar {codes}, model hata zarfları {len(n_err)}")
+    elif codes != ([expected] if expected else []):
         out.append(f"geçersiz çağrılar {codes}, beklenen {[expected] if expected else []}")
     if g.recovery == "final_violation":
         if final.attempt != 2:

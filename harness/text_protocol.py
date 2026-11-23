@@ -73,6 +73,16 @@ def encode_messages(messages: Sequence[dict[str, Any]], tools: Sequence[dict[str
     return out
 
 
+def render_gemma_prompt(messages: Sequence[dict[str, str]]) -> str:
+    """Eğitim metninin (`training.tokens.gemma_text`) çıkarım karşılığı: her mesaj `<start_of_turn>user|model\n...<end_of_turn>\n`, sona model tur başlığı.
+    `<bos>` YAZILMAZ: GGUF tokenizer'ı BOS'u kendisi ekler (iki kez eklenirse model bozulur). System, ilk user'a katılır (`fold_system`)."""
+    parts = []
+    for m in fold_system(messages):
+        role = "model" if m["role"] == "assistant" else "user"
+        parts.append(f"<start_of_turn>{role}\n{m['content']}<end_of_turn>\n")
+    return "".join(parts) + "<start_of_turn>model\n"
+
+
 def fold_system(messages: Sequence[dict[str, str]]) -> list[dict[str, str]]:
     """Gemma sohbet şablonu `system` rolünü bilmez: sistem metni İLK user mesajının başına `\n\n` ile eklenir (HF şablonu ve eğitim metniyle aynı).
     Ollama'ya yalnızca user/assistant gider; Modelfile şablonu bu yüzden system'e bakmaz."""

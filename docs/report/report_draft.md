@@ -226,6 +226,17 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 * Beklenen davranışlar (tavsiye reddi, "kesin yükselir" çürütmesi, güvenli hata yolu, ufku dolmamış olayı belirtme) modelde gözlendi mi: **[SONUÇ BEKLENİYOR]**
 * F3 ve CU etiketleri: eğitimde örnek yok [L1, L2]; ince ayarlı modelin bu etiketlerdeki davranışı: **[SONUÇ BEKLENİYOR]** (D/E'de etiket politikadan geldiği için model başarısı sayılmaz).
 
+### 9.0 Yedek model (v2.1) eğitim sonuçları — ölçüldü (Kaggle T4, tek GPU, 2026-11-23)
+v2.1 modeli **yedektir** (makro aracını eğitimde görmedi, L21); asıl model v2.2'dir ve sonuçları bu tablonun yerine geçecektir. Yine de eğitim hattının çalıştığının kanıtıdır. [KANIT: `reports/v2_1/train_result.json`, `data_stats.json`, Kaggle log]
+| Ölçüm | Değer |
+|---|---|
+| Veri | v2.1: eğitim 600 / doğrulama 50 oturum; gerçek Gemma tokenizer ile hiçbiri elenmedi; en uzun 7347 token; eğitilen token payı %10,66 |
+| Ayarlar | QLoRA r=16, lr 2e-4, batch 1 x grad. biriktirme 8, 1 epoch = 75 adım, `max_seq` 8192, tohum 3407, float32 (T4'te bf16 yok) |
+| Eğitim süresi | 14 200 sn (3,94 saat); adım başına ~167–200 sn |
+| Eğitim kaybı | ilk (adım 5) 1,414; adım 40: 0,1634; adım 45: 0,104; adım 50: 0,07218; ortalama (tüm koşu) 0,3476 |
+| Doğrulama kaybı | adım 50: 0,07946 (eğitim kaybıyla yakın: aşırı öğrenme belirtisi yok) |
+| Çıktı | birleştirilmiş Q4_K_M GGUF, 2,49 GB (adaptör kaydedilemedi: L45) |
+
 ### 9.3 Eğitim ve hız ölçümleri
 | Ölçüm | Değer |
 |---|---|

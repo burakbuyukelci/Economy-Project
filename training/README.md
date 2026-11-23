@@ -55,8 +55,8 @@ python -m training.colab.make_bundle --data data/training/v2 --out colab_bundle.
 ## 4. Ollama'ya al (Bilgisayar 1)
 1. `result.zip`'i açın; GGUF'u `training/ollama/gemma3-bist-q4_k_m.gguf` olarak kaydedin.
 2. `ollama create gemma3-bist -f training/ollama/Modelfile` — `Modelfile` kendi sohbet şablonumuzu içerir (eğitim metniyle aynı: `<start_of_turn>user|model`; `system` rolü yok, harness sistem metnini ilk user mesajına ekler; `<bos>` şablonda YOK).
-3. **Şablon doğrulaması (zorunlu):** `python -m experiments.check_template --model gemma3-bist --records data/training/v2/val.jsonl --n 5`
-   `OK` satırları: Modelfile şablonu eğitim metniyle aynı token sayısını veriyor. `FARK` varsa `TEMPLATE`'i düzeltin (fazla satır sonu, çift BOS, system rolü).
+3. **İstem doğrulaması (zorunlu; ham yol, 2026-11-23):** harness istemi eğitim metniyle birebir biçimlendirip `/api/generate raw=true` gönderir (Ollama `/api/chat` yolu fazla token üretiyordu: `docs/harness_design.md` §14.8). `python -m experiments.check_template --model gemma3-bist --records data/training/v2_2/val.jsonl --n 5`
+   `OK` satırları: harness istemi eğitim metniyle birebir aynı ve BOS tek kez ekleniyor. `FARK` varsa `harness/text_protocol.py::render_gemma_prompt` ya da GGUF tokenizer'ı (çift BOS) incelenir; Modelfile `TEMPLATE`'i ham yolda kullanılmaz.
 4. Harness modeli: `set HARNESS_MODEL=gemma3-bist` (PowerShell: `$env:HARNESS_MODEL="gemma3-bist"`); araç modu varsayılan `text`.
 5. Bağlam: ilk gerçek koşuda `MODEL_TURN` olaylarındaki `prompt_tokens` (Ollama `prompt_eval_count`) ile `estimated_prompt_tokens`'ı karşılaştırın; sayılar ≤ 8192 olmalıdır (üretim payı için pratikte ≤ ~7500).
 

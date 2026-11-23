@@ -20,7 +20,7 @@ from typing import Any, Sequence
 from urllib.parse import urlsplit
 
 from harness import settings
-from harness.text_protocol import STOP_SEQUENCES, encode_messages, fold_system, parse_reply
+from harness.text_protocol import STOP_SEQUENCES, encode_messages, fold_system, parse_reply, render_gemma_prompt
 
 
 class LLMError(RuntimeError):
@@ -141,7 +141,7 @@ class OllamaBackend(LLMBackend):
 
     def __init__(self, *, host: str | None = None, model: str | None = None, temperature: float | None = None,
                  num_ctx: int | None = None, seed: int | None = None, timeout: float | None = None, tool_mode: str | None = None,
-                 max_new_tokens: int | None = None) -> None:
+                 max_new_tokens: int | None = None, raw: bool | None = None) -> None:
         self.host = _check_local(host if host is not None else settings.ollama_host())
         self.model = model or settings.llm_model()
         self.temperature = settings.llm_temperature() if temperature is None else temperature
@@ -152,11 +152,39 @@ class OllamaBackend(LLMBackend):
         self.tool_mode = tool_mode if tool_mode is not None else settings.llm_tool_mode()
         if self.tool_mode not in ("text", "native"):
             raise ValueError(f"tool_mode 'text' ya da 'native' olmalı: {self.tool_mode!r}")
+        self.raw = settings.llm_raw() if raw is None else raw      # yalnızca tool_mode == "text" için geçerli (settings.llm_raw)
         self.name = f"ollama:{self.model}"
         # ortam proxy'lerini YOK SAY (istek başka yere yönlenemesin) ve yönlendirmeyi izleme
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
+    def _post(self, path: str, body: dict[str, Any]) -> Any:
+        req = urllib.request.Request(f"{self.host}{path}", data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with self._opener.open(req, timeout=self.timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise LLMError(f"Ollama HTTP {exc.code}: {exc.reason}") from None
+        except (urllib.error.URLError, OSError) as exc:
+            raise LLMError(f"Ollama'ya bağlanılamadı ({self.host}): {exc}") from None
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise LLMError(f"Ollama yanıtı geçerli JSON değil: {exc}") from None
+
+    def _chat_raw(self, messages: Messages, tools: ToolSpecs | None) -> ModelReply:
+        """`/api/generate raw=true`: istem EĞİTİM metniyle birebir (render_gemma_prompt); Modelfile şablonu ve `/api/chat` yolu devre dışı."""
+        options: dict[str, Any] = {"temperature": self.temperature, "num_ctx": self.num_ctx, "seed": self.seed, "stop": list(STOP_SEQUENCES)}
+        if self.max_new_tokens is not None:
+            options["num_predict"] = self.max_new_tokens
+        payload = self._post("/api/generate", {"model": self.model, "prompt": render_gemma_prompt(encode_messages(messages, tools)),
+                                               "raw": True, "stream": False, "options": options})
+        text = payload.get("response") if isinstance(payload, dict) else None
+        if not isinstance(text, str):
+            raise LLMError("Ollama yanıtında geçerli 'response' yok")
+        return self._parse_text(text, payload)
+
     def chat(self, messages: Messages, tools: ToolSpecs | None = None) -> ModelReply:
+        if self.tool_mode == "text" and self.raw:
+            return self._chat_raw(messages, tools)
         body: dict[str, Any] = {
             "model": self.model, "messages": list(messages), "stream": False,
             "options": {"temperature": self.temperature, "num_ctx": self.num_ctx, "seed": self.seed},

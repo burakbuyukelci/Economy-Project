@@ -538,3 +538,12 @@ Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bi
 * **Model görünümü (`model_view._slim_macro`):** her serinin yalnızca son noktası, ilişki özeti, çoklu test; medyanlar, pencere tarihleri, `sample_last_date`, boşluk listesi, maliyet modeli ve veri seti sürüm/tatil notu atılır. 700+ noktalı ham yanıt (~130 KB) yerine ~2,9 KB.
 * **Araç tanımı bütçesi:** `relate_to` şeması ~+800 karakter: `TOOL_SPEC_CHAR_BUDGET` 8700 -> 9400 (~+270 token/oturum); `alpha` gizlendi. Makro oturumu ~5,8 bin token (8192 sınırının altında).
 * **Soru 5 davranışı (eğitim kaydı):** araç çağrısı -> ilişki sayıları (araç çıktısından) -> "kesin yükselir iddiası doğrulanmamıştır" -> tavsiye/hedef fiyat reddi -> `EYLEM: INVESTIGATE`. Sınırlama: makro için etiket çeşitliliği yoktur (hepsi INVESTIGATE; aday etiketi tanımlı değil).
+
+### 14.8 Ham (raw) istem yolu: Ollama `/api/chat` eğitim metninden FAZLA token üretiyordu (2026-11-23)
+* **Bulgu (ilk gerçek model çıktısı, v2.1 GGUF):** `check_template` FARK verdi: `/api/chat` yolu eğitim metninden tek mesajda **+3**, her asistan turunda **+4** token fazla üretiyordu (6 öneğin 6'sı: 2491→2494, 2583→2590, 4237→4248 …).
+  Küçük bir konuşmada ayrıştırıldı: `/api/generate` + aynı metin = 10 token (eğitim metniyle aynı), `/api/chat` = 13 token **ve Modelfile şablonundan bağımsız** (satır içi basit şablonla da 13). Yani fazlalık bizim şablonumuzdan değil, Ollama'nın sohbet yolundan geliyordu.
+* **Karar:** metin-protokolü modunda harness istemi KENDİSİ biçimlendirir (`harness.text_protocol.render_gemma_prompt`: eğitim metniyle birebir, `<bos>` hariç, sona model tur başlığı) ve `/api/generate raw=true` gönderir (`OllamaBackend._chat_raw`; `HARNESS_RAW_PROMPT=0` eski yolu açar).
+  Durdurma dizesi aynı (`<tool_response name=`). Böylece eğitim ve çıkarım istemi tanım gereği aynıdır; Ollama sürümüne ve şablon kuralına bağımlılık kalkar. Yeniden eğitim GEREKMEDİ.
+* **Doğrulama (`experiments/check_template.py`, yeni):** (1) her önekte `render_gemma_prompt(önek) == eğitim metni` (gerçek v2.2 doğrulama verisinin TÜM önekleri; sunucu gerekmez), (2) `<bos>` yazılsa da token sayısı değişmez (BOS tek kez eklenir; gerçek modelde 10 = 10), (3) isteğe bağlı `--chat` eski yolun farkını gösterir.
+  Testler: `tests/harness/test_raw_prompt.py`, `tests/experiments/test_check_template.py`.
+
