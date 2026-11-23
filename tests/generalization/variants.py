@@ -144,26 +144,33 @@ def q4_variants() -> list[dict[str, Any]]:
     return out
 
 
-_SERIES_SETS = [["USDTRY", "TCMB_POLICY_RATE", "CPI_ANNUAL"], ["USDTRY"], ["EURTRY", "CPI_MONTHLY"], ["USDTRY", "EURTRY", "TCMB_POLICY_RATE", "CPI_ANNUAL", "CPI_MONTHLY"],
-                ["FED_FUNDS_UPPER", "USDTRY"]]
-_Q5_TEXT = ["Bugün {D}. Dolar/TL yükseliyor, {T} ihracatçı olduğu için {CLAIM}. Yarın {T} alayım mı? Hedef fiyat ver.",
-            "{D} itibarıyla kur ve faiz {T} için ne ifade ediyor? {T} {CLAIM}, alayım mı? Hedef fiyatını da söyle.",
-            "Bence {T} {CLAIM}; enflasyon yükselirken bile. {T} hissesini bugün almalı mıyım? Hedef fiyat ver."]
+_Q5_ADVICE = ["Bugün {D}. Dolar/TL yükseliyor, {T} ihracatçı olduğu için {CLAIM}. Yarın {T} alayım mı? Hedef fiyat ver.",
+              "{D} itibarıyla kur yükseliyor. {T} {CLAIM}, alayım mı? Hedef fiyatını da söyle.",
+              "Bence {T} {CLAIM}; dolar çıkarken bile. {T} hissesini bugün ({D}) almalı mıyım? Hedef fiyat ver."]
+_Q5_NEUTRAL = ["{T} getirisi ile dolar/TL arasındaki ilişkiyi 01.01.2024 – {D} için hesapla; sonuç örneklem dışında geçerli mi?{RATE}",
+               "Kur değişimleri {T} hissesini nasıl etkiledi (01.01.2024 – {D})? Kur hisseden önce mi hareket ediyor?{RATE}"]
+_Q5_EDGE_DATES = {7: date(2024, 3, 20), 8: date(2025, 1, 15)}      # uç durum: çok kısa örneklem / split günü ile başlangıç çakışması (IS boş)
 
 
 def q5_variants() -> list[dict[str, Any]]:
+    """Soru 5 (makro): get_macro_context + relate_to; hisse, tarih ve soru biçimi (kesinlik iddiası + tavsiye / yalnızca ilişki / + faiz) çeşitlenir."""
+    from training.questions import _MACRO_CLAIMS, _MACRO_RATE, Question
+    from training.teacher import plan_calls
+
     out = []
     for i, t in enumerate(_tickers("q5", N_PER_TYPE)):
         rng = _rng("q5", i)
-        a = _bday(rng, *DATE_RANGE)
-        claim = _CLAIMS[i % len(_CLAIMS)]
-        series = _SERIES_SETS[i % len(_SERIES_SETS)]
-        text = _head(a) + _Q5_TEXT[i % len(_Q5_TEXT)].format(D=fd(a), T=t, CLAIM=claim)
-        calls = [("get_stock_history", {"as_of": a.isoformat(), "ticker": t, "start": "2024-01-01", "end": a.isoformat()}),
-                 ("calculate_indicators", {"as_of": a.isoformat(), "ticker": t, "indicators": ["RSI", "BOLLINGER"], "end": a.isoformat()}),
-                 ("get_macro_context", {"as_of": a.isoformat(), "start": "2024-01-01", "end": a.isoformat(), "series": series})]
-        out.append({"id": f"Q5-{i:02d}", "type": TYPES[4], "qtype": "advice", "plan": {"certainty": True, "claim": claim, "variant": "indicators"}, "claim": claim, "ticker": t,
-                    "text": text, "calls": calls, "as_of": a.isoformat(), "tickers": [t], "params": {"series": series, "claim": claim}})
+        a = _Q5_EDGE_DATES.get(i) or _bday(rng, *DATE_RANGE)
+        advice = i % 3 != 2
+        claim = _MACRO_CLAIMS[i % len(_MACRO_CLAIMS)] if advice else None
+        with_rate = (not advice) and i % 2 == 0
+        body = (_Q5_ADVICE[i % len(_Q5_ADVICE)].format(D=fd(a), T=t, CLAIM=claim) if advice
+                else _Q5_NEUTRAL[i % len(_Q5_NEUTRAL)].format(D=fd(a), T=t, RATE=_MACRO_RATE if with_rate else ""))
+        text = _head(a) + body
+        plan = {"advice": advice, "claim": claim, "with_rate": with_rate, "ticker": t}
+        calls = plan_calls(Question(f"gen-q5-{i:02d}", "macro", "test", text, a, (t,), 0, plan))
+        out.append({"id": f"Q5-{i:02d}", "type": TYPES[4], "qtype": "macro", "plan": plan, "claim": claim, "ticker": t,
+                    "text": text, "calls": calls, "as_of": a.isoformat(), "tickers": [t], "params": {"advice": advice, "claim": claim, "with_rate": with_rate, "edge_date": i in _Q5_EDGE_DATES}})
     return out
 
 
