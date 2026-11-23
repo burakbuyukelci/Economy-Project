@@ -38,3 +38,9 @@ def test_no_colab_only_calls_and_uses_v2_2_questions_and_local_ollama():
 
 def test_eval_bundle_makes_questions_dir_selectable():
     assert "--questions" in Path("experiments/colab/make_eval_bundle.py").read_text(encoding="utf-8")
+
+
+def test_notebook_handles_a_dataset_whose_zip_kaggle_already_extracted():
+    """Kaggle veri setine yüklenen zip'i otomatik açar (126 ayrı dosya); not defteri zip'i de, açılmış ağacı da bulmalı (2026-11-23: zip aranıp bulunamadı)."""
+    src = _code()
+    assert "eval_bundle.zip" in src and "harness/__init__.py" in src and "copytree" in src and "assert roots" in src
