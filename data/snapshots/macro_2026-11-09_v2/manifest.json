@@ -1,0 +1,61 @@
+{
+  "data_version": "macro_2026-11-09_v2",
+  "n_rows": 2993,
+  "series": {
+    "USDTRY": {
+      "source": "TCMB/EVDS",
+      "frequency": "daily",
+      "evds_code": "TP.DK.USD.A.YTL",
+      "formulas": null,
+      "n_points": 967,
+      "last_observation_date": "2026-11-09"
+    },
+    "EURTRY": {
+      "source": "TCMB/EVDS",
+      "frequency": "daily",
+      "evds_code": "TP.DK.EUR.A.YTL",
+      "formulas": null,
+      "n_points": 967,
+      "last_observation_date": "2026-11-09"
+    },
+    "CPI_MONTHLY": {
+      "source": "TCMB/EVDS",
+      "frequency": "monthly",
+      "evds_code": "TP.TUKFIY2025.GENEL",
+      "formulas": 1,
+      "n_points": 46,
+      "last_observation_date": "2026-10-31"
+    },
+    "CPI_ANNUAL": {
+      "source": "TCMB/EVDS",
+      "frequency": "monthly",
+      "evds_code": "TP.TUKFIY2025.GENEL",
+      "formulas": 3,
+      "n_points": 46,
+      "last_observation_date": "2026-10-31"
+    },
+    "TCMB_POLICY_RATE": {
+      "source": "TCMB/EVDS",
+      "frequency": "daily",
+      "evds_code": null,
+      "formulas": null,
+      "n_points": 0,
+      "last_observation_date": null
+    },
+    "TCMB_FUNDING_COST": {
+      "source": "TCMB/EVDS",
+      "frequency": "daily",
+      "evds_code": "TP.APIFON4",
+      "formulas": null,
+      "n_points": 967,
+      "note": "TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir (EVDS veri grubu bie_apifon, TP.APIFON4, günlük iş günü, %); politika faizi değil. EVDS notu: Toplam fonlamanın gerçekleşmediği günlerde AOFM verisi olarak bir hafta repo faiz oranı kullanılmaktadır. Mart-Ağustos 2026'da bir hafta vadeli repo ihaleleri ara verildiği için seri o dönemde %40'ta kalmıştır.",
+      "last_observation_date": "2026-11-09"
+    }
+  },
+  "publication_rule": "FX/faiz: gözlem günü; TÜFE: izleyen ayın 3'ü (hafta sonu -> sonraki iş günü), resmî tatil yok sayılır",
+  "created": "2026-11-09",
+  "start": "2023-01-01",
+  "notes": [
+    "TCMB_POLICY_RATE: seri kodu verilmedi, indirilmedi"
+  ]
+}

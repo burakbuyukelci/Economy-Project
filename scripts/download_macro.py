@@ -188,7 +188,21 @@ def list_series(keyword: str, max_groups: int = 8, max_series: int = 40) -> None
             print(f"  (+{len(ser) - max_series} seri daha)")
 
 
-def fetch_series(name: str, start: date, end: date) -> list[dict]:  # pragma: no cover - ağ
+EVDS_ROW_CAP = 1000   # EVDS tek istekte en çok 1000 satır döndürür; fazlasında ESKİ ucu sessizce keser (2026-11-23'te görüldü)
+CHUNK_DAYS = 366      # bir pencere <= 366 takvim günü: günlük serilerde en çok ~366 satır, sınırın çok altı
+
+
+def chunk_ranges(start: date, end: date, days: int = CHUNK_DAYS) -> list[tuple[date, date]]:
+    """[start, end] aralığını bitişik, örtüşmeyen, her biri <= `days` takvim günü olan pencerelere böler (saf)."""
+    out, a = [], start
+    while a <= end:
+        b = min(a + timedelta(days=days - 1), end)
+        out.append((a, b))
+        a = b + timedelta(days=1)
+    return out
+
+
+def _fetch_window(name: str, start: date, end: date) -> list[dict]:  # pragma: no cover - ağ
     import requests
     key = os.environ.get("EVDS_API_KEY", "").strip()
     if not key:
@@ -204,6 +218,18 @@ def fetch_series(name: str, start: date, end: date) -> list[dict]:  # pragma: no
     if r.status_code != 200:
         raise SystemExit(f"{name}: EVDS HTTP {r.status_code} (anahtar/kod/adres kontrol edin; yanıt gövdesi yazdırılmadı)")
     return r.json().get("items", [])
+
+
+def fetch_series(name: str, start: date, end: date) -> list[dict]:
+    """Aralığı yıllık pencerelere bölerek çeker (EVDS 1000 satır sınırı). Bir pencere sınıra dayanırsa kesilme şüphesiyle DURUR."""
+    items: dict[str, dict] = {}
+    for a, b in chunk_ranges(start, end):
+        part = _fetch_window(name, a, b)
+        if len(part) >= EVDS_ROW_CAP:
+            raise SystemExit(f"{name}: {a}..{b} penceresi {len(part)} satır döndürdü (sınır {EVDS_ROW_CAP}): eski uç kesilmiş olabilir")
+        for it in part:
+            items[str(it["Tarih"])] = it       # aynı tarih iki pencerede gelirse sonuncusu (özdeş) kalır
+    return list(items.values())
 
 
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - ağ

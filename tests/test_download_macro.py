@@ -114,3 +114,29 @@ def test_manifest_documents_funding_cost_note(tmp_path):
     note = man["series"]["TCMB_FUNDING_COST"]["note"]
     assert "politika faizi değil" in note and "Toplam fonlamanın gerçekleşmediği günlerde AOFM verisi olarak bir hafta repo faiz oranı kullanılmaktadır." in note
     assert man["series"]["TCMB_FUNDING_COST"]["evds_code"] == "TP.APIFON4"
+
+
+# --- EVDS tek istekte en çok 1000 satır döndürür ve FAZLASINDA ESKİ UCU KESER (macro_2026-11-09_v1'de USDTRY 2024-02-14'te başladı) ---------
+def test_chunk_ranges_cover_exactly_and_stay_below_row_cap():
+    ws = D.chunk_ranges(date(2023, 1, 1), date(2026, 11, 9))
+    assert ws[0][0] == date(2023, 1, 1) and ws[-1][1] == date(2026, 11, 9)
+    for (a, b), (c, _) in zip(ws, ws[1:]):
+        assert c == b + pd.Timedelta(days=1).to_pytimedelta()          # bitişik, örtüşme/boşluk yok
+    assert all((b - a).days + 1 <= D.CHUNK_DAYS < D.EVDS_ROW_CAP for a, b in ws)
+    assert D.chunk_ranges(date(2026, 1, 5), date(2026, 1, 5)) == [(date(2026, 1, 5), date(2026, 1, 5))]
+
+
+def test_fetch_series_merges_windows_dedupes_and_guards_cap(monkeypatch):
+    calls = []
+
+    def fake(name, a, b):
+        calls.append((a, b))
+        return [{"Tarih": a.strftime("%d-%m-%Y"), "X": "1.0"}, {"Tarih": b.strftime("%d-%m-%Y"), "X": "2.0"}]
+
+    monkeypatch.setattr(D, "_fetch_window", fake)
+    items = D.fetch_series("USDTRY", date(2023, 1, 1), date(2026, 11, 9))
+    assert len(calls) >= 4 and calls[0][0] == date(2023, 1, 1) and calls[-1][1] == date(2026, 11, 9)
+    assert len({i["Tarih"] for i in items}) == len(items)               # yinelenen tarih yok
+    monkeypatch.setattr(D, "_fetch_window", lambda n, a, b: [{"Tarih": "01-01-2023", "X": "1"}] * D.EVDS_ROW_CAP)
+    with pytest.raises(SystemExit, match="1000"):                       # sınıra dayanan yanıt = olası kesilme -> sessiz geçilmez
+        D.fetch_series("USDTRY", date(2023, 1, 1), date(2023, 12, 31))
