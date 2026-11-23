@@ -331,6 +331,45 @@ def _macro(res: dict[str, Any]) -> list[Candidate]:
             f"{s.get('series')} son gözlem değeri {_fmt(last.get('value'))} ({s.get('source')})",
             _vals(_v("value", last.get("value")), _v("observation_date", last.get("observation_date")),
                   _v("publication_date", last.get("publication_date"))), "latest_point"))
+    for r in res.get("relations") or []:           # şema 1.5.0: relate_to (makro ~ hisse ilişkisi); her sayı kaynak zarftan AYNEN
+        tag = f"{r.get('ticker')} ~ {r.get('macro_series')} (ufuk {_fmt(r.get('horizon'))}, gecikme {_fmt(r.get('lag_days'))}"
+        key = (_v("ticker", r.get("ticker")), _v("macro_series", r.get("macro_series")), _v("horizon", r.get("horizon")), _v("lag_days", r.get("lag_days")))
+        f = r.get("full") or {}
+        out.append(Candidate(
+            f"{tag}, {r.get('transform')}), tüm dönem: gözlem {_fmt(f.get('n_obs'))}, korelasyon {_fmt(f.get('correlation'))}, "
+            f"eğim {_fmt(f.get('beta'))}, ham p {_fmt(f.get('p_value_raw'))}, düzeltilmiş p {_fmt(f.get('p_value_adjusted'))}, "
+            f"düzeltme sonrası anlamlı {_fmt(f.get('significant_after_correction'))}, ufku dolmamış dışlanan {_fmt(f.get('n_excluded_incomplete_horizon'))}",
+            _vals(*key, _v("transform", r.get("transform")),
+                  _v("n_obs", f.get("n_obs")), _v("correlation", f.get("correlation")), _v("beta", f.get("beta")),
+                  _v("p_value_raw", f.get("p_value_raw")), _v("p_value_adjusted", f.get("p_value_adjusted")),
+                  _v("significant_after_correction", f.get("significant_after_correction")),
+                  _v("n_excluded_incomplete_horizon", f.get("n_excluded_incomplete_horizon"))), "relation"))
+        up, dn, un = (f.get(k) or {} for k in ("macro_up", "macro_down", "unconditional"))
+        out.append(Candidate(
+            f"{tag}): makro yükselen blok {_fmt(up.get('n'))}, ortalama getiri %{_fmt(up.get('mean_return_pct'))}, maliyet sonrası "
+            f"%{_fmt(up.get('cost_adjusted_mean_return_pct'))}; makro düşen blok {_fmt(dn.get('n'))}, ortalama getiri %{_fmt(dn.get('mean_return_pct'))}, "
+            f"maliyet sonrası %{_fmt(dn.get('cost_adjusted_mean_return_pct'))}; koşulsuz ortalama getiri %{_fmt(un.get('mean_return_pct'))}",
+            _vals(*key, _v("macro_up_n", up.get("n")), _v("macro_up_mean_return_pct", up.get("mean_return_pct"), "pct"),
+                  _v("macro_up_cost_adjusted_mean_return_pct", up.get("cost_adjusted_mean_return_pct"), "pct"),
+                  _v("macro_down_n", dn.get("n")), _v("macro_down_mean_return_pct", dn.get("mean_return_pct"), "pct"),
+                  _v("macro_down_cost_adjusted_mean_return_pct", dn.get("cost_adjusted_mean_return_pct"), "pct"),
+                  _v("unconditional_mean_return_pct", un.get("mean_return_pct"), "pct")), "relation_groups"))
+        i_s, o_s = r.get("in_sample"), r.get("out_of_sample")
+        if i_s is not None and o_s is not None:
+            out.append(Candidate(
+                f"{tag}): örneklem içi gözlem {_fmt(i_s.get('n_obs'))}, korelasyon {_fmt(i_s.get('correlation'))}; "
+                f"örneklem dışı gözlem {_fmt(o_s.get('n_obs'))}, korelasyon {_fmt(o_s.get('correlation'))}, "
+                f"örneklem dışı bozulma işareti {_fmt(r.get('oos_degradation_flag'))}",
+                _vals(*key, _v("in_sample_n_obs", i_s.get("n_obs")), _v("in_sample_correlation", i_s.get("correlation")),
+                      _v("out_of_sample_n_obs", o_s.get("n_obs")), _v("out_of_sample_correlation", o_s.get("correlation")),
+                      _v("oos_degradation_flag", r.get("oos_degradation_flag"))), "relation_split"))
+    mt = res.get("multiple_testing") or {}
+    if mt and res.get("relations"):
+        out.append(Candidate(
+            f"Makro ilişkiler: çoklu test düzeltmesi {_fmt(mt.get('method'))}, bildirilen test sayısı {_fmt(mt.get('n_tests_declared'))}, "
+            f"alfa {_fmt(mt.get('alpha'))}, düzeltilmiş alfa {_fmt(mt.get('adjusted_alpha'))}",
+            _vals(_v("n_tests_declared", mt.get("n_tests_declared")), _v("alpha", mt.get("alpha")),
+                  _v("adjusted_alpha", mt.get("adjusted_alpha")), _v("multiple_testing_method", mt.get("method"))), "multiple_testing"))
     return out
 
 

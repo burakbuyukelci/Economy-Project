@@ -1,6 +1,6 @@
 {
   "_doc": "Kanıt paketinde her aracın BAŞLIK bölümleri (committed_evidence_set) ve bağlam bölümleri (yalnızca full_evidence_set). Çıkarıcılar (harness/evidence.py) her kanıt adayına bir 'section' adı verir; aday, bölümü 'headline' listesindeyse committed olur, 'context' listesindeyse yalnızca full sette kalır, bildirilmemiş bölüm bağlam sayılır (test bunu yakalar). 'excluded': çıkarıcının KASITLI olarak hiç kanıt üretmediği bölümler (ham/zaman serisi veri). 'policy_values': harness/label_policy.py'nin etiketi belirlerken OKUDUĞU alanların committed kanıttaki DEĞER ADLARI; model yalnızca committed kanıta dayanarak açıklayacağı için etiketin dayanağı da orada bulunmalıdır (tests/harness/test_policy_evidence.py denetler). Yeni bölüm/değer eklemek için yalnızca bu dosya ve çıkarıcı değişir; tests/harness/test_evidence_headlines.py tutarlılığı denetler.",
-  "version": 5,
+  "version": 6,
   "tools": {
     "rank_sector_relative_strength": {
       "headline": ["sector", "laggard", "historical_catch_up", "pooling", "per_ticker"], "context": [], "excluded": [],
@@ -22,7 +22,7 @@
       "policy_values": ["fiscal_period", "yoy_direction", "qoq_direction", "tms29_comparable", "n_quarters_disclosed_by_as_of",
                         "improvement_metric", "improvement_basis"]},
     "get_fundamental_metrics": {"headline": ["metrics"], "context": [], "excluded": [], "policy_values": []},
-    "get_macro_context": {"headline": ["latest_point"], "context": [], "excluded": ["points"], "policy_values": []},
+    "get_macro_context": {"headline": ["latest_point", "relation", "relation_groups", "relation_split", "multiple_testing"], "context": [], "excluded": ["points"], "policy_values": []},
     "get_news_events": {"headline": [], "context": ["count", "events"], "excluded": [], "policy_values": []},
     "get_speech_features": {"headline": [], "context": ["summary"], "excluded": ["segments"], "policy_values": []},
     "calculate_indicators": {"headline": ["latest"], "context": [], "excluded": ["recent_rows"], "policy_values": []},

@@ -42,7 +42,7 @@ MIN_TRAINING_SNAPSHOT_VERSION = 2
 # (docs/schema_wishlist.md §12). Eğitim uygunluğu: uyarıdan regex ile çekilen sürüm bu kabul listesinde olmalı (CLAUDE.md kural 12'nin bilanço/makro karşılığı).
 # `fundamentals_2026-11-21_v1` KABUL EDİLMEZ (yalnızca 10 hisse, açıklama tarihi eşleşmesiyle sınırlı; yasal süre görünürlüğü yok).
 ACCEPTED_FUNDAMENTALS_VERSIONS: frozenset[str] = frozenset({"fundamentals_2026-11-23_v1", "fundamentals_2026-11-23_v2"})
-ACCEPTED_MACRO_VERSIONS: frozenset[str] = frozenset()   # makro snapshot'ı main'e girince buraya eklenir; o zamana kadar makro zarflı kayıt reddedilir
+ACCEPTED_MACRO_VERSIONS: frozenset[str] = frozenset({"macro_2026-11-09_v2"})   # v1 KABUL EDİLMEZ (EVDS 1000 satır sınırı: USDTRY/EURTRY 2024-02-14'te başlıyordu; silindi, commit edilmedi)
 # schemas/examples.py fixture'larındaki en geç tarih; as_of bundan öncesiyse mock ERROR döner.
 MOCK_FIXTURE_LAST_DATE = date(2026, 9, 10)
 MOCK_AS_OF_ERROR_CODE = "MOCK_FIXTURE_AFTER_AS_OF"  # ToolError.code serbest metindir, şema değişmedi

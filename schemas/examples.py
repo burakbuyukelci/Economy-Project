@@ -8,6 +8,14 @@ import copy
 from typing import Any
 
 from schemas.common import SCHEMA_VERSION, make_cost_model
+
+
+def _REL_WINDOW(n, start, end, corr, beta, p_raw, p_adj, sig, n_up, n_down, n_excl):  # noqa: N802
+    """get_macro_context örneği için ilişki penceresi (1.5.0); tutarlı: up + down <= n_obs, unconditional.n == n_obs."""
+    grp = lambda k, mean: {"n": k, "mean_return_pct": mean, "median_return_pct": mean, "cost_adjusted_mean_return_pct": round(mean - 0.5, 4)}  # noqa: E731
+    return {"window": {"start": start, "end": end}, "n_obs": n, "n_excluded_incomplete_horizon": n_excl, "correlation": corr, "beta": beta,
+            "p_value_raw": p_raw, "p_value_adjusted": p_adj, "significant_after_correction": sig,
+            "macro_up": grp(n_up, 0.5228), "macro_down": grp(n_down, 1.3324), "unconditional": grp(n, 0.6194)}
 from schemas.enums import ToolName
 from schemas.hashing import compute_input_hash
 from schemas.registry import validate_params
@@ -81,7 +89,8 @@ _PARAMS: dict[ToolName, dict[str, Any]] = {
         "out_of_sample_start": "2026-01-01", "out_of_sample_end": "2026-09-10"},
     ToolName.GET_FUNDAMENTAL_METRICS: {"ticker": "TUPRS"},
     ToolName.CALCULATE_FUNDAMENTAL_CHANGE: {"ticker": "TUPRS"},
-    ToolName.GET_MACRO_CONTEXT: {"start": "2026-01-01", "end": "2026-09-10"},
+    ToolName.GET_MACRO_CONTEXT: {"start": "2026-01-01", "end": "2026-09-10", "n_tests_declared": 1,
+                                 "relate_to": [{"ticker": "EREGL", "macro_series": "USDTRY", "horizon": 5, "lag_days": 0, "split_date": "2026-01-01"}]},
     ToolName.GET_NEWS_EVENTS: {"ticker": "EREGL", "start": "2026-09-01", "end": "2026-09-10"},
     ToolName.GET_SPEECH_FEATURES: {"source_id": "damodaran_valuation_01"},
     ToolName.RUN_BACKTEST: {
@@ -188,7 +197,16 @@ _RESULTS: dict[ToolName, dict[str, Any]] = {
         "series": [{"series": "USDTRY", "source": "TCMB/EVDS", "frequency": "daily", "n_points": 1,
                     "last_publication_date": "2026-09-10", "gaps": [],
                     "points": [{"observation_date": "2026-09-10", "publication_date": "2026-09-10",
-                                "value": 41.0}]}]},
+                                "value": 41.0}]}],
+        "relations": [{
+            "ticker": "EREGL", "macro_series": "USDTRY", "horizon": 5, "lag_days": 0, "transform": "PCT_CHANGE",
+            "full": _REL_WINDOW(134, "2026-01-02", "2026-09-08", -0.163, -1.6229, 0.0629, 0.0629, False, 118, 16, 1),
+            "in_sample": _REL_WINDOW(100, "2024-01-08", "2025-12-26", -0.1912, -1.7, 0.05, 0.05, False, 88, 12, 0),
+            "out_of_sample": _REL_WINDOW(33, "2026-01-09", "2026-09-08", 0.1115, 0.9, 0.52, 0.52, False, 30, 3, 1),
+            "oos_degradation_flag": True, "sample_last_date": "2026-09-08"}],
+        "multiple_testing": {"n_tests_declared": 1, "alpha": 0.05, "adjusted_alpha": 0.05, "method": "bonferroni",
+                             "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."},
+        "cost_model": {"transaction_cost_bps_per_side": 20.0, "slippage_bps_per_side": 5.0, "round_trip_cost_pct": 0.5}},
     ToolName.GET_NEWS_EVENTS: {
         "n_events_returned": 1,
         "events": [{"event_id": "kap-0001", "published_date": "2026-09-05", "published_time": "18:30",

@@ -23,6 +23,8 @@ Kurallar:
   * bilanço (calculate_fundamental_change / get_fundamental_metrics): yalnızca SON açıklanmış çeyrek (metrikler: değer, QoQ/YoY değişim, birim, yön) + çeyrek sayıları + tepki özeti
     (ufuk, grup, n, ortalama anormal getiri, isabet, ufku dolmamış dışlanan); çeyrek bazlı tepkiler, medyanlar, sektör anormal getirisi ve ölçüt tanımı atılır (kanıt alıntılamaz).
     Veri seti sürüm uyarısı (HISTORICAL_ONLY, "bilanço veri seti ...") modele gösterilmez (eğitim uygunluk denetimi TAM zarftan okur).
+  * makro (get_macro_context, şema 1.5.0): her serinin yalnızca SON noktası + `relations` özeti (korelasyon, eğim, p, gruplar, IS/OOS korelasyon, bozulma işareti) + çoklu test; maliyet modeli ve
+    veri seti sürüm/tatil notu (HISTORICAL_ONLY) modele gösterilmez (sürüm uygunluk denetimi tam zarftan okunur).
 Özne: soruda tek hisse varsa o, aksi halde sıralamadaki en çok geride kalan (label_policy ile aynı kural).
 """
 from __future__ import annotations
@@ -170,6 +172,40 @@ def _slim_fundamental(tool: str, results: dict[str, Any]) -> list[str]:
     return ["fundamental_view"] if json.dumps(results, sort_keys=True) != before else []
 
 
+_MACRO_GROUP_KEEP = ("n", "mean_return_pct", "cost_adjusted_mean_return_pct")
+_MACRO_FULL_KEEP = ("n_obs", "n_excluded_incomplete_horizon", "correlation", "beta", "p_value_raw", "p_value_adjusted", "significant_after_correction")
+_MACRO_REL_KEEP = ("ticker", "macro_series", "horizon", "lag_days", "transform", "oos_degradation_flag")
+
+
+def _slim_macro(results: dict[str, Any]) -> list[str]:
+    """get_macro_context: kanıt yalnızca her serinin SON noktasını ve ilişki özetlerini (harness/evidence.py `_macro`) alıntılar; 700+ nokta, boşluk listesi,
+    medyanlar, pencere tarihleri, `sample_last_date` ve maliyet modeli (kural sistem isteminde) atılır."""
+    before = json.dumps(results, sort_keys=True)
+    for s in results.get("series") or []:
+        pts = s.get("points") or []
+        s["points"] = [max(pts, key=lambda p: p.get("observation_date") or "")] if pts else []
+        for k in ("gaps", "frequency", "last_publication_date"):
+            s.pop(k, None)
+    rels = []
+    for r in results.get("relations") or []:
+        kept = {k: r[k] for k in _MACRO_REL_KEEP if k in r}
+        f = r.get("full") or {}
+        kept["full"] = {**{k: f[k] for k in _MACRO_FULL_KEEP if k in f},
+                        **{g: {k: f[g][k] for k in _MACRO_GROUP_KEEP if k in f[g]} for g in ("macro_up", "macro_down", "unconditional") if isinstance(f.get(g), dict)}}
+        for w in ("in_sample", "out_of_sample"):
+            if isinstance(r.get(w), dict):
+                kept[w] = {k: r[w][k] for k in ("n_obs", "correlation") if k in r[w]}
+        rels.append(kept)
+    if rels:
+        results["relations"] = rels
+    else:
+        results.pop("relations", None)       # boş liste bilgi taşımaz
+    results.pop("cost_model", None)
+    if isinstance(results.get("multiple_testing"), dict):
+        results["multiple_testing"] = {k: results["multiple_testing"][k] for k in ("n_tests_declared", "alpha", "adjusted_alpha", "method") if k in results["multiple_testing"]}
+    return ["macro_view"] if json.dumps(results, sort_keys=True) != before else []
+
+
 def _tight() -> bool:
     from harness import settings
 
@@ -183,6 +219,8 @@ def _is_boilerplate(w: str, tool: str) -> bool:
     if w.startswith("HISTORICAL_ONLY"):
         if tool in _FUND_TOOLS and "bilanço veri seti" in w:
             return True   # sürüm bilgisi eğitim uygunluk denetimi içindir (tam zarftan okunur); modele gerekmez
+        if tool == "get_macro_context" and "makro veri seti" in w:
+            return True   # makro sürümü + taşınan tatil günleri listesi (tarih/sayı gürültüsü); "politika faizi değil" notu açıklama kurucudadır
         return tool == "rank_sector_relative_strength" or not any(ch.isdigit() for ch in w)
     return False
 _STAT_KEEP = ("n_events_complete", "n_excluded_incomplete_horizon", "n_success", "n_false_positive", "hit_rate_pct", "mean_return_pct",
@@ -286,6 +324,8 @@ def model_view(envelope: dict[str, Any], *, subject: str | None) -> dict[str, An
             trimmed += _trim_rows(results)
         if tool in _FUND_TOOLS:
             trimmed += _slim_fundamental(tool, results)
+        if tool == "get_macro_context":
+            trimmed += _slim_macro(results)
         if trimmed:
             view["view_trimmed"] = trimmed
     return view
