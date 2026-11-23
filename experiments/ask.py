@@ -19,6 +19,7 @@ from typing import Any, Callable
 
 from experiments.eval_runner import PROFILES, real_tools
 from harness.agent_loop import run_session
+from harness.as_of import _markers
 from harness.event_log import EventLog
 from harness.llm_backend import LLMError
 from harness.routing import ReviewStatus
@@ -61,6 +62,9 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     text = args.question if args.question is not None else Path(args.question_file).read_text(encoding="utf-8")
     text = text.replace("\\n", "\n")
     as_of = date.fromisoformat(args.as_of) if args.as_of else None
+    if as_of is not None and not _markers(text):
+        # Eğitim sorularının hepsi "Analiz tarihi: GG.AA.YYYY" satırıyla başlar; hocanın canlı sorularında bu satır yoktur. Aynı biçimi vermek dağılım kaymasını önler.
+        text = f"Analiz tarihi: {as_of.strftime('%d.%m.%Y')}\n{text}"
     kwargs: dict[str, Any] = {}
     if args.log:
         Path(args.log).parent.mkdir(parents=True, exist_ok=True)

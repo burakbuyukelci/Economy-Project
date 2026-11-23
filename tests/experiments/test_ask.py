@@ -52,3 +52,16 @@ def test_ask_is_deterministic_and_accepts_explicit_as_of(capsys):
 def test_ask_requires_an_analysis_date(capsys):
     code = ask.main(["--question", "EREGL alayım mı?", "--model", "scripted"], backend_factory=lambda t, s: None)
     assert code == 2 and "analiz tarihi" in capsys.readouterr().err.lower()
+
+
+@needs_data
+def test_as_of_flag_prepends_the_training_format_marker_when_the_question_has_none(capsys):
+    raw = "Bugün 10.09.2026. Dolar/TL yükseliyor, EREGL ihracatçı olduğu için kesin yükselir. Yarın EREGL alayım mı? Hedef fiyat ver."
+    seen = {}
+
+    def factory(text, session):
+        seen["text"] = text
+        return scripted("Analiz tarihi: 10.09.2026\n" + raw)(text, session)
+
+    assert ask.main(["--question", raw, "--as-of", "2026-09-10", "--model", "scripted"], backend_factory=factory) == 0
+    assert seen["text"].startswith("Analiz tarihi: 10.09.2026\n" + raw[:20]) and "EYLEM: INVESTIGATE" in capsys.readouterr().out
