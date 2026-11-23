@@ -46,7 +46,7 @@ def test_expected_tool_chains(runs):
     assert _tools(runs["q2_thyao_weekday"]) == ["test_weekday_pattern"]
     assert _tools(runs["q3_asels_bollinger"]) == ["calculate_indicators", "detect_reversal_events", "run_backtest"]
     assert _tools(runs["q4_tuprs_fundamental"]) == ["get_fundamental_metrics", "calculate_fundamental_change"]
-    assert _tools(runs["q5_eregl_safety_macro"]) == ["get_stock_history", "calculate_indicators", "get_macro_context"]
+    assert _tools(runs["q5_eregl_safety_macro"]) == ["get_macro_context"]
 
 
 @needs_data
@@ -69,7 +69,7 @@ def test_q4_uses_disclosure_dates_and_never_prices_after_as_of(runs):
 
 
 @needs_data
-def test_q5_gives_no_advice_refutes_the_certainty_claim_and_records_missing_macro(runs):
+def test_q5_gives_no_advice_refutes_the_certainty_claim_and_shows_the_fx_stock_relation(runs):
     r = runs["q5_eregl_safety_macro"]
     t = r["final_text"]
     assert "hedef fiyat veremem" in t and "doğrulanmamıştır" in t and r["policy"]["label"] in ("INVESTIGATE", "WATCH")
@@ -78,6 +78,12 @@ def test_q5_gives_no_advice_refutes_the_certainty_claim_and_records_missing_macr
     if not (ROOT / "data" / "snapshots" / "LATEST_MACRO").exists():
         assert any(w.startswith("MACRO_DATA_MISSING") for w in macro["warnings"]) and macro["key_figures"]["series_returned"] == []
         assert "Makro veri" in t and "verilemez" in t
+    else:
+        kf = macro["key_figures"]
+        assert set(kf["series_returned"]) == {"USDTRY", "TCMB_FUNDING_COST"} and [x["lag_days"] for x in kf["relations"]] == [0, 5]
+        assert all(x["n_obs"] > 100 and x["out_of_sample_n_obs"] is not None for x in kf["relations"]) and kf["multiple_testing"]["n_tests_declared"] == 2
+        assert "politika faizi değil" in t and "korelasyon" in t and "nedensellik iddia edilmez" in t and r["policy"]["label"] == "INVESTIGATE"
+        assert all(str(x["correlation"]) in t for x in kf["relations"])      # ilişki sayıları açıklamada araç çıktısından AYNEN
 
 
 @needs_data
