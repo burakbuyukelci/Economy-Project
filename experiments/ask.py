@@ -11,6 +11,7 @@ geçersiz çağrı, politika etiketi ile eşleşme), süre ve (istenirse) karar 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import time
@@ -19,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from experiments.eval_runner import PROFILES, real_tools
+from experiments.decision_record import attach_review
 from harness.agent_loop import run_session
 from harness.as_of import _markers
 from harness.event_log import EventLog
@@ -56,6 +58,7 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     ap.add_argument("--as-of", default=None, help="analiz tarihi YYYY-MM-DD (soruda işaret yoksa)")
     ap.add_argument("--host", default=None, help="yalnızca localhost/127.0.0.1")
     ap.add_argument("--log", default=None, help="karar günlüğü JSONL (olay başına satır)")
+    ap.add_argument("--record", default=None, help="yeniden oynatılabilir TAM karar kaydı (JSON); `python -m experiments.replay` ile doğrulanır")
     ap.add_argument("--review", choices=[r.value for r in ReviewStatus if r != ReviewStatus.PENDING_HUMAN_REVIEW], default=None, help="insan incelemesi kararı (profil E)")
     ap.add_argument("--reviewer", default="reviewer")
     ap.add_argument("--reason", default="")
@@ -77,6 +80,9 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     try:
         with real_tools():
             session = HarnessSession.from_question(text, explicit_as_of=as_of, profile=args.profile, **kwargs)
+            review = ({"decision": args.review, "reviewer": args.reviewer, "reason": args.reason}
+                      if args.review and session.profile.human_review else None)
+            attach_review(session, review)
             if backend_factory is None:
                 from harness.llm_backend import OllamaBackend
 
@@ -98,9 +104,10 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     print("\n".join(_trace(session)) or "  (araç çağrısı yok)")
     print("=== Nihai cevap ===")
     print(session.machine.explanation or ("(teslim edilmedi" + (f": {res.abort_reason}" if res.abort_reason else "") + ")"))
-    if args.review and session.profile.human_review and session.machine.explanation:
-        session.record_human_review(ReviewStatus(args.review), args.reviewer, args.reason)
-        print(f"=== İnsan incelemesi: {args.review} ({args.reviewer}): {args.reason or '-'} ===")
+    if review:
+        print(f"=== İnsan incelemesi: {review['decision']} ({review['reviewer']}): {review['reason'] or '-'} ===")
+    elif args.review:
+        print(f"UYARI: --review yalnızca profil E'de kaydedilir (profil {session.profile.name}); kaydedilmedi.", file=sys.stderr)
     m = session.final_metrics()["delivered_level"]
     pol = session.policy
     print("=== Denetim ===")
@@ -108,6 +115,12 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     print(f"sayı iddiası: {m.get('n_number_claims')}, halüsinasyon: {m.get('n_hallucinated')}, kanıtsız: {m.get('n_unevidenced')} | kural ihlali: {m.get('n_violations')} | "
           f"geçersiz araç çağrısı: {session.machine.n_invalid_calls} | geri çekilme: {m.get('fallback')}")
     print(f"süre: {secs:.1f} sn | model turu: {res.n_model_turns}")
+    if args.record:
+        from experiments.decision_record import build_record
+
+        Path(args.record).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.record).write_text(json.dumps(build_record(session, res.messages, question=text, model=model_name, review=review), ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"karar kaydı: {args.record} (tekrar oynatma: python -m experiments.replay {args.record})")
     if args.log:
         print(f"karar günlüğü: {args.log} ({len(session.events)} olay)")
     return 0 if res.status == "DELIVERED" else 1
