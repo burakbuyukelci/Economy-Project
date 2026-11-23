@@ -1,0 +1,175 @@
+[
+ {
+  "id": "test-advice-0000-e483440b",
+  "type": "advice",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-advice-0001-28faaef7",
+  "type": "advice",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-advice-0002-99921f70",
+  "type": "advice",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=calculate_indicators model=run_backtest"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-catch_up-0000-1caa4692",
+  "type": "catch_up",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç çağrısı yok"
+  ],
+  "format_error": "araç çağrısı geçerli JSON değil: Extra data"
+ },
+ {
+  "id": "test-catch_up-0001-63b12f93",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-catch_up-0002-f8129cc7",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "universe: öğretmen=\"<yok>\" model=[\"BIMAS\", \"MGROS\", \"MAVI\"]"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-fundamental-0000-2f6a5600",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-fundamental-0001-c3317121",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_indicators"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-fundamental-0002-d961ef9f",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-indicators-0000-c7fd7c1c",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "indicators: öğretmen=[\"ATR\"] model=[\"RSI\", \"BOLLINGER\"]",
+   "last_n_rows: öğretmen=5 model=\"<yok>\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-indicators-0001-bfffb6b3",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "end: öğretmen=\"2026-11-10\" model=\"<yok>\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-indicators-0003-95f286df",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "indicators[1]: öğretmen=\"ICHIMOKU\" model=\"Ichimoku\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-reversal-0001-bce2ed23",
+  "type": "reversal",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-reversal-0002-2a9cc5d7",
+  "type": "reversal",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "n_tests_declared: öğretmen=1 model=\"<yok>\"",
+   "split_date: öğretmen=\"2026-01-01\" model=\"<yok>\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-reversal-0003-d11a5127",
+  "type": "reversal",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-weekday-0000-fbe6751b",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "pattern[1].direction: öğretmen=\"DOWN\" model=\"UP\"",
+   "pattern[1].role: öğretmen=\"TRIGGER\" model=\"OUTCOME\"",
+   "pattern[1].weekday: öğretmen=\"WED\" model=\"THU\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "test-weekday-0001-4d9e61ef",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "test-weekday-0002-9094e724",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "pattern[1].role: öğretmen=\"TRIGGER\" model=\"OUTCOME\"",
+   "pattern[2].role: öğretmen=\"TRIGGER\" model=\"OUTCOME\""
+  ],
+  "format_error": null
+ }
+]

@@ -1,0 +1,149 @@
+[
+ {
+  "id": "train-catch_up-0001-bc914436",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-catch_up-0002-0a1dcb42",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "horizon: öğretmen=10 model=20"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-catch_up-0003-cf29ddd2",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-catch_up-0004-ab889cda",
+  "type": "catch_up",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "horizon: öğretmen=10 model=20"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-fundamental-0000-e3c0f592",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-fundamental-0001-a19258cd",
+  "type": "fundamental",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "period: öğretmen=\"<yok>\" model=\"Q1\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-fundamental-0003-810d322b",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-fundamental-0005-df0807d5",
+  "type": "fundamental",
+  "tool_ok": false,
+  "exact": false,
+  "diffs": [
+   "araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change"
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-indicators-0000-808d428e",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-indicators-0001-3f1c00e6",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-indicators-0002-e54fc584",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "end: öğretmen=\"2026-01-06\" model=\"<yok>\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-indicators-0003-3ac67df4",
+  "type": "indicators",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-weekday-0000-c622a112",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "pattern[2].role: öğretmen=\"OUTCOME\" model=\"TRIGGER\"",
+   "pattern[3].role: öğretmen=\"OUTCOME\" model=\"TRIGGER\""
+  ],
+  "format_error": null
+ },
+ {
+  "id": "train-weekday-0001-852cdfc3",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-weekday-0002-c853b745",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": true,
+  "diffs": [],
+  "format_error": null
+ },
+ {
+  "id": "train-weekday-0003-73474d5e",
+  "type": "weekday",
+  "tool_ok": true,
+  "exact": false,
+  "diffs": [
+   "pattern: öğretmen=[{\"direction\": \"DOWN\", \"role\": \"TRIGGER\", \"weekday\": \"MON\"}, model=[{\"weekday\": \"MON\", \"direction\": \"DOWN\", \"role\": \"TRIGGER\"},"
+  ],
+  "format_error": null
+ }
+]

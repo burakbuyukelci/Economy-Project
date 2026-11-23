@@ -1,0 +1,23 @@
+TAM catch_up     train-catch_up-0001-bc914436  
+ARAÇ-OK catch_up     train-catch_up-0002-0a1dcb42  horizon: öğretmen=10 model=20
+TAM catch_up     train-catch_up-0003-cf29ddd2  
+ARAÇ-OK catch_up     train-catch_up-0004-ab889cda  horizon: öğretmen=10 model=20
+YANLIŞ fundamental  train-fundamental-0000-e3c0f592  araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change
+ARAÇ-OK fundamental  train-fundamental-0001-a19258cd  period: öğretmen="<yok>" model="Q1"
+YANLIŞ fundamental  train-fundamental-0003-810d322b  araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change
+YANLIŞ fundamental  train-fundamental-0005-df0807d5  araç adı: öğretmen=get_fundamental_metrics model=calculate_fundamental_change
+TAM indicators   train-indicators-0000-808d428e  
+TAM indicators   train-indicators-0001-3f1c00e6  
+ARAÇ-OK indicators   train-indicators-0002-e54fc584  end: öğretmen="2026-01-06" model="<yok>"
+TAM indicators   train-indicators-0003-3ac67df4  
+ARAÇ-OK weekday      train-weekday-0000-c622a112  pattern[2].role: öğretmen="OUTCOME" model="TRIGGER"; pattern[3].role: öğretmen="OUTCOME" model="TRIGGER"
+TAM weekday      train-weekday-0001-852cdfc3  
+TAM weekday      train-weekday-0002-c853b745  
+ARAÇ-OK weekday      train-weekday-0003-73474d5e  pattern: öğretmen=[{"direction": "DOWN", "role": "TRIGGER", "weekday": "MON"}, model=[{"weekday": "MON", "direction": "DOWN", "role": "TRIGGER"},
+
+=== ÖZET (tip: n, doğru araç, birebir parametre) ===
+catch_up       n=4  araç 4/4  birebir 2/4
+fundamental    n=4  araç 1/4  birebir 0/4
+indicators     n=4  araç 4/4  birebir 3/4
+weekday        n=4  araç 4/4  birebir 2/4
+TOPLAM n=16  araç 13/16  birebir 7/16
