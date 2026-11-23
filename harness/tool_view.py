@@ -17,7 +17,7 @@ from schemas.enums import ToolName as T
 from schemas.registry import TOOL_REGISTRY
 
 # 13 araç (D/E görünümü) için üst sınır; ölçüm: tests/harness/test_tool_view.py (karakter/3 tahmini)
-TOOL_SPEC_CHAR_BUDGET = 8700   # ölçülen: 8504 (13 araç); sadeleştirmesiz 23739
+TOOL_SPEC_CHAR_BUDGET = 9400   # ölçülen: 9293 (13 araç; şema 1.5.0 relate_to sonrası; önceki 8504); sadeleştirmesiz 23739
 CONTEXT_TARGET_TOKENS = 8192   # bağlam (Gemma 3 4B, T4; sahibin kararı); ölçüm: Gemma tokenizer / Ollama prompt_eval_count
 CHARS_PER_TOKEN = 3        # Türkçe/JSON için kaba tahmin; Ollama kurulunca prompt_eval_count ile DEĞİŞTİRİLİR
 
@@ -31,7 +31,7 @@ TOOL_DESCRIPTIONS: dict[T, str] = {
     T.TEST_WEEKDAY_PATTERN: "Weekday pattern test, in-sample vs out-of-sample.",
     T.GET_FUNDAMENTAL_METRICS: "Point-in-time financial metrics.",
     T.CALCULATE_FUNDAMENTAL_CHANGE: "Quarterly metric changes and post-disclosure price reaction.",
-    T.GET_MACRO_CONTEXT: "FX, rates and inflation series.",
+    T.GET_MACRO_CONTEXT: "FX, rates, inflation series; relate_to: relation of a macro series to a stock's returns.",
     T.GET_NEWS_EVENTS: "Timestamped news/KAP events.",
     T.GET_SPEECH_FEATURES: "Transcript-derived features.",
     T.RUN_BACKTEST: "Historical backtest of a strategy on a universe.",
@@ -47,6 +47,7 @@ HIDDEN_PARAMS: dict[T, tuple[str, ...]] = {
     T.FIND_SUPPORT_RESISTANCE: ("tolerance_pct", "min_touches", "pivot_window"),
     T.RANK_SECTOR_RELATIVE_STRENGTH: ("forward_horizons", "lag_threshold_pp", "analysis_start"),
     T.TEST_WEEKDAY_PATTERN: ("transaction_cost_bps", "slippage_bps", "alpha", "conditioning"),
+    T.GET_MACRO_CONTEXT: ("alpha",),
     T.CALCULATE_FUNDAMENTAL_CHANGE: ("periods", "metrics", "reaction_horizons"),
     T.RUN_BACKTEST: ("strategy.transaction_cost_bps", "strategy.slippage_bps", "strategy.signal_lag_days",
                      "strategy.benchmarks", "strategy.validation_end", "strategy.walk_forward"),
