@@ -15,7 +15,7 @@ Ekip: iki kişi (Akdeniz Üniversitesi, Dr. Alper Özcan). Çalışma eğitim/ar
 
 **Başarı ölçütü (hoca):** "hangi LLM daha iyi" değil, araç, durum, kanıt/kalite kapısı, doğrulama ve insan incelemesi eklendikçe sistemin **ne kadar güvenilir ve tekrarlanabilir** hale geldiği (Ham LLM → LLM+Araç → +Durum makinesi → +Kanıt/Kapı → +Bellek/İnsan incelemesi). [KANIT: `docs/hoca_qa.md` S5]
 
-**Kapsam dışı (bilinçli):** haber ve konuşma araçları (`get_news_events`, `get_speech_features`) yazılmadı [L20]; makro araç minimum sürümdür ve veri seti henüz yoktur [L21, L22].
+**Kapsam dışı (bilinçli):** haber ve konuşma araçları (`get_news_events`, `get_speech_features`) yazılmadı [L20]. Makro araç gerçektir (veri seti `macro_2026-11-09_v2`, `relate_to` kur–hisse ilişkisi, şema 1.5.0); politika faizi serisi yoktur, yerine TCMB fonlama maliyeti kullanılır [L22, L43].
 
 ---
 
@@ -60,13 +60,13 @@ Sözleşmedeki 15 araç; durum [KANIT: `tools/`, `harness/`, `docs/data_dictiona
 | `test_weekday_pattern` | gerçek | permütasyon testi (B=10000, tohum 481), Bonferroni; IS/OOS; `stability_verdict` |
 | `detect_reversal_events` | gerçek | BB alt/üst temas, RSI yerel dip/zirve; birleşik koşullar; IS/OOS; rejim kırılımı [L27] |
 | `get_fundamental_metrics`, `calculate_fundamental_change` | gerçek | KAP açıklama tarihine göre hizalama; QoQ/YoY; 1/5/20 gün XU100 ve sektör anormal getirisi [L10–L17] |
-| `get_macro_context` | **minimum** (veri seti yok) | 5 seri tanımlı; `relate_to` yok [L21–L23] |
+| `get_macro_context` | gerçek | 6 seri (USDTRY, EURTRY, TÜFE aylık/yıllık, TCMB fonlama maliyeti; politika faizi DEĞİL); resmî tatil ileri doldurma; `relate_to`: kur/faiz ~ hisse ilişkisi (örtüşmeyen bloklar, eş zamanlı ve öncü, permütasyon p, Bonferroni, IS/OOS) [L21–L23, L43] |
 | `run_backtest` | gerçek | long-only; CATCH_UP/WEEKDAY/REVERSAL; benchmark; IS/OOS/walk-forward [L28] |
 | `check_data_quality` | gerçek (kapı) | koşul → kapı tablosu |
 | `build_evidence_bundle` | harness'te (modele gösterilmez D/E'de) | iki aşamalı, kilitli |
 | `get_news_events`, `get_speech_features` | **YOK (kapsam dışı)** | [L20] |
 
-Sınama: tam test paketi son koşuda **2732 geçti, 1 atlandı** (as_of sızıntı, ufku dolmamış olay, determinizm, sözleşme, gerçek veri testleri dahil). [KANIT: `pytest` son tam koşu; testler `tests/`]
+Sınama: tam test paketi son koşuda **2795 geçti, 1 atlandı** (as_of sızıntı, ufku dolmamış olay, determinizm, sözleşme, gerçek veri testleri dahil). [KANIT: `pytest` son tam koşu; testler `tests/`]
 
 ---
 
@@ -77,7 +77,7 @@ Sınama: tam test paketi son koşuda **2732 geçti, 1 atlandı** (as_of sızınt
 | Fiyat (ham) | `snap_2026-11-20_v1` | 30 hisse (`.IS`) + `XU100.IS`; 2023-01-02 → 2026-11-20; 29.139 hisse satırı + 969 XU100 satırı; Yahoo Finance (`yfinance 1.8.0`) | `docs/data_dictionary.md` §11 |
 | Fiyat (düzeltilmiş) | `snap_2026-11-20_v2` | v1'den türetilmiş; tek belgeli düzeltme: CCOLA %1000 bedelsiz (KAP bildirim 1323127; 392 satır); eğitim yalnızca v2'den | `docs/data_dictionary.md` §12 |
 | Bilanço | `fundamentals_2026-11-23_v2` | 159 satır, 30 hisse, dönem sonu ≥ 2025-03-31; kaynak Yahoo; açıklama tarihi: 134 `STATUTORY_DEADLINE`, 21 `YAHOO_APPROX`, 4 `KAP_DATE_VIA_NEWS` (TUPRS) | `data/snapshots/.../manifest.json`, `docs/data_dictionary.md` §21 |
-| Makro | **yok** | EVDS indirmesi yapılmadı | [L21] |
+| Makro | `macro_2026-11-09_v2` | USDTRY, EURTRY, TCMB fonlama maliyeti: 967 günlük gözlem/seri (2023-01-02 → 2026-11-09); TÜFE aylık/yıllık 46 gözlem; EVDS (`TP.DK.*`, `TP.APIFON4`, `TP.TUKFIY2025.GENEL`) | `docs/data_dictionary.md` §22 |
 
 Evren: 30 hisse, 20 peer grubu (retail 3; 8 grup 2'şer; 11 tek hisseli). [KANIT: `config/universe.csv`] [L19]
 Kurallar: bilanço **KAP açıklama tarihine** göre hizalanır (dönem sonuna göre değil); ana analiz TMS 29 sonrası (2025+) dönemlerdir; banka için sanayi oranları kullanılmaz; açıklama tarihi bilinmeyen çeyrek dönem sonu + yasal süreye kadar **gizlenir** ve fiyat tepkisine girmez. [KANIT: `CLAUDE.md` kural 7; `docs/data_dictionary.md` §21] [L10–L16]
@@ -106,24 +106,26 @@ Aday etiketlerde "tarihsel gözlem, örnek küçük, belirsizlik var; geçmiş k
 * **Gerekçe (repoda belgeli):** hoca 1–8 mlr parametreli açık kaynak modelleri LoRA/QLoRA ile ince ayar için önerdi; model tek T4 16 GB'a sığıyor ve Ollama GGUF olarak yerelde çalışıyor. [KANIT: `docs/hoca_qa.md`; `training/README.md`] **Başka modellerle karşılaştırma yapılmadı** [L7].
 * Bağlam 8192 token (T4 16 GB, batch 1 + gradient accumulation); 6144 + SIKI MOD OOM geri dönüşüdür. [KANIT: `docs/harness_design.md` §14.3]
 
-### 5.2 İnce ayar verisi (v2.1; tohum 42; `GENERATOR_VERSION = "2.1"`)
+### 5.2 İnce ayar verisi (v2.2; tohum 42; `GENERATOR_VERSION = "2.2"`)
 Kayıt biçimi: soru → araç çağrıları → araç çıktısı → kanıta dayalı açıklama + `EYLEM:` satırı; metin, çıkarımdaki metnin **birebir aynısıdır** (`text_messages`); kayıp yalnızca asistan turlarında (araç çağrıları ve nihai metin), hatalı kurtarma turları maskelidir. Etiket politikadan, açıklama kilitli kanıt cümlelerinden kuralla kurulur (LLM yok) [L4]. [KANIT: `training/format.py`, `training/RULES.md`]
+**v2.1 → v2.2 farkı:** v2.1'de makro aracı modele gösterilmiyordu ve 48 örnek "makro için araç yok" diyordu; v2.2'de makro gerçek araç (Soru 5), bu örnekler kaldırıldı, 72 makro oturumu eklendi. v2.1 modeli yalnızca yedektir [L21]. [KANIT: `docs/harness_design.md` §14.7]
 
 | Bölme | Oturum | Hedef | Eksik | Bağlamdan elenen |
 |---|---|---|---|---|
 | eğitim | 600 | 600 | 0 | 0 |
 | doğrulama | 50 | 50 | 0 | 0 |
 | test | 100 | 100 | 0 | 0 |
-[KANIT: `data/training/v2_1/report.json` (commit edilmez; `docs/harness_design.md` §14.6)]
+[KANIT: `data/training/v2_2/report.json` (commit edilmez; yeniden üretim: `python -m training.build_dataset --out data/training/v2_2`)]
 
-* **SHA-256:** `train.jsonl` `6f10dc5e82c748a35a930d24042bdcea06af0158c089d61e6d0d260124371957`; `val.jsonl` `72ccf8aa99ecd62640e406f9732cf3d2fdbec6565b59533b698fe8fbeb814583`; `test.jsonl` `a979a349ac8e2b69e5c899c01030c962474d47d00fea555a314122a466ead80d`. [KANIT: `data/training/v2_1/manifest.json`]
-* **Soru tipleri (eğitim):** teknik dönüş 102, haftalık 90, bilanço 72, catch-up 60, göstergeler 60, tavsiye 48, araçta olmayan veri 48, bayat veri 48, destek/direnç 36, geçmiş 36. [KANIT: `data/training/v2_1/report.json`]
-* **Etiketler (toplam 750):** INVESTIGATE 438 (%58,4), REJECT_SIGNAL 161, ANALYSIS_UNSAFE 60, WATCH 42, HOLD 39, TECHNICAL_REVERSAL_CANDIDATE 10, **POTENTIAL_CATCH_UP_CANDIDATE 0, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 0**. [KANIT: aynı] [L1–L3]
+* **SHA-256:** `train.jsonl` `c24b1809f77dcffc5bfa1b3be12f0037c3539832bfb7c994ee10772337f6993f`; `val.jsonl` `5b3e2077b7da0fe80b5e4d8fe77b089ca3e10cf1004fe91838b97557cc90ec2d`; `test.jsonl` `0cc9da58fd670fbf3b8eff83f588cee6f7acd7cf8bcdfde39e2bc9604ba8855e`. [KANIT: `data/training/v2_2/manifest.json`]
+* **Soru tipleri (eğitim):** teknik dönüş 90, haftalık 84, bilanço 72, **makro 72**, catch-up 54, göstergeler 48, tavsiye 42, bayat veri 42, araçta olmayan veri 36, destek/direnç 30, geçmiş 30. [KANIT: aynı rapor]
+* **Etiketler (toplam 750):** INVESTIGATE 465 (%62,0), REJECT_SIGNAL 147, ANALYSIS_UNSAFE 53, WATCH 41, HOLD 35, TECHNICAL_REVERSAL_CANDIDATE 9, **POTENTIAL_CATCH_UP_CANDIDATE 0, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 0**. [KANIT: aynı] [L1–L3]
+* **Makro (Soru 5) oturumları:** 90 (eğitim 72, doğrulama 6, test 12); hepsi INVESTIGATE (`G7_UNVERIFIED_CLAIM` kesinlik iddiası varsa, aksi halde `G7_NO_SCENARIO`). Araç çağrısı `get_macro_context` + `relate_to` (USDTRY~hisse, eş zamanlı ve öncü; OOS = analiz yılının 1 Ocak'ı; `n_tests_declared` = ilişki sayısı); açıklama: ilişki sayıları araç çıktısından, "kesin yükselir iddiası doğrulanmamıştır", "kullanılan seri politika faizi değil, fonlama maliyetidir", tavsiye ve hedef fiyat reddi. [KANIT: `training/RULES.md` kural 10] [L44]
 * **Bilanço (Soru 4) oturumları:** 90 (%12,0); eğitim 72 (INVESTIGATE 40, REJECT_SIGNAL 18, WATCH 14), doğrulama 6 (INVESTIGATE 2, WATCH 4), test 12 (INVESTIGATE 1, REJECT_SIGNAL 3, WATCH 8); tepki istatistiği olan yalnızca 17/90. [KANIT: `docs/harness_design.md` §14.6] [L5]
-* **Hata-kurtarma yörüngeleri** (≈ %10: `as_of` uyuşmazlığı, bozuk çağrı, erken bitirme, nihai metin ihlali): eğitimde 600 oturumun 51'i. [KANIT: `report.json` `recovery` (13+8+22+8)]
-* **Bölme ve sızıntı:** peer grupları bölmelere tek parça atanır; tarih aralıkları ayrık (eğitim 2025-03 → 2026-05, doğrulama 2026-06 → 2026-08, test 2026-09 → 2026-11 + bayat aralıklar); test şablonları eğitimde yok; sızıntı denetimi 0. [KANIT: `docs/harness_design.md` §14] 
-* **Doğrulama hattı (her kayıtta):** etiket = politika; sayı halüsinasyonu 0 ve kanıtsız sayı 0; eylem koruması ihlali 0; tüm zarflar gerçek v2 ve şema 1.3.0; bilanço oturumunda kabul listesindeki bilanço sürümü. [KANIT: `training/validate.py`, `training/RULES.md`]
-* Token: eğitimde ortalama ~5,0 bin, en uzun 7535 (karakter tahmini; gerçek Gemma tokenizer ile sayım **[SONUÇ BEKLENİYOR]**: Colab `--dry-run`) [L6].
+* **Hata-kurtarma yörüngeleri:** eğitimde 600 oturumun 47'si (`as_of` uyuşmazlığı 11, bozuk çağrı 6, erken bitirme 12, nihai metin ihlali 18). [KANIT: `report.json` `recovery`]
+* **Bölme ve sızıntı:** peer grupları bölmelere tek parça atanır; tarih aralıkları ayrık (eğitim 2025-03 → 2026-05, doğrulama 2026-06 → 2026-08, test 2026-09 → 2026-11 + bayat aralıklar); test şablonları eğitimde yok; sızıntı denetimi 0. [KANIT: `docs/harness_design.md` §14]
+* **Doğrulama hattı (her kayıtta):** etiket = politika; sayı halüsinasyonu 0 ve kanıtsız sayı 0; eylem koruması ihlali 0; tüm zarflar gerçek v2 ve şema 1.5.0; bilanço/makro oturumunda kabul listesindeki veri seti sürümü (`macro_2026-11-09_v2`); `relate_to.split_date` kuralı. [KANIT: `training/validate.py`, `training/RULES.md`]
+* **Token (GERÇEK Gemma tokenizer, Kaggle dry-run, 2026-11-23):** eğitim ort. 4993, en uzun 7713 (sınır 8192; elenen 0), eğitilen token payı %11,0; doğrulama ort. 5062, en uzun 7371, pay %11,2. [KANIT: Kaggle `--dry-run` çıktısı] (Üretimdeki tahmin hâlâ biraz yüksektir: en uzun 7994.) [L6]
 
 ### 5.3 Eğitim ayarları (betik varsayılanları) ve ölçülen süre
 | Ayar | Değer | Kaynak |
@@ -135,10 +137,11 @@ Kayıt biçimi: soru → araç çağrıları → araç çıktısı → kanıta d
 | Doğrulama | her 25 adımda doğrulama kaybı | `train_qlora.py` |
 | Dayanıklılık | `--save-steps`, `--checkpoint-dir`, `--resume`, `--max-steps` | `train_qlora.py` |
 | Çıktı | LoRA adaptörü + GGUF `q4_k_m` (Ollama) | `train_qlora.py` |
-| Ölçülen hız (Colab T4, float32; bf16 yok) | ~153 sn/adım; 75 adım ≈ 3,2 saat | `docs/harness_design.md` §14.5 |
+| Ölçülen hız (Kaggle T4, float32; bf16 YOK: yerleşik destek yok, emülasyon kapatıldı) | ~167 sn/adım (ilk adımlar 223/180/163/166/167 sn); 75 adım ≈ 3,5 saat | Kaggle log (2026-11-23) |
 
 * **Nihai kullanılan hiperparametreler, epoch sayısı, GPU tipi ve toplam eğitim süresi: [SONUÇ BEKLENİYOR]** (eğitim koşusundan; `data_stats.json`, `train_result.json`). [L38]
-* **Eğitim kaybı eğrisi (train/val loss), eğitilen token payı, Colab'da elenen örnek sayısı: [SONUÇ BEKLENİYOR]** (`outputs/v2/data_stats.json`, `train_result.json`, `trainer_state.json`).
+* **Eğitim kaybı eğrisi (train/val loss): [SONUÇ BEKLENİYOR]** (`train_result.json`, `trainer_state.json`). Gözlenen ilk kayıp (v2.1 koşusu, adım 5): 1,414. Eğitilen token payı %11,0 (ölçüldü); bağlamdan elenen örnek 0 (ölçüldü).
+* **Eğitim platformu:** Colab T4 bu hesapta bağlanmadığından Kaggle (T4 x2, tek GPU'ya sabitli) kullanıldı: `training/kaggle/train_qlora_kaggle.ipynb`. Bir hata düzeltmesi: yeni PyTorch T4'te bf16'yı emülasyonla "destekleniyor" gösterdiğinden (çok yavaş) bf16 yalnızca compute capability >= 8 ise seçilir (`compat.bf16_native`).
 * **Yerelde çalıştırma:** GGUF → `ollama create gemma3-bist -f training/ollama/Modelfile` (kendi sohbet şablonumuz; `<bos>` şablonda yok); şablon denetimi `python -m experiments.check_template` (eğitim metniyle aynı token sayısı). Fine-tuned GGUF için şablon denetim sonucu: **[SONUÇ BEKLENİYOR]** [L8]. [KANIT: `training/ollama/Modelfile`, `experiments/check_template.py`]
 
 ---
@@ -156,9 +159,9 @@ Aynı sorular, aynı araçlar ve aynı model; yalnızca harness bayrakları değ
 [KANIT: `harness/profiles.py`] Nihai çıktı **ölçümü** (sayı + eylem + politika) her profilde yapılır; zorlama yalnızca D/E'de.
 
 * **Modeller:** temel `gemma3:4b` ve ince ayarlı `gemma3-bist`. Sıcaklık 0, tohum 42, `num_ctx` 8192. [KANIT: `harness/settings.py`]
-* **Sorular:** v2.1 test bölmesi (100 oturum) içinden tipe orantılı ve belirlenimli alt küme; varsayılan `--n 40` → **39 soru**; 39 × 2 model × 5 profil = **390 koşu**; tekrarlanabilirlik için `--repeats 2`. [KANIT: `experiments/eval_runner.py`, `experiments/colab/plan.py`]
+* **Sorular:** v2.2 test bölmesi (100 oturum) içinden tipe orantılı ve belirlenimli alt küme; `--n 40` → **40 soru** (5'i makro); 40 × 2 model × 5 profil = **400 koşu**; tekrarlanabilirlik için ince ayarlı model, profil D, 20 soru, `--repeats 2`. [KANIT: `experiments/eval_runner.py`, `experiments/kaggle/eval_ollama_kaggle.ipynb`]
 * **Koşucu:** her oturum sonrası satır yazma (CSV + JSONL), süre log'u, kesilince devam (`--resume`), `--max-runs` ile iki Colab oturumuna bölme. [KANIT: `docs/harness_design.md` §14.5]
-* **Değerlendirme ortamı:** Colab GPU + Ollama (CPU'da tam değerlendirme pratik değil [L36, L37]); paket `experiments.colab.make_eval_bundle` (1,21 MB zip), notebook `experiments/colab/eval_ollama.ipynb`. [KANIT: `docs/harness_design.md` §14.5]
+* **Değerlendirme ortamı:** Kaggle GPU + Ollama (CPU'da tam değerlendirme pratik değil [L36, L37]); paket `experiments.colab.make_eval_bundle --questions data/training/v2_2` (1,3 MB zip), notebook `experiments/kaggle/eval_ollama_kaggle.ipynb` (Colab sürümü `experiments/colab/`). Canlı demo: `python -m experiments.ask --model gemma3-bist --question "..."` (araç izi, denetim özeti, karar günlüğü). [KANIT: `docs/harness_design.md` §14.5, `experiments/ask.py`]
 * **Koşu süresi tahmini** [VARSAYIM; gerçek hızlar **[SONUÇ BEKLENİYOR]** (L39)]: T4 ~222 dk (2 oturum), L4 ~171 dk (2 oturum), A100 ~86 dk (1 oturum); `plan.py --calibrate` ilk koşulardan ölçümle yeniler. [KANIT: `experiments/colab/plan.py` çıktısı]
 * **Örnek-soru zinciri (model yok):** beş sorunun araç zinciri öğretmen betiğiyle gerçek veride koşuldu (bölüm 8). Bu, model başarısı DEĞİL, araç ve harness zincirinin doğrulamasıdır [L9].
 
@@ -190,7 +193,7 @@ Kaynak: `docs/sample_runs/` (öğretmen betiği, profil D, gerçek araçlar, `as
 | Q2 THYAO haftalık | test_weekday_pattern | REJECT_SIGNAL (W3) | IS: 18 tetik haftası, 5 oluşum, p=0,1205 (anlamsız); OOS: 3 tetik haftası, 0 oluşum, p=0,6564; `stability_verdict` UNSTABLE (`IS_NOT_SIGNIFICANT`); bildirilen test sayısı 1 |
 | Q3 ASELS alt Bollinger | calculate_indicators, detect_reversal_events, run_backtest | INVESTIGATE (T1, az olay) | Tekli: 12 bağımsız olay (17 ham temas günü, 5 çakışan ileri pencere), 5 gün isabet %66,67 (ort. %2,9608), 10 gün %50,0; RSI dibi + yüksek hacim: 0 olay; Supertrend düşüş + bulut altı: 5 olay (5 gün isabet %80,0, ort. %5,9652); backtest 9 sinyal (`low_signal_flag`) |
 | Q4 TUPRS bilanço | get_fundamental_metrics, calculate_fundamental_change | WATCH (F4, `YOY_NOT_COMPUTABLE`) | 2026Q2 (açıklama 2026-08-04): FAVÖK marjı 14,8685; Net Borç/FAVÖK −0,7646 (net nakit); QoQ FAVÖK marjı +7,6149 pp (IMPROVED); Net Borç/FAVÖK QoQ −0,1425 (aynı tabanla; IMPROVED); YoY hesaplanamadı; 1/5/20 gün pencereleri tamamlandı (20 gün sonu 2026-08-31); 4 çeyrek |
-| Q5 EREGL güvenlik | get_stock_history, calculate_indicators, get_macro_context | INVESTIGATE (G7) | Tavsiye ve hedef fiyat verilmedi; "kesin yükselir" iddiası doğrulanmamış belirtildi; makro: `MACRO_DATA_MISSING` (boş seri) [L21] |
+| Q5 EREGL güvenlik (makro) | get_macro_context (`relate_to`) | INVESTIGATE (G7_UNVERIFIED_CLAIM) | Tavsiye ve hedef fiyat verilmedi; "kesin yükselir" iddiası doğrulanmamış. EREGL~USDTRY (5 gün, 01.01.2024–10.09.2026): eş zamanlı n_obs 134, korelasyon −0,163, ham p 0,062894, düzeltilmiş p 0,125788 (anlamlı değil); örneklem içi −0,1912, örneklem dışı +0,1115 (bozulma); öncü (gecikme 5) korelasyon +0,0227, p 0,791221; kur yükselen 118 blokta ort. +0,5228 pp, düşen 16 blokta +1,3324 pp; son kısmi blok dışlandı. Kullanılan TCMB serisi politika faizi değil, fonlama maliyetidir |
 [KANIT: `docs/sample_runs/q1…q5_*.json`]
 
 Bu tablo **tek bir senaryo koşusudur** ve model performansını ölçmez; etiketler politikadan, metinler kuraldan gelir [L9].
@@ -200,7 +203,7 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 ---
 
 ## 9. Sonuçlar: temel model ve ince ayarlı model karşılaştırması
-> Bu bölümün tamamı **[SONUÇ BEKLENİYOR]**. Üretim: Colab'da `python -m experiments.eval_runner --questions data/training/v2_1/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out <klasör>` (+ `--repeats 2`). Kaynak: `results.csv`, `results.jsonl`, `summary.json`.
+> Bu bölümün tamamı **[SONUÇ BEKLENİYOR]**. Üretim: Kaggle'da `python -m experiments.eval_runner --questions data/training/v2_2/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out <klasör>` (+ `--repeats 2`). Kaynak: `results.csv`, `results.jsonl`, `summary.json`.
 
 ### 9.1 A–E × {temel, ince ayarlı}: hocanın metrikleri
 | Model | Profil | Sayısal halüsinasyon oranı | Hatalı araç çağrısı oranı | Kanıtsız sayı oranı | Kural ihlali (teslim) | Kural ihlali (deneme) | Tavsiye dili | Zorunlu adım atlama | Geri çekilme | Etiket = politika | Tekrarlanabilirlik | Maks. prompt token | Ort. süre (sn) |
@@ -243,7 +246,7 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 ## 10. Bilinen sınırlamalar (özet; ayrıntı: [`limitations.md`](limitations.md))
 1. **Eğitim verisi:** F3 ve CU aday etiketleri yok; etiket dağılımı INVESTIGATE ağırlıklı; açıklamalar şablonla üretildi; token sayımı tahmin [L1–L6].
 2. **Bilanço verisi:** Yahoo kaynaklı, YoY için eksik çeyrekler, tarih eşleşmesi 25/159, değerler KAP'a karşı doğrulanmadı [L10–L17].
-3. **Kapsam:** haber ve konuşma araçları yok; makro veri seti ve politika faizi kodu yok [L20–L23].
+3. **Kapsam:** haber ve konuşma araçları yok; politika faizi serisi yok (fonlama maliyeti kullanıldı); `relate_to` yalnızca günlük seriler ve kısa örneklem [L20–L23, L43, L44].
 4. **Hız:** CPU'da değerlendirme pratik değil; Ollama önek önbelleği belirsizliği; eğitim süresi GPU'ya bağlı [L36–L39].
 5. **İstatistik:** küçük örneklem, çoklu test, nedensellik yok [L24–L26].
 6. **Doğrulama:** henüz gerçek model koşusu yok [L9, L35].
@@ -252,7 +255,7 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 
 ## 11. Sonuç ve gelecek çalışma (iskelet)
 * Kısa özet: sistem mimarisi, araçlar, veri ve politika **kanıtla** doldu (bölüm 2–5, 8); model karşılaştırması **[SONUÇ BEKLENİYOR]** (bölüm 9).
-* Gelecek: haber/KAP ve konuşma katmanı; makro veri seti ve `relate_to`; TUPRS ve diğer hisseler için 2025Q1/Q2 elle KAP değerleri (YoY, F3 örnekleri); F3/CU adayları için daha uzun tarih aralığı; şema önerileri (`EQUITY`, ikincil veri sürümü alanı, uyarı kodları, `event_direction`). [KANIT: `docs/schema_wishlist.md`]
+* Gelecek: haber/KAP ve konuşma katmanı; TUPRS ve diğer hisseler için 2025Q1/Q2 elle KAP değerleri (YoY, F3 örnekleri); F3/CU adayları için daha uzun tarih aralığı; şema önerileri (`EQUITY`, ikincil veri sürümü alanı, uyarı kodları, `event_direction`). [KANIT: `docs/schema_wishlist.md`]
 
 ---
 
@@ -266,7 +269,7 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 7. Sınırlamalar ve dürüstlük (bölüm 10, `limitations.md`).
 
 ## Ek B. Kaynak dosyalar
-`CLAUDE.md`, `docs/hoca_qa.md`, `docs/proje_dokumani.txt`, `docs/harness_design.md`, `docs/data_dictionary.md`, `docs/schema_wishlist.md`, `docs/calibration_thresholds.md`, `docs/sample_runs/`, `training/README.md`, `training/RULES.md`, `data/training/v2_1/{report,manifest}.json` (commit edilmez; yeniden üretim: `python -m training.build_dataset --out data/training/v2_1`).
+`CLAUDE.md`, `docs/hoca_qa.md`, `docs/proje_dokumani.txt`, `docs/harness_design.md`, `docs/data_dictionary.md`, `docs/schema_wishlist.md`, `docs/calibration_thresholds.md`, `docs/sample_runs/`, `training/README.md`, `training/RULES.md`, `data/training/v2_2/{report,manifest}.json` (commit edilmez; yeniden üretim: `python -m training.build_dataset --out data/training/v2_2`).
 
 ## Ek C. Bölüm bazında kanıt durumu
 | Bölüm | Durum |
