@@ -11,6 +11,7 @@ geçersiz çağrı, politika etiketi ile eşleşme), süre ve (istenirse) karar 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from datetime import date
@@ -62,9 +63,12 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     text = args.question if args.question is not None else Path(args.question_file).read_text(encoding="utf-8")
     text = text.replace("\\n", "\n")
     as_of = date.fromisoformat(args.as_of) if args.as_of else None
-    if as_of is not None and not _markers(text):
-        # Eğitim sorularının hepsi "Analiz tarihi: GG.AA.YYYY" satırıyla başlar; hocanın canlı sorularında bu satır yoktur. Aynı biçimi vermek dağılım kaymasını önler.
-        text = f"Analiz tarihi: {as_of.strftime('%d.%m.%Y')}\n{text}"
+    found = _markers(text)
+    head_date = as_of or (next(iter(found)) if len(found) == 1 else None)     # --as-of ya da sorudaki tek işaret ("Bugün 10.09.2026")
+    if head_date is not None and not re.search(r"(?i)analiz\s+tarihi", text):
+        # Eğitim sorularının hepsi "Analiz tarihi: GG.AA.YYYY" satırıyla başlar; hocanın canlı sorularında bu satır yoktur ("Bugün 10.09.2026" gibi işaretler as_of'u
+        # çözer ama başlık satırı eksik kalır). Aynı biçimi vermek dağılım kaymasını önler.
+        text = f"Analiz tarihi: {head_date.strftime('%d.%m.%Y')}\n{text}"
     kwargs: dict[str, Any] = {}
     if args.log:
         Path(args.log).parent.mkdir(parents=True, exist_ok=True)
