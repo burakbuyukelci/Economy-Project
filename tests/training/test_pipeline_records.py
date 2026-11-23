@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from schemas import SCHEMA_VERSION
 from harness.text_protocol import TOOL_CALL_OPEN, TOOL_RESPONSE_OPEN
 from training import spec
 from training.build_dataset import LABEL_QUOTAS, _select
@@ -40,7 +41,7 @@ def test_each_question_type_produces_a_valid_clean_session(tools_on, one_per_typ
     assert session_problems(g) == [], (q.text, session_problems(g))
     rec = build_record(g)
     assert rec["label"] == g.session.machine.action.value == g.session.policy.label.value
-    assert rec["versions"]["schema"] == "1.3.0" and rec["versions"]["data"] == ["snap_2026-11-20_v2"] and rec["split"] == "train"
+    assert rec["versions"]["schema"] == SCHEMA_VERSION and rec["versions"]["data"] == ["snap_2026-11-20_v2"] and rec["split"] == "train"
     assert set(rec["tools"]) <= {t.value for t in spec.REAL_TOOLS} and "check_data_quality" not in rec["tools"]            # mock/harness araçları görünmez
     assert rec["token_source"] in ("gemma3", "estimate") and rec["tokens"] > 0
 

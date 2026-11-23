@@ -78,3 +78,12 @@ Eklemelidir (1.2.0 zarfları geçerli kalır; `tests/contract/fixtures/envelopes
   reversal'da her grupta iki yeni alan dolu. 1.2.0 damgalı zarflarda Optional kalır.
 - **`input_hash` etkisi:** yok (params değişmedi). `schema_version` hash'e girmez.
 - `schemas/examples.py` üç aracın örneğini yeni alanlarla günceller.
+
+## 1.4.0 — 2026-11-23 (insan onayı: 2026-11-23; yalnızca makro serisi eklendi)
+Eklemelidir (1.3.0 zarfları geçerli kalır). Etkilenen araç: `get_macro_context`.
+- **`MacroSeries.TCMB_FUNDING_COST`** eklendi: TCMB ağırlıklı ortalama fonlama maliyeti (EVDS `TP.APIFON4`, günlük, %). **Politika faizi DEĞİLDİR**;
+  `TCMB_POLICY_RATE` enum'da kalır ama indirilmez (kodu doğrulanmadı). Anket beklentisi serileri kullanılmaz.
+- **`input_hash` etkisi:** `GetMacroContextParams.series` varsayılanı `list(MacroSeries)` olduğundan, `series` verilmeyen `get_macro_context` çağrılarının
+  `input_hash`'i değişir (varsayılan liste bir üye büyüdü). Açık `series` verenlerin hash'i değişmez. `schema_version` hash'e girmez.
+- Sonuç şekli değişmedi. Davranış (araç, şema değil): resmî tatil iş günleri son gözlemle ileri doldurulur (`docs/data_dictionary.md` §22).
+

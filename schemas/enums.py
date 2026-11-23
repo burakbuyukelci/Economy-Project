@@ -304,6 +304,7 @@ class MacroSeries(StrEnum):
     USDTRY = "USDTRY"
     EURTRY = "EURTRY"
     TCMB_POLICY_RATE = "TCMB_POLICY_RATE"
+    TCMB_FUNDING_COST = "TCMB_FUNDING_COST"  # 1.4.0: TCMB ağırlıklı ortalama fonlama maliyeti (politika faizi DEĞİL)
     FED_FUNDS_UPPER = "FED_FUNDS_UPPER"
     FED_FUNDS_LOWER = "FED_FUNDS_LOWER"
     CPI_MONTHLY = "CPI_MONTHLY"

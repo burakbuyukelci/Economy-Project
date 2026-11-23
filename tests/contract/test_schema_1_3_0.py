@@ -28,8 +28,8 @@ def _env(tool: ToolName, version: str = "1.3.0") -> dict:
     return env
 
 
-def test_schema_version_is_1_3_0():
-    assert SCHEMA_VERSION == "1.3.0"
+def test_schema_version_is_at_least_1_3_0():
+    assert tuple(int(x) for x in SCHEMA_VERSION.split(".")) >= (1, 3, 0)  # 1.4.0'da yalnızca MacroSeries eklendi
 
 
 # --- 1.2.0 zarfları geçerli kalır -----------------------------------------------------------------
