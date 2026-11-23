@@ -90,3 +90,27 @@ def test_list_series_never_prints_key(monkeypatch, capsys):
     D.list_series("repo")
     out = capsys.readouterr().out
     assert "bie_x" in out and "TP.A | Faiz" in out and "GIZLI-ANAHTAR-123" not in out
+
+
+def test_series_table_funding_cost_and_current_cpi_codes(monkeypatch):
+    for k in ("EVDS_CODE_TCMB_FUNDING_COST", "EVDS_CODE_CPI_MONTHLY", "EVDS_CODE_CPI_ANNUAL", "EVDS_CODE_TCMB_POLICY_RATE"):
+        monkeypatch.delenv(k, raising=False)
+    assert set(D.SERIES) == {"USDTRY", "EURTRY", "CPI_MONTHLY", "CPI_ANNUAL", "TCMB_POLICY_RATE", "TCMB_FUNDING_COST"}
+    f = D.SERIES["TCMB_FUNDING_COST"]
+    assert f["code"] == "TP.APIFON4" and f["frequency"] == "daily" and f["formulas"] is None
+    assert D.publication_date("TCMB_FUNDING_COST", date(2026, 9, 4)) == date(2026, 9, 4)   # gözlem günü
+    # TP.FG.J0 arşivlenmiş (2003=100) seridir: 2023 sonrası 0 gözlem; güncel TÜFE (2025=100) kodu EVDS katalogundan doğrulandı
+    assert D.SERIES["CPI_MONTHLY"]["code"] == D.SERIES["CPI_ANNUAL"]["code"] == "TP.TUKFIY2025.GENEL"
+    assert D.series_code("TCMB_POLICY_RATE") is None                                        # politika faizi İNDİRİLMEZ
+    codes = {v["code"] for v in D.SERIES.values() if v["code"]}
+    assert not any("ANKET" in c.upper() or c.startswith("TP.PKAUO") for c in codes)          # anket beklentisi serisi yok
+
+
+def test_manifest_documents_funding_cost_note(tmp_path):
+    df = D.parse_items([{"Tarih": "01-09-2026", "X": "40.0"}], "TCMB_FUNDING_COST")
+    d = D.write_macro_snapshot(df, tmp_path, "macro_2026-11-23_v1", {})
+    import json
+    man = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+    note = man["series"]["TCMB_FUNDING_COST"]["note"]
+    assert "politika faizi değil" in note and "Toplam fonlamanın gerçekleşmediği günlerde AOFM verisi olarak bir hafta repo faiz oranı kullanılmaktadır." in note
+    assert man["series"]["TCMB_FUNDING_COST"]["evds_code"] == "TP.APIFON4"

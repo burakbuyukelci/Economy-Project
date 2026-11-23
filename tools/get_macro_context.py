@@ -5,6 +5,13 @@ Hizalama YAYIN tarihine göredir (`publication_date <= as_of`); gözlem tarihi a
 TÜİK açıklamasına (izleyen ayın 3'ü) kadar görünmez. `end > as_of` ise as_of'a kesilir (AS_OF_CLAMPED). İstenen ama veri setinde olmayan seri
 (ör. FED_*, kodu verilmemiş politika faizi) veya aralıkta noktası olmayan seri MACRO_DATA_MISSING uyarısı verir; hiçbiri yoksa (ya da makro veri seti yoksa) zarf YİNE OK: series=[] + MACRO_DATA_MISSING; aralık as_of sonrasındaysa NO_DATA.
 Boşluk (gap): ardışık noktalar arası > eşik (günlük 7, aylık 40 takvim günü) ile aralık başı/sonu boşlukları.
+
+Günlük seriler (şema 1.4.0 davranışı): serinin ilk gözlemi ile `as_of`'a kesilmiş aralık sonu arasındaki her HAFTA İÇİ gün için
+  * günde gözlem varsa aynen alınır;
+  * yoksa ve gün işlem takviminde (`tools.common.trading_calendar`) YOKSA = resmî tatil: son gözlem İLERİ taşınır (geriye doldurma yok;
+    taşınan noktanın yayın tarihi tatil günüdür; bilgi o gün zaten biliniyordu). Eksik veri sayılmaz;
+  * yoksa ve gün işlem takviminde VARSA = tatil dışı boşluk: DOLDURULMAZ, `MACRO_DATA_MISSING` uyarısı (gün listesi) verilir.
+Hafta sonları doldurulmaz. Aylık seriler asla doldurulmaz.
 """
 from __future__ import annotations
 
@@ -22,11 +29,12 @@ from schemas.enums import MacroSeries, ToolName, WarningCode
 from schemas.envelope import make_warning
 from schemas.params import GetMacroContextParams
 from schemas.results import GetMacroContextResult, MacroGap, MacroPoint, MacroSeriesData
-from tools.common import Snapshot, ToolFailure, ToolOutput, enforce_as_of, run_tool
+from tools.common import Snapshot, ToolFailure, ToolOutput, enforce_as_of, run_tool, trading_calendar
 
 TOOL = ToolName.GET_MACRO_CONTEXT
 GAP_DAYS = {"daily": 7, "monthly": 40}
 ROUND = 6
+MISSING_LIST_LIMIT = 5   # uyarıda en çok bu kadar tatil dışı eksik gün yazılır (toplam sayı her zaman yazılır)
 
 
 @dataclass(frozen=True)
@@ -73,6 +81,37 @@ def _gaps(obs: list[date], start: date, end: date, freq: str) -> list[MacroGap]:
     return out
 
 
+def fill_holidays(full: pd.DataFrame, end: date, trading_days: set[date], first_trading_day: date | None
+                  ) -> tuple[pd.DataFrame, list[date], list[date]]:
+    """Günlük seri için resmî tatil iş günlerini son gözlemle ileri doldurur (saf fonksiyon).
+
+    `full`: observation_date/publication_date/value (sıralı, tümü <= end). Dönüş: (doldurulmuş tablo, taşınan tatil günleri, tatil dışı eksik günler).
+    Kural: gün (hafta içi) `trading_days`'te yoksa VE `first_trading_day`'den önce değilse tatildir; takvimin başlamadığı günler sınıflanamaz -> eksik.
+    """
+    if full.empty:
+        return full, [], []
+    have = {t.date(): float(v) for t, v in zip(full["observation_date"], full["value"])}
+    carried: list[date] = []
+    missing: list[date] = []
+    new_rows = []
+    last = None
+    for ts in pd.bdate_range(full["observation_date"].min(), pd.Timestamp(end)):
+        d = ts.date()
+        if d in have:
+            last = have[d]
+        elif last is None:
+            continue
+        elif first_trading_day is not None and d >= first_trading_day and d not in trading_days:
+            carried.append(d)
+            new_rows.append({"observation_date": ts, "publication_date": ts, "value": last})
+        else:
+            missing.append(d)
+    if not new_rows:
+        return full, carried, missing
+    out = pd.concat([full[["observation_date", "publication_date", "value"]], pd.DataFrame(new_rows)], ignore_index=True)
+    return out.sort_values("observation_date").reset_index(drop=True), carried, missing
+
+
 def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None = None) -> ToolOutput:
     warnings: list[str] = []
     try:
@@ -90,12 +129,27 @@ def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None
                                      f"{', '.join(x.value for x in p.series)}"))
         return ToolOutput(results=GetMacroContextResult(start=p.start, end=eff_end, series=[]), warnings=warnings)
     vis = enforce_as_of(m.table, p.as_of, "publication_date")  # YAYIN tarihine göre kes (revizyon/gelecek açıklama girmez)
+    cal = trading_calendar(snap)
+    cal = cal[cal <= pd.Timestamp(p.as_of)]                       # takvim de as_of'a kesilir (kural 1)
+    trading_days = {t.date() for t in cal}
+    first_td = cal.min().date() if len(cal) else None
     out: list[MacroSeriesData] = []
     missing: list[str] = []
+    gap_notes: list[str] = []
+    carried_notes: list[str] = []
     for s in p.series:
         info = m.manifest.get("series", {}).get(s.value)
-        sub = vis.loc[(vis["series"] == s.value) & (vis["observation_date"] >= pd.Timestamp(p.start))
-                      & (vis["observation_date"] <= pd.Timestamp(eff_end))].sort_values("observation_date")
+        full = vis.loc[(vis["series"] == s.value) & (vis["observation_date"] <= pd.Timestamp(eff_end)),
+                       ["observation_date", "publication_date", "value"]].sort_values("observation_date").reset_index(drop=True)
+        if info is not None and str(info["frequency"]) == "daily" and not full.empty:
+            full, carried, gap_days = fill_holidays(full, eff_end, trading_days, first_td)
+            in_range = lambda ds: [d for d in ds if p.start <= d <= eff_end]  # noqa: E731
+            carried, gap_days = in_range(carried), in_range(gap_days)
+            if carried:
+                carried_notes.append(f"{s.value} {len(carried)} gün (ilk: {', '.join(d.isoformat() for d in carried[:MISSING_LIST_LIMIT])})")
+            if gap_days:
+                gap_notes.append(f"{s.value}: tatil dışı eksik iş günü {len(gap_days)} (ilk: {', '.join(d.isoformat() for d in gap_days[:MISSING_LIST_LIMIT])})")
+        sub = full.loc[(full["observation_date"] >= pd.Timestamp(p.start)) & (full["observation_date"] <= pd.Timestamp(eff_end))]
         if info is None or sub.empty:
             missing.append(s.value)
             continue
@@ -108,8 +162,14 @@ def _handler(p: GetMacroContextParams, snap: Snapshot, macro_version: str | None
     if missing:
         warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING,
                                      f"veri setinde yok veya aralıkta/as_of'ta yayımlanmış nokta yok: {', '.join(missing)}"))
-    warnings.append(make_warning(WarningCode.HISTORICAL_ONLY,
-                                 f"makro veri seti {m.version}; kaynak TCMB/EVDS; yayın tarihi kurallı türetilmiştir (bkz. data_dictionary §22)"))
+    if gap_notes:
+        warnings.append(make_warning(WarningCode.MACRO_DATA_MISSING, "; ".join(gap_notes) + " (doldurulmadı)"))
+    note = f"makro veri seti {m.version}; kaynak TCMB/EVDS; yayın tarihi kurallı türetilmiştir (bkz. data_dictionary §22)"
+    if carried_notes:
+        note += "; resmî tatil iş günleri son gözlemle ileri dolduruldu (geriye doldurma yok): " + "; ".join(carried_notes)
+    if any(x.series == MacroSeries.TCMB_FUNDING_COST for x in out):
+        note += "; TCMB_FUNDING_COST politika faizi değil, TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir"
+    warnings.append(make_warning(WarningCode.HISTORICAL_ONLY, note))
     return ToolOutput(results=GetMacroContextResult(start=p.start, end=eff_end, series=out), warnings=warnings)
 
 

@@ -30,13 +30,21 @@ MACRO_VERSION_RE = re.compile(r"^macro_\d{4}-\d{2}-\d{2}_v\d+$")
 EVDS_BASE_DEFAULT = "https://evds3.tcmb.gov.tr/igmevdsms-dis/"  # DOĞRULANACAK: EVDS_BASE_URL ile değiştirilebilir
 COLUMNS = ["series", "observation_date", "publication_date", "value"]
 
+FUNDING_COST_NOTE = (
+    "TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir (EVDS veri grubu bie_apifon, TP.APIFON4, günlük iş günü, %); politika faizi değil. "
+    "EVDS notu: Toplam fonlamanın gerçekleşmediği günlerde AOFM verisi olarak bir hafta repo faiz oranı kullanılmaktadır. "
+    "Mart-Ağustos 2026'da bir hafta vadeli repo ihaleleri ara verildiği için seri o dönemde %40'ta kalmıştır.")
+
 # series -> EVDS kodu, formül (EVDS formulas: 1 = bir önceki döneme göre % değişim, 3 = yıllık % değişim), sıklık, açıklama
 SERIES: dict[str, dict] = {
     "USDTRY": {"code": "TP.DK.USD.A.YTL", "formulas": None, "frequency": "daily", "desc": "USD/TRY döviz alış (gösterge kur)"},
     "EURTRY": {"code": "TP.DK.EUR.A.YTL", "formulas": None, "frequency": "daily", "desc": "EUR/TRY döviz alış (gösterge kur)"},
-    "CPI_MONTHLY": {"code": "TP.FG.J0", "formulas": 1, "frequency": "monthly", "desc": "TÜFE genel endeks, aylık % değişim"},
-    "CPI_ANNUAL": {"code": "TP.FG.J0", "formulas": 3, "frequency": "monthly", "desc": "TÜFE genel endeks, yıllık % değişim"},
-    "TCMB_POLICY_RATE": {"code": None, "formulas": None, "frequency": "daily", "desc": "TCMB politika faizi (1 hafta repo) — KOD DOĞRULANMADI"},
+    # TÜFE: güncel seri 2025=100 bazlıdır (EVDS veri grubu bie_tukfiy2025). Eski TP.FG.J0 (2003=100) arşivlidir: 2023 sonrası 0 gözlem verir.
+    "CPI_MONTHLY": {"code": "TP.TUKFIY2025.GENEL", "formulas": 1, "frequency": "monthly", "desc": "TÜFE genel endeks (2025=100), aylık % değişim"},
+    "CPI_ANNUAL": {"code": "TP.TUKFIY2025.GENEL", "formulas": 3, "frequency": "monthly", "desc": "TÜFE genel endeks (2025=100), yıllık % değişim"},
+    "TCMB_POLICY_RATE": {"code": None, "formulas": None, "frequency": "daily", "desc": "TCMB politika faizi (1 hafta repo) — KOD DOĞRULANMADI, İNDİRİLMEZ"},
+    "TCMB_FUNDING_COST": {"code": "TP.APIFON4", "formulas": None, "frequency": "daily", "desc": "TCMB ağırlıklı ortalama fonlama maliyeti (%)",
+                          "note": FUNDING_COST_NOTE},
 }
 
 
@@ -107,7 +115,7 @@ def write_macro_snapshot(df: pd.DataFrame, root: Path, version: str, meta: dict)
     out = df.sort_values(["series", "observation_date"]).reset_index(drop=True)
     out.to_parquet(d / "macro.parquet", index=False)
     info = {s: {"source": "TCMB/EVDS", "frequency": SERIES[s]["frequency"], "evds_code": series_code(s), "formulas": SERIES[s]["formulas"],
-                "n_points": int((out["series"] == s).sum()),
+                "n_points": int((out["series"] == s).sum()), **({"note": SERIES[s]["note"]} if "note" in SERIES[s] else {}),
                 "last_observation_date": str(out.loc[out["series"] == s, "observation_date"].max().date()) if (out["series"] == s).any() else None}
             for s in SERIES}
     manifest = {"data_version": version, "n_rows": int(len(out)), "series": info,
@@ -216,7 +224,8 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - ağ
             if not series_code(name):
                 print(f"{name}: KOD YOK (atlandı)")
                 continue
-            items = fetch_series(name, end - timedelta(days=45), end)
+            window = 45 if SERIES[name]["frequency"] == "daily" else 120  # aylık gözlem ayın 1'ine damgalı: kısa pencere 0 satır döner
+            items = fetch_series(name, end - timedelta(days=window), end)
             df = parse_items(items, name)
             print(f"{name}: {len(df)} gözlem; son: {df['observation_date'].max().date() if len(df) else '-'}; kod {series_code(name)}")
         return

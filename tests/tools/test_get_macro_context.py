@@ -106,3 +106,90 @@ def test_determinism_and_hash_changes_with_params(env):
 
 def test_dataset_version_in_warning(env):
     assert any(w.startswith("HISTORICAL_ONLY") and MV in w for w in _run(env, series=["USDTRY"])["warnings"])
+
+
+# --- şema 1.4.0: TCMB_FUNDING_COST, tatil ileri doldurma, tatil dışı boşluk --------------------------------
+HOL = pd.Timestamp("2026-09-02")  # sentetik "resmî tatil": işlem takviminde yok, makro seride yok
+
+
+def _fx_funding_table(skip=(), end="2026-09-18"):
+    days = [d for d in pd.bdate_range("2026-08-24", end) if d not in {pd.Timestamp(x) for x in skip}]
+    rows = []
+    for name, base in (("USDTRY", 41.0), ("TCMB_FUNDING_COST", 40.0)):
+        rows.append(_rows(name, days, days, [base + i * 0.1 for i in range(len(days))]))
+    return pd.concat(rows, ignore_index=True)
+
+
+def _env_with(tmp_path, table, calendar_skip=()):
+    from tests.conftest import make_frame, make_snapshot
+    cal = [d for d in DAYS if d not in {pd.Timestamp(x) for x in calendar_skip}]
+    make_snapshot(tmp_path, make_frame("THYAO", 100, cal, 1.0), make_frame("XU100", 10000, cal, 1.0).drop(columns=["ticker"]), version=DV)
+    write_macro_snapshot(table, tmp_path, MV, {})
+    return tmp_path
+
+
+def _pts(e, name):
+    return {p["observation_date"]: p for p in _s(e, name)["points"]}
+
+
+def test_funding_cost_is_a_macro_series_and_policy_rate_is_not_substituted():
+    from schemas import SCHEMA_VERSION
+    from schemas.enums import MacroSeries
+    assert MacroSeries.TCMB_FUNDING_COST.value == "TCMB_FUNDING_COST"
+    assert tuple(int(x) for x in SCHEMA_VERSION.split(".")) >= (1, 4, 0)
+    assert "TCMB_POLICY_RATE" in {m.value for m in MacroSeries}  # enum'da kalır (indirilmez)
+
+
+def test_holiday_is_forward_filled_not_missing(tmp_path):
+    env = _env_with(tmp_path, _fx_funding_table(skip=[HOL]), calendar_skip=[HOL])
+    e = _run(env, series=["USDTRY", "TCMB_FUNDING_COST"], start="2026-08-24", end="2026-09-10")
+    validate_envelope(e)
+    for name in ("USDTRY", "TCMB_FUNDING_COST"):
+        pts = _pts(e, name)
+        prev, hol = pts["2026-09-01"], pts["2026-09-02"]
+        assert hol["value"] == prev["value"]                       # son gözlem taşındı (ileri doldurma)
+        assert hol["publication_date"] == "2026-09-02"             # taşınan nokta tatil gününde bilinir; geriye doldurma yok
+        assert pts["2026-09-03"]["value"] != prev["value"]
+    assert not [w for w in e["warnings"] if w.startswith("MACRO_DATA_MISSING")]
+    assert any(w.startswith("HISTORICAL_ONLY") and "ileri dolduruldu" in w and "2026-09-02" in w for w in e["warnings"])
+
+
+def test_non_holiday_gap_warns_macro_data_missing_and_is_not_filled(tmp_path):
+    # makroda 2026-09-02 yok AMA işlem takviminde var (tatil değil) -> doldurulmaz, MACRO_DATA_MISSING
+    env = _env_with(tmp_path, _fx_funding_table(skip=[HOL]))
+    e = _run(env, series=["USDTRY"], start="2026-08-24", end="2026-09-10")
+    assert "2026-09-02" not in _pts(e, "USDTRY")
+    w = [x for x in e["warnings"] if x.startswith("MACRO_DATA_MISSING")]
+    assert len(w) == 1 and "USDTRY" in w[0] and "2026-09-02" in w[0] and "tatil dışı" in w[0]
+    assert not any("ileri dolduruldu" in x for x in e["warnings"])
+
+
+def test_no_backward_fill_before_first_observation_and_weekends_not_filled(tmp_path):
+    env = _env_with(tmp_path, _fx_funding_table(), calendar_skip=[pd.Timestamp("2026-08-24")])  # ilk gözlem günü takvimde yok
+    e = _run(env, series=["USDTRY"], start="2026-08-17", end="2026-09-10")
+    pts = _pts(e, "USDTRY")
+    assert min(pts) == "2026-08-24"                                # öncesine (geriye) nokta eklenmez
+    assert "2026-08-29" not in pts and "2026-08-30" not in pts      # hafta sonu doldurulmaz
+
+
+def test_nothing_after_as_of_enters_output_including_filled_points(tmp_path):
+    hol_after = pd.Timestamp("2026-09-14")                         # as_of (09-10) SONRASI tatil
+    env = _env_with(tmp_path, _fx_funding_table(skip=[HOL, hol_after]), calendar_skip=[HOL])
+    for as_of in ("2026-09-10", "2026-09-02", "2026-09-01"):
+        e = _run(env, series=["USDTRY", "TCMB_FUNDING_COST"], start="2026-08-01", end="2026-12-31", as_of=as_of)
+        for s in e["results"]["series"]:
+            assert all(p["observation_date"] <= as_of and p["publication_date"] <= as_of for p in s["points"]), (as_of, s["series"])
+        assert e["results"]["end"] == as_of
+    e = _run(env, series=["USDTRY"], start="2026-08-01", end="2026-12-31")
+    assert "2026-09-14" not in _pts(e, "USDTRY") and "2026-09-11" not in _pts(e, "USDTRY")
+
+
+def test_filled_output_is_deterministic(tmp_path):
+    env = _env_with(tmp_path, _fx_funding_table(skip=[HOL]), calendar_skip=[HOL])
+    a, b = (_run(env, series=["TCMB_FUNDING_COST"], start="2026-08-24", end="2026-09-10") for _ in range(2))
+    assert a == b
+
+
+def test_monthly_series_never_forward_filled(env):
+    e = _run(env, series=["CPI_ANNUAL"], start="2026-06-01", end="2026-09-10")
+    assert [p["observation_date"] for p in _s(e, "CPI_ANNUAL")["points"]] == ["2026-06-30", "2026-07-31", "2026-08-31"]
