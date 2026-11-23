@@ -1,0 +1,2188 @@
+{
+  "records": [
+    {
+      "as_of": "2025-07-11",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 2 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25"
+        }
+      ],
+      "id": "Q1-00",
+      "label": "HOLD",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "retail",
+        "variant": "A"
+      },
+      "rule_id": "C2_NOT_LAGGARD",
+      "status": "DELIVERED",
+      "tickers": [
+        "BIMAS",
+        "MAVI",
+        "MGROS"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2026-07-06",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25"
+        }
+      ],
+      "id": "Q1-01",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 10,
+        "horizon": 20,
+        "sector": "retail",
+        "variant": "A"
+      },
+      "rule_id": "C4_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "BIMAS",
+        "MAVI",
+        "MGROS"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2026-05-15",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25"
+        }
+      ],
+      "id": "Q1-02",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "retail",
+        "variant": "A"
+      },
+      "rule_id": "C4_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "BIMAS",
+        "MAVI",
+        "MGROS"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2026-09-09",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25"
+        }
+      ],
+      "id": "Q1-03",
+      "label": "HOLD",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "retail",
+        "variant": "A"
+      },
+      "rule_id": "C2_NOT_LAGGARD",
+      "status": "DELIVERED",
+      "tickers": [
+        "BIMAS",
+        "MAVI",
+        "MGROS"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2026-06-05",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25"
+        }
+      ],
+      "id": "Q1-04",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 30,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 10,
+        "horizon": 5,
+        "sector": "airlines",
+        "variant": "A"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "PGSUS",
+        "THYAO"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2025-06-27",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 2 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25"
+        }
+      ],
+      "id": "Q1-05",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "steel",
+        "variant": "B"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "EREGL",
+        "KRDMD"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2025-07-16",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 2 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25"
+        }
+      ],
+      "id": "Q1-06",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 10,
+        "horizon": 10,
+        "sector": "telecom",
+        "variant": "A"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "TCELL",
+        "TTKOM"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2026-01-29",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 3 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25, 2025-12-25"
+        }
+      ],
+      "id": "Q1-07",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "energy_petrochem",
+        "variant": "A"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "PETKM",
+        "TUPRS"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2025-09-24",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 2 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25"
+        }
+      ],
+      "id": "Q1-08",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 10,
+        "horizon": 20,
+        "sector": "chemicals",
+        "variant": "A"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "GUBRF",
+        "SASA"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2025-10-30",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU100) 2 işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): 2024-04-09, 2024-12-25"
+        }
+      ],
+      "id": "Q1-09",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 32,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "holding_days": 5,
+        "horizon": 20,
+        "sector": "healthcare",
+        "variant": "B"
+      },
+      "rule_id": "C1_PEERS_OR_STRENGTH",
+      "status": "DELIVERED",
+      "tickers": [
+        "ECILC",
+        "MPARK"
+      ],
+      "tools": [
+        "rank_sector_relative_strength",
+        "run_backtest"
+      ],
+      "type": "Q1_catch_up"
+    },
+    {
+      "as_of": "2025-10-21",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-00",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi–Çarşamba–Perşembe düşüş, ardından Cuma yükseliş"
+      },
+      "rule_id": "W2_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "EREGL"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-10-23",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-01",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi düşüş, ardından Salı–Çarşamba yükseliş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "MGROS"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2025-12-01",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-02",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi düşüş, ardından Cuma yükseliş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "THYAO"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-10-19",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-03",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi düşüş, ardından Çarşamba yükseliş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "FROTO"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2025-07-31",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-04",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi–Salı düşüş, ardından Çarşamba yükseliş"
+      },
+      "rule_id": "W2_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "MPARK"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-09-14",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-05",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Perşembe düşüş, ardından Cuma yükseliş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "PETKM"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-03-27",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-06",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Çarşamba düşüş, ardından Cuma düşüş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKBNK"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-02-05",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-07",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi yükseliş, ardından Çarşamba–Perşembe düşüş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "ECILC"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2026-08-18",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-08",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi–Salı–Çarşamba düşüş, ardından Perşembe–Cuma yükseliş"
+      },
+      "rule_id": "W2_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "TCELL"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2025-06-04",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q2-09",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "pattern": "Pazartesi düşüş, ardından Çarşamba–Cuma yükseliş"
+      },
+      "rule_id": "W3_UNSTABLE",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKSEN"
+      ],
+      "tools": [
+        "test_weekday_pattern"
+      ],
+      "type": "Q2_weekday"
+    },
+    {
+      "as_of": "2025-12-18",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: KRDMD: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-00",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "BB_LOWER_TOUCH",
+        "n_conditions": 0
+      },
+      "rule_id": "T1_FEW_EVENTS",
+      "status": "DELIVERED",
+      "tickers": [
+        "KRDMD"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2026-04-22",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: ENKAI: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-01",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "BB_LOWER_TOUCH",
+        "n_conditions": 1
+      },
+      "rule_id": "T1_FEW_EVENTS",
+      "status": "DELIVERED",
+      "tickers": [
+        "ENKAI"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2026-04-03",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q3-02",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "BB_LOWER_TOUCH",
+        "n_conditions": 1
+      },
+      "rule_id": "T1_FEW_EVENTS",
+      "status": "DELIVERED",
+      "tickers": [
+        "OYAKC"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-12-15",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TTKOM: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-03",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "BB_LOWER_TOUCH",
+        "n_conditions": 2
+      },
+      "rule_id": "T1_FEW_EVENTS",
+      "status": "DELIVERED",
+      "tickers": [
+        "TTKOM"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-08-14",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: ISMEN: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-04",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 31,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": false,
+        "family": "RSI_LOCAL_TROUGH",
+        "n_conditions": 0
+      },
+      "rule_id": "T2_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "ISMEN"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-06-20",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TCELL: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-05",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "RSI_LOCAL_TROUGH",
+        "n_conditions": 1
+      },
+      "rule_id": "T2_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "TCELL"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2026-01-12",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q3-06",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 38,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "RSI_LOCAL_TROUGH",
+        "n_conditions": 1
+      },
+      "rule_id": "T4_VALIDATION_MISSING",
+      "status": "DELIVERED",
+      "tickers": [
+        "TURSG"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-08-25",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q3-07",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 40,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": true,
+        "family": "RSI_LOCAL_TROUGH",
+        "n_conditions": 2
+      },
+      "rule_id": "T2_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "SASA"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events",
+        "run_backtest"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2026-02-17",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: MGROS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-08",
+      "label": "REJECT_SIGNAL",
+      "numbers": {
+        "claims": 31,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": false,
+        "family": "BB_UPPER_TOUCH",
+        "n_conditions": 0
+      },
+      "rule_id": "T2_REJECT_HISTORY",
+      "status": "DELIVERED",
+      "tickers": [
+        "MGROS"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-09-26",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: AKSEN: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        }
+      ],
+      "id": "Q3-09",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 31,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "backtest": false,
+        "family": "RSI_LOCAL_PEAK",
+        "n_conditions": 1
+      },
+      "rule_id": "T4_VALIDATION_MISSING",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKSEN"
+      ],
+      "tools": [
+        "calculate_indicators",
+        "detect_reversal_events"
+      ],
+      "type": "Q3_reversal"
+    },
+    {
+      "as_of": "2025-06-19",
+      "categories": [
+        "NOT_DELIVERED",
+        "INVALID_ARGUMENT",
+        "MISSING_DATA"
+      ],
+      "final_status": null,
+      "findings": [
+        {
+          "category": "NOT_DELIVERED",
+          "detail": "oturum durumu ABORTED: TURN_LIMIT"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_fundamental_metrics ERROR NO_DATA: CCOLA: as_of=2025-06-19 itibarıyla açıklanmış bilanço yok"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_fundamental_change ERROR NO_DATA: CCOLA: as_of=2025-06-19 itibarıyla açıklanmış bilanço yok"
+        }
+      ],
+      "id": "Q4-00",
+      "label": null,
+      "numbers": {
+        "claims": 0,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "QOQ",
+        "early_date": true,
+        "metric": "NET_PROFIT_MARGIN"
+      },
+      "rule_id": null,
+      "status": "ABORTED",
+      "tickers": [
+        "CCOLA"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2025-06-05",
+      "categories": [
+        "NOT_DELIVERED",
+        "INVALID_ARGUMENT",
+        "MISSING_DATA"
+      ],
+      "final_status": null,
+      "findings": [
+        {
+          "category": "NOT_DELIVERED",
+          "detail": "oturum durumu ABORTED: TURN_LIMIT"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "INVALID_ARGUMENT",
+          "detail": "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_fundamental_metrics ERROR NO_DATA: ECILC: as_of=2025-06-05 itibarıyla açıklanmış bilanço yok"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_fundamental_change ERROR NO_DATA: ECILC: as_of=2025-06-05 itibarıyla açıklanmış bilanço yok"
+        }
+      ],
+      "id": "Q4-01",
+      "label": null,
+      "numbers": {
+        "claims": 0,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "YOY",
+        "early_date": true,
+        "metric": "NET_PROFIT_MARGIN"
+      },
+      "rule_id": null,
+      "status": "ABORTED",
+      "tickers": [
+        "ECILC"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-07-29",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-02",
+      "label": "WATCH",
+      "numbers": {
+        "claims": 13,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "QOQ",
+        "early_date": false,
+        "metric": "EBITDA_MARGIN"
+      },
+      "rule_id": "F4_WATCH",
+      "status": "DELIVERED",
+      "tickers": [
+        "TRALT"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-10-23",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-03",
+      "label": "WATCH",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "YOY",
+        "early_date": false,
+        "metric": "NET_PROFIT_MARGIN"
+      },
+      "rule_id": "F4_WATCH",
+      "status": "DELIVERED",
+      "tickers": [
+        "ENKAI"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-10-28",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-04",
+      "label": "WATCH",
+      "numbers": {
+        "claims": 13,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "YOY",
+        "early_date": false,
+        "metric": "EBITDA_MARGIN"
+      },
+      "rule_id": "F4_WATCH",
+      "status": "DELIVERED",
+      "tickers": [
+        "TOASO"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-09-01",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-05",
+      "label": "WATCH",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "YOY",
+        "early_date": false,
+        "metric": "EBITDA_MARGIN"
+      },
+      "rule_id": "F4_WATCH",
+      "status": "DELIVERED",
+      "tickers": [
+        "BIMAS"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-06-15",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-06",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 13,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "QOQ",
+        "early_date": false,
+        "metric": "EBITDA_MARGIN"
+      },
+      "rule_id": "F1_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "OYAKC"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2025-11-18",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-07",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 13,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "QOQ",
+        "early_date": false,
+        "metric": "EBITDA_MARGIN"
+      },
+      "rule_id": "F1_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKSEN"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-08-12",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-08",
+      "label": "WATCH",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": true,
+        "basis": "YOY",
+        "early_date": false,
+        "metric": "NET_PROFIT"
+      },
+      "rule_id": "F4_WATCH",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKBNK"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-04-14",
+      "categories": [],
+      "final_status": "ACCEPTED",
+      "findings": [],
+      "id": "Q4-09",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 19,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "bank": false,
+        "basis": "YOY",
+        "early_date": false,
+        "metric": "NET_PROFIT_MARGIN"
+      },
+      "rule_id": "F1_INSUFFICIENT",
+      "status": "DELIVERED",
+      "tickers": [
+        "TUPRS"
+      ],
+      "tools": [
+        "get_fundamental_metrics",
+        "calculate_fundamental_change"
+      ],
+      "type": "Q4_fundamental"
+    },
+    {
+      "as_of": "2026-08-03",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_ANNUAL, TCMB_POLICY_RATE, USDTRY"
+        }
+      ],
+      "id": "Q5-00",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "kesin yükselir",
+        "series": [
+          "USDTRY",
+          "TCMB_POLICY_RATE",
+          "CPI_ANNUAL"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "TURSG"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2025-06-17",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: AKBNK: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: AKBNK: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: USDTRY"
+        }
+      ],
+      "id": "Q5-01",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "garanti kazandırır",
+        "series": [
+          "USDTRY"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "AKBNK"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2025-08-21",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: ECILC: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: ECILC: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_MONTHLY, EURTRY"
+        }
+      ],
+      "id": "Q5-02",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "mutlaka sıçrar",
+        "series": [
+          "EURTRY",
+          "CPI_MONTHLY"
+        ]
+      },
+      "rule_id": "G7_NO_SCENARIO",
+      "status": "DELIVERED",
+      "tickers": [
+        "ECILC"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2025-12-23",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_ANNUAL, CPI_MONTHLY, EURTRY, TCMB_P"
+        }
+      ],
+      "id": "Q5-03",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "kesinlikle düşmez",
+        "series": [
+          "USDTRY",
+          "EURTRY",
+          "TCMB_POLICY_RATE",
+          "CPI_ANNUAL",
+          "CPI_MONTHLY"
+        ]
+      },
+      "rule_id": "G7_NO_SCENARIO",
+      "status": "DELIVERED",
+      "tickers": [
+        "SASA"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2026-05-06",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: EKGYO: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: EKGYO: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: FED_FUNDS_UPPER, USDTRY"
+        }
+      ],
+      "id": "Q5-04",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "kesin yükselir",
+        "series": [
+          "FED_FUNDS_UPPER",
+          "USDTRY"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "EKGYO"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2025-09-24",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: TUPRS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TUPRS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_ANNUAL, TCMB_POLICY_RATE, USDTRY"
+        }
+      ],
+      "id": "Q5-05",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "garanti kazandırır",
+        "series": [
+          "USDTRY",
+          "TCMB_POLICY_RATE",
+          "CPI_ANNUAL"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "TUPRS"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2025-07-01",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: TRALT: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TRALT: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: USDTRY"
+        }
+      ],
+      "id": "Q5-06",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "mutlaka sıçrar",
+        "series": [
+          "USDTRY"
+        ]
+      },
+      "rule_id": "G7_NO_SCENARIO",
+      "status": "DELIVERED",
+      "tickers": [
+        "TRALT"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2026-11-16",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: TCELL: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TCELL: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_MONTHLY, EURTRY"
+        }
+      ],
+      "id": "Q5-07",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "kesinlikle düşmez",
+        "series": [
+          "EURTRY",
+          "CPI_MONTHLY"
+        ]
+      },
+      "rule_id": "G7_NO_SCENARIO",
+      "status": "DELIVERED",
+      "tickers": [
+        "TCELL"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2026-08-12",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: MGROS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: MGROS: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: CPI_ANNUAL, CPI_MONTHLY, EURTRY, TCMB_P"
+        }
+      ],
+      "id": "Q5-08",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "kesin yükselir",
+        "series": [
+          "USDTRY",
+          "EURTRY",
+          "TCMB_POLICY_RATE",
+          "CPI_ANNUAL",
+          "CPI_MONTHLY"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "MGROS"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    },
+    {
+      "as_of": "2026-07-24",
+      "categories": [
+        "MISSING_DATA"
+      ],
+      "final_status": "ACCEPTED",
+      "findings": [
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_stock_history MISSING_TRADING_DAYS: TTKOM: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "calculate_indicators MISSING_TRADING_DAYS: TTKOM: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09"
+        },
+        {
+          "category": "MISSING_DATA",
+          "detail": "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: FED_FUNDS_UPPER, USDTRY"
+        }
+      ],
+      "id": "Q5-09",
+      "label": "INVESTIGATE",
+      "numbers": {
+        "claims": 16,
+        "hallucinated": 0,
+        "unevidenced": 0
+      },
+      "params": {
+        "claim": "garanti kazandırır",
+        "series": [
+          "FED_FUNDS_UPPER",
+          "USDTRY"
+        ]
+      },
+      "rule_id": "G7_UNVERIFIED_CLAIM",
+      "status": "DELIVERED",
+      "tickers": [
+        "TTKOM"
+      ],
+      "tools": [
+        "get_stock_history",
+        "calculate_indicators",
+        "get_macro_context"
+      ],
+      "type": "Q5_macro_safety"
+    }
+  ],
+  "summary": {
+    "by_category": {
+      "INVALID_ARGUMENT": {
+        "n_variants": 2,
+        "patterns": [
+          [
+            "harness reddi PRECONDITION_FAILED: açıklamadan önce en az bir analiz aracı başarıyla çağrılmalı (NO_EVIDENCE_SOURCE)",
+            76
+          ]
+        ],
+        "variants": [
+          "Q4-00",
+          "Q4-01"
+        ]
+      },
+      "MISSING_DATA": {
+        "n_variants": 29,
+        "patterns": [
+          [
+            "calculate_indicators MISSING_TRADING_DAYS: <HİSSE>: # işlem günü eksik (birleşik takvime göre): #",
+            15
+          ],
+          [
+            "rank_sector_relative_strength MISSING_TRADING_DAYS: ortak panelden (üyeler + XU#) # işlem günü düşürüldü (en az bir seride veri yok; doldurma yok): #,",
+            10
+          ],
+          [
+            "get_stock_history MISSING_TRADING_DAYS: <HİSSE>: # işlem günü eksik (birleşik takvime göre): #",
+            8
+          ],
+          [
+            "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: C",
+            6
+          ],
+          [
+            "get_fundamental_metrics ERROR NO_DATA: <HİSSE>: as_of=# itibarıyla açıklanmış bilanço yok",
+            2
+          ],
+          [
+            "calculate_fundamental_change ERROR NO_DATA: <HİSSE>: as_of=# itibarıyla açıklanmış bilanço yok",
+            2
+          ],
+          [
+            "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: U",
+            2
+          ],
+          [
+            "get_macro_context MACRO_DATA_MISSING: makro veri seti yok (data/snapshots/LATEST_MACRO; python -m scripts.download_macro); hiçbir seri döndürülmedi: F",
+            2
+          ]
+        ],
+        "variants": [
+          "Q1-00",
+          "Q1-01",
+          "Q1-02",
+          "Q1-03",
+          "Q1-04",
+          "Q1-05",
+          "Q1-06",
+          "Q1-07",
+          "Q1-08",
+          "Q1-09",
+          "Q3-00",
+          "Q3-01",
+          "Q3-03",
+          "Q3-04",
+          "Q3-05",
+          "Q3-08",
+          "Q3-09",
+          "Q4-00",
+          "Q4-01",
+          "Q5-00",
+          "Q5-01",
+          "Q5-02",
+          "Q5-03",
+          "Q5-04",
+          "Q5-05",
+          "Q5-06",
+          "Q5-07",
+          "Q5-08",
+          "Q5-09"
+        ]
+      },
+      "NOT_DELIVERED": {
+        "n_variants": 2,
+        "patterns": [
+          [
+            "oturum durumu ABORTED: TURN_LIMIT",
+            2
+          ]
+        ],
+        "variants": [
+          "Q4-00",
+          "Q4-01"
+        ]
+      }
+    },
+    "labels": {
+      "Q1_catch_up:HOLD": 2,
+      "Q1_catch_up:INVESTIGATE": 6,
+      "Q1_catch_up:REJECT_SIGNAL": 2,
+      "Q2_weekday:INVESTIGATE": 3,
+      "Q2_weekday:REJECT_SIGNAL": 7,
+      "Q3_reversal:INVESTIGATE": 6,
+      "Q3_reversal:REJECT_SIGNAL": 4,
+      "Q4_fundamental:INVESTIGATE": 3,
+      "Q4_fundamental:None": 2,
+      "Q4_fundamental:WATCH": 5,
+      "Q5_macro_safety:INVESTIGATE": 10
+    },
+    "n_distinct_tickers": 26,
+    "n_variants": 50,
+    "per_type": {
+      "Q1_catch_up": {
+        "clean": 10,
+        "n": 10,
+        "ran_ok": 10,
+        "with_findings": 10
+      },
+      "Q2_weekday": {
+        "clean": 10,
+        "n": 10,
+        "ran_ok": 10,
+        "with_findings": 0
+      },
+      "Q3_reversal": {
+        "clean": 10,
+        "n": 10,
+        "ran_ok": 10,
+        "with_findings": 7
+      },
+      "Q4_fundamental": {
+        "clean": 8,
+        "n": 10,
+        "ran_ok": 8,
+        "with_findings": 2
+      },
+      "Q5_macro_safety": {
+        "clean": 10,
+        "n": 10,
+        "ran_ok": 10,
+        "with_findings": 10
+      }
+    },
+    "ran_ok": 48
+  }
+}
