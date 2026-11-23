@@ -1,4 +1,6 @@
-# v2 eğitim hattı: veri → Colab QLoRA → GGUF → Ollama → değerlendirme
+# v2 eğitim hattı: veri → Colab/Kaggle QLoRA → GGUF → Ollama → değerlendirme
+
+> **v2.2 (üreteç sürümü 2.2):** v2.1'e ek olarak **makro oturumları (Soru 5)**: `get_macro_context` + `relate_to` (şema 1.5.0), `macro_2026-11-09_v2`; `unsupported` tipinden makro şablonları kaldırıldı. Komut: `python -m training.build_dataset --out data/training/v2_2`. v2.1 modeli makro aracını eğitimde GÖRMEDİ ('makro için araç yok' örnekleri vardı): v2.2 ile yeniden eğitilmelidir. Kaggle için `training/kaggle/train_qlora_kaggle.ipynb`.
 
 > **v2 (üreteç sürümü 2):** v1'e ek olarak **bilanço oturumları (Soru 4)**: `get_fundamental_metrics` + `calculate_fundamental_change`, F1–F4 etiketleri, 600/50/100 oturum. Makro (Soru 5) oturumları YOK: makro snapshot'ı main'de yok (gelince artımlı v2.1). Bilanço veri seti sürümü `fundamentals_2026-11-23_v1` (kabul listesi: `harness/settings.py`); kapsam sınırı ve etiket dağılımı: `docs/harness_design.md` §14.4. v1 verisi ve v1 modeli ile v2 KARIŞTIRILMAZ.
 

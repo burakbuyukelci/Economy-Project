@@ -83,7 +83,7 @@ def test_record_text_messages_alternate_and_the_mask_covers_only_assistant_turns
 def test_the_system_message_carries_only_the_real_tools_block_and_the_prompt_version(tools_on, one_per_type):
     rec = build_record(generate(one_per_type["indicators"]))
     system = rec["text_messages"][0]["content"]
-    assert "get_macro_context" not in system and "rank_sector_relative_strength" in system and TOOL_CALL_OPEN in system
+    assert "get_macro_context" in system and "relate_to" in system and "rank_sector_relative_strength" in system and TOOL_CALL_OPEN in system
     assert rec["versions"]["prompt"] == "3" and rec["versions"]["text_protocol"] == "1"
 
 
@@ -140,7 +140,7 @@ def test_plans_follow_the_tool_guide_rules_for_every_type():
                 assert p["split_date"] == f"{q.as_of.year}-01-01"
     order = {"get_stock_history": 0, "get_index_history": 0, "calculate_indicators": 1, "find_support_resistance": 1,
              "rank_sector_relative_strength": 2, "detect_reversal_events": 3, "test_weekday_pattern": 3,
-                 "get_fundamental_metrics": 3, "calculate_fundamental_change": 3, "run_backtest": 4}
+                 "get_fundamental_metrics": 3, "calculate_fundamental_change": 3, "get_macro_context": 3, "run_backtest": 4}
     for q in qs:
         seq = [order[n] for n, _ in plan_calls(q)]
         assert seq == sorted(seq), (q.type, [n for n, _ in plan_calls(q)])            # durum makinesi sırası (geri dönüş yok)

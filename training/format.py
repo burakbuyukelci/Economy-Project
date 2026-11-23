@@ -36,6 +36,8 @@ def build_record(g: Generated) -> dict[str, Any]:
     envs = [r.envelope for r in s.store.records]
     versions = sorted({e["data_version"] for e in envs})
     aux = sorted({v for e in envs for v in aux_dataset_versions(e)})
+    fund_versions = [v for v in aux if v.startswith("fundamentals_")]
+    macro_versions = [v for v in aux if v.startswith("macro_")]
     final = res.final
     return {
         "id": q.id, "split": q.split, "type": q.type, "template_idx": q.template_idx,
@@ -45,7 +47,7 @@ def build_record(g: Generated) -> dict[str, Any]:
         "reasons": [r.code for r in pol.reasons] if pol else [], "gate_status": pol.gate_status if pol else None,
         "recovery": g.recovery, "bad_turns": list(g.bad_turns), "n_final_attempts": final.attempt if final else None,
         "versions": {"record": RECORD_VERSION, "generator": spec.GENERATOR_VERSION, "prompt": SYSTEM_PROMPT_VERSION,
-                     "text_protocol": TEXT_PROTOCOL_VERSION, "schema": SCHEMA_VERSION, "data": versions, "fundamentals": aux},
+                     "text_protocol": TEXT_PROTOCOL_VERSION, "schema": SCHEMA_VERSION, "data": versions, "fundamentals": fund_versions, "macro": macro_versions},
         "tools": [t["name"] for t in tools],
         "messages": res.messages, "text_messages": text_messages, "train_mask": mask,
         "tokens": count_tokens(text_messages), "token_source": "gemma3" if have_real_tokenizer() else "estimate",

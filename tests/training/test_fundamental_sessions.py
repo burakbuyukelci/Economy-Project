@@ -111,9 +111,9 @@ def test_macro_envelopes_are_rejected_until_a_macro_snapshot_is_accepted():
     assert aux_dataset_versions(env) == ["macro_2026-11-21_v1"] and not is_training_eligible(env)
 
 
-def test_macro_tool_is_not_exposed_in_v2_training():
+def test_macro_tool_is_exposed_in_v2_2_training():
     from schemas.enums import ToolName as T
-    assert T.GET_MACRO_CONTEXT not in spec.REAL_TOOLS
+    assert T.GET_MACRO_CONTEXT in spec.REAL_TOOLS      # v2.2: makro snapshot'ı kabul listesinde, araç gerçek
     assert {T.GET_FUNDAMENTAL_METRICS, T.CALCULATE_FUNDAMENTAL_CHANGE} <= spec.REAL_TOOLS
 
 

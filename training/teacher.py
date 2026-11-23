@@ -100,6 +100,16 @@ def plan_calls(q: Question) -> list[Call]:
         # YoY için 2024 verisi yok (TMS 29 öncesi alınmaz): soruda temel belirtilmemişse QOQ. Banka için iyileşme metriği NET_PROFIT (şema varsayılanı EBITDA_MARGIN bankada geçersiz).
         return [("get_fundamental_metrics", {"as_of": a, "ticker": t}),
                 ("calculate_fundamental_change", {"as_of": a, "ticker": t, "improvement_metric": p["metric"], "improvement_basis": p["basis"] or "QOQ"})]
+    if q.type == "macro":
+        # Soru 5: kur (USD/TRY) ~ hisse ilişkisi, eş zamanlı (lag 0) + öncü (lag = ufuk), OOS = as_of yılının 1 Ocak'ı (RULES.md kural 2). Faiz sorulursa
+        # TCMB_FUNDING_COST (politika faizi DEĞİL) LEVEL_DIFF ile eklenir. n_tests_declared = ilişki sayısı (Bonferroni).
+        split = iso(date(q.as_of.year, 1, 1))
+        rel = [{"ticker": t, "macro_series": "USDTRY", "horizon": 5, "lag_days": lag, "split_date": split} for lag in (0, 5)]
+        if p["with_rate"]:
+            rel.append({"ticker": t, "macro_series": "TCMB_FUNDING_COST", "horizon": 5, "lag_days": 0, "transform": "LEVEL_DIFF", "split_date": split})
+        rel.sort(key=lambda r: (r["macro_series"], r["horizon"], r["lag_days"]))
+        return [("get_macro_context", {"as_of": a, "start": "2024-01-01", "end": a, "series": ["USDTRY", "TCMB_FUNDING_COST"],
+                                       "relate_to": rel, "n_tests_declared": len(rel)})]
     if q.type == "unsupported":
         return [_indicators(q, ["RSI"])]
     if q.type == "stale":

@@ -17,6 +17,14 @@ CLAUDE.md kural 12 ve 6 ile birlikte okunur. Bu dosya eğitim kaydı üretiminin
    (modelin hep aday etiket vermeye alışmaması için).
 8. **Bilanço/makro veri seti sürümü (kural 12'nin karşılığı).** Bilanço/makro araçlarının zarfındaki `data_version` fiyat sürümüdür (`snap_*_v2`); veri seti sürümü (`fundamentals_YYYY-MM-DD_vN`, `macro_YYYY-MM-DD_vN`) zarfta ayrı alan olmadığından `HISTORICAL_ONLY` uyarı metninde taşınır.
    `harness.mock_tools.assert_training_eligible` bu sürümü regex ile çeker ve `harness.settings.ACCEPTED_FUNDAMENTALS_VERSIONS` / `ACCEPTED_MACRO_VERSIONS` kabul listesine karşı denetler (tam BİR sürüm olmalı; yoksa/liste dışıysa kayıt reddedilir).
-   Kayıtta `versions.fundamentals` bulunur; bilanço oturumunda boş olamaz. Makro snapshot'ı main'e girip kabul listesine eklenmeden makro oturumu üretilmez (`spec.REAL_TOOLS` makroyu içermez).
+   Kayıtta `versions.fundamentals` bulunur; bilanço oturumunda boş olamaz. Makro: `macro_2026-11-09_v2` kabul listesindedir (v1 KABUL EDİLMEZ: EVDS 1000 satır sınırı eski ucu kesiyordu); kayıtta `versions.macro` bulunur, makro oturumunda boş olamaz (`validate.dataset_problems`).
 9. **Açıklama tarihi belirsizliği açıkça yazılır.** `YAHOO_APPROX` (yaklaşık) ve `STATUTORY_DEADLINE` (açıklama tarihi bilinmiyor, yasal süre sonu varsayıldı) uyarıları modele gider (model görünümü atmaz); açıklama bunu sayısız bir notla belirtir (`composer.FUNDAMENTAL_WARNING_NOTES`).
    Yasal süre satırları fiyat tepkisi istatistiğine girmez; açıklamada "nedensellik iddia edilmez" notu her bilanço oturumunda bulunur.
+10. **Makro oturumları (Soru 5, v2.2; şema 1.5.0).** Araç `get_macro_context` + `relate_to`: kur (USDTRY) ~ hisse, eş zamanlı (`lag_days` 0) ve öncü (`lag_days` = ufuk 5); faiz sorulursa `TCMB_FUNDING_COST` + `LEVEL_DIFF`.
+    * Her `relate_to[].split_date` = as_of yılının 1 Ocak'ı (kural 2'nin makro karşılığı; `validate.session_problems` denetler). `n_tests_declared` = ilişki sayısı.
+    * Etiket politikadan: kesinlik iddiası varsa `G7_UNVERIFIED_CLAIM`, yoksa `G7_NO_SCENARIO` (ikisi de INVESTIGATE). Makro için ayrı aday etiketi YOKTUR.
+    * Kesinlik iddiası yalnızca `label_policy`'nin tanıdığı kalıplardan seçilir (`questions._MACRO_CLAIMS`): politika tanımadığı kalıpta (ör. "mutlaka sıçrar") G7_NO_SCENARIO verirdi.
+    * Açıklama: son gözlem noktaları, her ilişkinin özeti (korelasyon, eğim, ham ve düzeltilmiş p, anlamlılık), kur yükselen/düşen blok getirileri, örneklem içi/dışı, çoklu test; sayısız hükümler `composer.macro_verdicts` (kanıt değerlerinden);
+      "politika faizi değil, fiili ağırlıklı ortalama fonlama maliyeti" notu (`MACRO_FUNDING_NOTE`) ve "nedensellik iddia edilmez" notu her makro oturumunda bulunur.
+    * Model görünümü (`model_view._slim_macro`): 700+ nokta modele gitmez (yalnızca her serinin son noktası) ve veri seti sürüm/tatil notu (HISTORICAL_ONLY) gösterilmez; kanıtın alıntıladığı her sayı görünümdedir (`tests/training/test_macro_sessions.py`).
+    * `unsupported` tipinde makro şablonu YOKTUR (v2.1'de 'makro için araç yok' örnekleri vardı; makro gerçek araç olunca kaldırıldı).

@@ -106,6 +106,8 @@ OPENINGS = {
     "support_resistance": ["{T} için destek ve direnç seviyeleri araçla hesaplandı.", "{T} fiyatının en yakın seviyelere göre konumu incelendi."],
     "history": ["{T} için fiyat geçmişi ve teknik durum araçlarla alındı.", "{T} hissesinin dönem içi kapanış aralığı araç çıktısından okundu."],
     "advice": ["{T} için araçla elde edilen veriler aşağıda; ancak yatırım tavsiyesi ve hedef fiyat veremem.", "{T} hakkında tarihsel veriler incelendi; bunlar yatırım tavsiyesi değildir ve hedef fiyat veremem."],
+    "macro": ["{T} için kur ve TCMB serileri ile hisse getirisi arasındaki tarihsel ilişki araçla hesaplandı; bulgular aşağıda.",
+              "{T} hissesinin dolar/TL ile ilişkisi araçla, eş zamanlı ve öncü olarak test edildi; bu bir yatırım tavsiyesi değildir."],
     "unsupported": ["Sorulan bilgi bu sistemde mevcut araçlarla doğrulanamıyor; yalnızca {T} için teknik durum alınabildi.",
                     "Bu soru mevcut araç çıktılarıyla yanıtlanamıyor; elde yalnızca {T} için teknik gösterge verisi var."],
     "stale": ["{T} için analiz denendi ancak veri kalitesi kapısı engelledi.", "{T} analizi için çağrı yapıldı; kalite kapısı veriyi güvenli bulmadı."],
@@ -114,10 +116,12 @@ OPENINGS = {
 }
 UNSUPPORTED_NOTE = {
     "fundamental": "Bilanço ve oran verileri (FAVÖK, F/K, kâr, borçluluk) için kullanılabilir bir araç yok; bu nedenle bu sayılar verilemez.",
-    "macro": "Kur, faiz ve enflasyon verileri için kullanılabilir bir araç yok; bu nedenle makro etkiler değerlendirilemez ve bu sayılar verilemez.",
     "news": "Haber ve KAP açıklamaları için kullanılabilir bir araç yok; bu nedenle haber akışı hakkında bilgi verilemez.",
     "future": "Analiz tarihinden sonraki fiyat bilgisi kullanılamaz ve gelecek fiyatı tahmin edilemez; kesin bir seviye vermek mümkün değil.",
 }
+MACRO_FUNDING_NOTE = "Kullanılan TCMB serisi politika faizi değil, TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir."
+MACRO_ASSOCIATION_NOTE = "Makro değişim ile hisse getirisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez."
+MACRO_MULTIPLE_TESTING_NOTE = "Çoklu test riski (MULTIPLE_TESTING_RISK): birden çok ilişki denendi; karar düzeltilmiş p değerine göre verilir."
 STALE_NOTE = "Analiz tarihi eldeki verinin bitişinden çok sonra; veri güncel değil. Bu yüzden araç sonucu üretilmedi ve sayı verilemez."
 MULTIPLE_TESTING_NOTE = "Çoklu test riski (MULTIPLE_TESTING_RISK): örüntü tek hipotezdir; aynı veride başka örüntüler denenirse tesadüfi bulgu riski artar."
 LATEST_QUALIFIER = "Göstergeler yalnızca analiz günü itibarıyla durumu gösterir; nedensellik ya da gelecek getiri iddiası içermez."
@@ -155,12 +159,41 @@ def _pick(items: list[dict[str, Any]], qtype: str, plan: dict[str, Any]) -> list
             out += _pick_fundamental(its)
         elif tool == "get_fundamental_metrics":
             pass   # aynı değerler calculate_fundamental_change kanıtında (son çeyrek) zaten var
+        elif tool == "get_macro_context":
+            out += _pick_macro(its)
         elif tool == "calculate_indicators":
             out += its[:1]
         elif tool in ("get_stock_history", "get_index_history"):
             out += its[:1]
         else:
             out += its[:1]
+    return out
+
+
+def _pick_macro(its: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Son gözlem noktaları, her ilişkinin özeti, USDTRY eş zamanlı ilişkinin gruplar ve örneklem içi/dışı satırları ve çoklu test (hepsi committed kanıt)."""
+    def lead(i: dict[str, Any]) -> bool:
+        return _val(i, "macro_series") == "USDTRY" and _val(i, "lag_days") == 0
+    out = [i for i in its if _val(i, "observation_date") is not None and _val(i, "correlation") is None]
+    out += [i for i in its if _val(i, "correlation") is not None]
+    out += [i for i in its if _val(i, "macro_up_n") is not None and lead(i)][:1]
+    out += [i for i in its if _val(i, "in_sample_n_obs") is not None and lead(i)][:1]
+    out += [i for i in its if _val(i, "n_tests_declared") is not None]
+    return out
+
+
+def macro_verdicts(items: list[dict[str, Any]]) -> list[str]:
+    """Kanıt değerlerinden (committed) sayısız hüküm cümleleri: düzeltilmiş anlamlılık, örneklem dışı bozulma, tamamlanmamış blok."""
+    sig = [str(_val(i, "significant_after_correction")) for i in items if _val(i, "significant_after_correction") is not None]
+    out: list[str] = []
+    if sig and "true" not in sig:
+        out.append("Düzeltilmiş p değerine göre hiçbir ilişki istatistiksel olarak anlamlı değil; kesinlik iddiası bu veriyle desteklenmiyor.")
+    elif "true" in sig:
+        out.append("En az bir ilişki düzeltilmiş p değerine göre anlamlı çıktı; bu yalnızca istatistiksel bir ilişkidir, nedensellik ya da gelecek getiri garantisi değildir.")
+    if any(str(_val(i, "oos_degradation_flag")) == "true" for i in items):
+        out.append("Örneklem dışında ilişki işaret değiştirdi ya da belirgin biçimde zayıfladı; bulgu kararlı değil.")
+    if any((_val(i, "n_excluded_incomplete_horizon") or 0) > 0 for i in items if _val(i, "correlation") is not None):
+        out.append("Analiz tarihi itibarıyla tamamlanmamış son blok eksik veri olarak dışlandı; analiz tarihinden sonraki veri kullanılmadı.")
     return out
 
 
@@ -204,10 +237,15 @@ def compose_final(*, qtype: str, plan: dict[str, Any], ticker: str, label: A, ru
         block.append(MULTIPLE_TESTING_NOTE)
     if qtype in ("indicators", "support_resistance", "history", "advice", "unsupported") and any(i["source_tool"] == "calculate_indicators" for i in evidence):
         block.append(LATEST_QUALIFIER)
-    if qtype == "advice":
+    if qtype == "macro":
+        block += macro_verdicts([i for i in evidence if i["source_tool"] == "get_macro_context"])
+        if any("TCMB_FUNDING_COST" in i["statement"] for i in evidence):
+            block.append(MACRO_FUNDING_NOTE)
+        block += [MACRO_ASSOCIATION_NOTE, MACRO_MULTIPLE_TESTING_NOTE]
+    if qtype == "advice" or (qtype == "macro" and plan.get("advice")):
         block.append("Yatırım tavsiyesi ve hedef fiyat veremem.")
-        if claim:
-            block.append(f"“{claim}” iddiası araç çıktılarıyla doğrulanmamıştır; veri bunu desteklemiyor.")
+    if qtype in ("advice", "macro") and claim:
+        block.append(f"“{claim}” iddiası araç çıktılarıyla doğrulanmamıştır; veri bunu desteklemiyor.")
     if qtype == "unsupported":
         block.append(UNSUPPORTED_NOTE[plan["kind"]])
     if qtype == "stale":

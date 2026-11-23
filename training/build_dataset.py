@@ -32,7 +32,7 @@ LABEL_QUOTAS: dict[str, dict[str, float]] = {
     "fundamental": {"INVESTIGATE": 0.30, "REJECT_SIGNAL": 0.25, "FUNDAMENTAL_IMPROVEMENT_CANDIDATE": 0.25, "WATCH": 0.20},
 }
 OVERSAMPLE = {"weekday": 2.5, "reversal": 6.0, "catch_up": 4.0, "indicators": 1.4, "support_resistance": 1.4, "history": 1.4, "advice": 4.0,
-              "unsupported": 1.4, "stale": 1.4, "fundamental": 5.0}
+              "unsupported": 1.4, "stale": 1.4, "fundamental": 5.0, "macro": 2.0}
 
 
 def _candidates(split: str, seed: int) -> list[Question]:

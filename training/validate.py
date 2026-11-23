@@ -51,6 +51,11 @@ def session_problems(g: Generated) -> list[str]:
             out.append(f"şema sürümü {env.get('schema_version')} != {SCHEMA_VERSION}: {env['tool']}")
         if env["status"] != "OK":
             out.append(f"hata zarfı: {env['tool']} {env.get('error')}")
+    for r in s.store.records:               # RULES.md kural 2: relate_to[].split_date = as_of yılının 1 Ocak'ı (ya da sorudaki OOS başlangıcı)
+        if r.envelope["tool"] == "get_macro_context":
+            for rel in r.envelope["params"].get("relate_to") or []:
+                if rel.get("split_date") != f"{g.question.as_of.year}-01-01":
+                    out.append(f"relate_to split_date {rel.get('split_date')} != {g.question.as_of.year}-01-01")
     expected = EXPECTED_ERRORS.get(g.recovery or "")
     codes = [e.get("code") for e in s.events if e["kind"] == "INVALID_TOOL_CALL"]
     if codes != ([expected] if expected else []):
@@ -93,6 +98,11 @@ def dataset_problems(records: list[dict[str, Any]], questions: list[Any], *, max
             out.append(f"{r['id']}: kabul edilmeyen bilanço veri seti sürümü {bad_aux}")
         if r["type"] == "fundamental" and not r["versions"].get("fundamentals"):
             out.append(f"{r['id']}: bilanço oturumunda bilanço veri seti sürümü yok")
+        bad_macro = [v for v in r["versions"].get("macro", []) if v not in settings.ACCEPTED_MACRO_VERSIONS]
+        if bad_macro:
+            out.append(f"{r['id']}: kabul edilmeyen makro veri seti sürümü {bad_macro}")
+        if r["type"] == "macro" and not r["versions"].get("macro"):
+            out.append(f"{r['id']}: makro oturumunda makro veri seti sürümü yok")
         if len(r["train_mask"]) != len(r["text_messages"]) or not any(r["train_mask"]):
             out.append(f"{r['id']}: kayıp maskesi geçersiz")
     return out

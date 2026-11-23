@@ -36,7 +36,7 @@ def test_only_real_tools_are_exposed_and_gate_tools_are_not():
 
     assert spec.REAL_TOOLS == frozenset({T.GET_STOCK_HISTORY, T.GET_INDEX_HISTORY, T.CALCULATE_INDICATORS, T.FIND_SUPPORT_RESISTANCE,
                                          T.RANK_SECTOR_RELATIVE_STRENGTH, T.DETECT_REVERSAL_EVENTS, T.TEST_WEEKDAY_PATTERN, T.RUN_BACKTEST,
-                                         T.GET_FUNDAMENTAL_METRICS, T.CALCULATE_FUNDAMENTAL_CHANGE})
+                                         T.GET_FUNDAMENTAL_METRICS, T.CALCULATE_FUNDAMENTAL_CHANGE, T.GET_MACRO_CONTEXT})
 
 
 # =============================== hisse/grup bölmesi ===============================
@@ -144,7 +144,7 @@ def test_type_specific_plans_carry_what_the_teacher_needs():
     assert all(q.plan["indicators"] for q in by["indicators"])
     assert any(q.plan["with_backtest"] for q in by["reversal"]) and any(not q.plan["with_backtest"] for q in by["reversal"])
     assert any(q.plan["certainty"] for q in by["advice"]) and any(not q.plan["certainty"] for q in by["advice"])
-    assert {q.plan["kind"] for q in by["unsupported"]} == {"fundamental", "macro", "news", "future"}
+    assert {q.plan["kind"] for q in by["unsupported"]} == {"fundamental", "news", "future"}   # makro v2.2'de gerçek araç (ayrı "macro" tipi): "araç yok" örneği değil
     assert all(q.as_of >= date(2027, 1, 18) for q in by["stale"])
     for q in by["advice"]:
         if q.plan["certainty"]:

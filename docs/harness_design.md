@@ -531,3 +531,10 @@ Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bi
   **Sonuç:** F3 yalnızca YoY hesaplanabildiğinde mümkün; eğitim tarih aralığında (<= 2026-05-29) son çeyrek 2026Q1'dir ve 2025Q1 Yahoo'da yok, bu yüzden hiçbir F3 oluşmadı. Model bu etiketi bu veriden öğrenemez (v1'deki CU etiketi gibi); canlıda etiket yine politika bloğundan verilir. Çözüm veri tarafında:
   2025Q1/Q2 değerleri (elle KAP) ya da daha geç tarihli çeyrekler.
 
+### 14.7 v2.2: makro oturumları (Soru 5), `relate_to` kanıtı ve model görünümü (2026-11-23)
+* **Neden:** v2.1'de `get_macro_context` modele gösterilmiyordu ve 'makro için araç yok' diyen 48 `unsupported` örneği vardı; Soru 5 canlı testte makro araç + kur–getiri ilişkisi ister. Makro veri seti (`macro_2026-11-09_v2`) ve şema 1.5.0 `relate_to` ile makro gerçek araç oldu.
+* **Kanıt (`harness/evidence.py::_macro`, `evidence_headlines.json` v6):** bölümler `latest_point`, `relation` (n_obs, korelasyon, eğim, ham/düzeltilmiş p, anlamlılık, ufku dolmamış dışlanan), `relation_groups` (kur yükselen/düşen blok sayısı, ortalama ve maliyet sonrası getiri, koşulsuz ortalama),
+  `relation_split` (IS/OOS gözlem ve korelasyon, bozulma işareti), `multiple_testing`; hepsi BAŞLIK (committed). Her sayı kaynak zarftan aynen alınır. Politika bu bölümleri OKUMAZ (`policy_values` boş): etiket G7 ile INVESTIGATE.
+* **Model görünümü (`model_view._slim_macro`):** her serinin yalnızca son noktası, ilişki özeti, çoklu test; medyanlar, pencere tarihleri, `sample_last_date`, boşluk listesi, maliyet modeli ve veri seti sürüm/tatil notu atılır. 700+ noktalı ham yanıt (~130 KB) yerine ~2,9 KB.
+* **Araç tanımı bütçesi:** `relate_to` şeması ~+800 karakter: `TOOL_SPEC_CHAR_BUDGET` 8700 -> 9400 (~+270 token/oturum); `alpha` gizlendi. Makro oturumu ~5,8 bin token (8192 sınırının altında).
+* **Soru 5 davranışı (eğitim kaydı):** araç çağrısı -> ilişki sayıları (araç çıktısından) -> "kesin yükselir iddiası doğrulanmamıştır" -> tavsiye/hedef fiyat reddi -> `EYLEM: INVESTIGATE`. Sınırlama: makro için etiket çeşitliliği yoktur (hepsi INVESTIGATE; aday etiketi tanımlı değil).

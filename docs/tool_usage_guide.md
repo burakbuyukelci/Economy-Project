@@ -50,3 +50,10 @@ Tarihsel catch-up sayıları iki düzeydedir ve karıştırılmamalıdır:
 ## 7. `test_weekday_pattern` ve çoklu test
 Örüntü (kaç gün içerirse içersin) tek bir hipotezdir ve tek bir p-değeri üretir; `n_tests_declared` varsayılanı 1'dir. Aynı oturumda aynı hisse/dönem için başka örüntüler de denendiyse (farklı gün kombinasyonları, farklı yönler, conditioning varyantları) `n_tests_declared` denenen toplam örüntü sayısına ayarlanmalıdır; araç önceki denemeleri bilemez. `p_value_adjusted = min(1, p_value_raw × n_tests_declared)` ve karar bu değere dayanır. Her zarfta `MULTIPLE_TESTING_RISK` uyarısı bulunur; açıklamada bu risk anılmalıdır.
 
+## 8. `get_macro_context` ve `relate_to` (şema 1.5.0)
+Makro serileri (`USDTRY`, `EURTRY`, `TCMB_FUNDING_COST`, `CPI_*`) için `series` ver; "kur ile hisse getirisi arasındaki ilişki" soruları için `relate_to` ZORUNLUDUR (ilişkiyi araç hesaplar, sen hesaplama).
+* Kur için iki ilişki iste: `lag_days` 0 (eş zamanlı) ve `lag_days` 5 (öncü: kur hisseden önce bilinir); `horizon` 5; `split_date` OOS kuralı (as_of yılının 1 Ocak'ı ya da sorudaki OOS başlangıcı); `n_tests_declared` = ilişki sayısı.
+* Faiz için `TCMB_FUNDING_COST` ve `transform: LEVEL_DIFF`. **Bu seri politika faizi DEĞİLDİR**, TCMB'nin fiili ağırlıklı ortalama fonlama maliyetidir; açıklamada böyle adlandır. `TCMB_POLICY_RATE`, `FED_*` veri setinde yok.
+* Aylık TÜFE serileri `relate_to`'da desteklenmez (`UNSUPPORTED_RELATION`).
+* Karar `p_value_adjusted` ve örneklem dışı kararlılığa dayanır; `significant_after_correction` false ise ilişki anlamlı değildir. İlişki gözlemdir, nedensellik değildir. Son (kısmi) blok `n_excluded_incomplete_horizon` ile dışlanır: eksik veri olarak belirt.
+* Kullanıcı "kesin yükselir" derse bu iddia ilişki sonuçlarıyla doğrulanmıyorsa açıkça "doğrulanmamıştır" de; tavsiye ve hedef fiyat verme.

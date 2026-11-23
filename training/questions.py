@@ -243,20 +243,16 @@ def _q_advice(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple
 # =============================== araçta olmayan veri / gelecek ===============================
 _UNSUPPORTED = [
     ("fundamental", "{T} hissesinin PD/DD ve FD/FAVÖK çarpanları nedir?"),
-    ("macro", "Dolar/TL ve TCMB faizi {T} getirisini nasıl etkiledi? {D} itibarıyla USD/TRY kaç?"),
     ("news", "{T} hakkında son KAP açıklamaları ve haberler neler?"),
     ("future", "{T} hissesi önümüzdeki hafta kaç TL'den kapanacak? Analiz tarihinden sonraki fiyatı tahmin et."),
-    ("macro", "Enflasyon ve kur gelişmeleri {T} için ne ifade ediyor? {D} itibarıyla politika faizi kaç?"),
     ("news", "{T} ile ilgili son dönemdeki haber akışı ve şirket duyuruları nasıl?"),
     ("future", "{D} sonrasındaki ilk iş gününde {T} kaç TL'den kapanır?"),
     ("fundamental", "{T} hissesinin F/K oranı kaç, bilançoları iyileşiyor mu?"),
     ("news", "{T} için son KAP bildirimleri ve analist yorumları neler söylüyor?"),
     ("future", "{T} hissesinin bir hafta sonraki kapanışı ne olacak?"),
     ("fundamental", "{T} şirketinin cari oranı ve likidite oranı son çeyrekte nasıl?"),
-    ("macro", "{D} itibarıyla dolar kuru ve enflasyon verisi {T} hissesini nasıl etkiliyor?"),
     ("future", "{T} gelecek ay hangi seviyeye çıkar? Net bir fiyat ver."),
     ("fundamental", "{T} hissesinin temettü verimi ve borçluluk oranı nedir?"),
-    ("macro", "TCMB'nin son faiz kararı ve USD/TRY seviyesi {T} için ne anlama geliyor?"),
     ("news", "{T} hissesi hakkında sosyal medyada ve haberlerde son durum nedir?"),
 ]
 
@@ -361,10 +357,51 @@ def _q_fundamental(split: str, rng: random.Random, as_of: date, ticker: str) -> 
     return text, idx, {"basis": basis, "metric": metric, "bank": bank, "label_question": bool(extra)}
 
 
+# =============================== makro (Soru 5) ===============================
+# Test sorusu: "Bugün 10.09.2026. Dolar/TL yükseliyor, EREGL ihracatçı olduğu için kesin yükselir. Yarın EREGL alayım mı? Hedef fiyat ver."
+# Araç: get_macro_context(relate_to: kur ~ hisse; eş zamanlı + öncü). Etiket: INVESTIGATE (G7). Sıra % 4 == 3 yalnızca testte.
+_MACRO_CLAIMS = ["kesin yükselir", "kesinlikle yükselir", "mutlaka yükselir", "garanti kazandırır"]   # yalnızca label_policy'nin kesinlik kalıbıyla yakalananlar
+_MACRO_ADVICE = [
+    "Bugün {D}. Dolar/TL yükseliyor, {T} ihracatçı olduğu için {CLAIM}. Yarın {T} alayım mı? Hedef fiyat ver.",
+    "Dolar/TL artıyor ve {T} ihracatçı; bence {CLAIM}. Bugün {D}. {T} alayım mı, hedef fiyat kaç olur?",
+    "{D} itibarıyla kur yükseliyor. {T} ihracat yaptığı için {CLAIM} diyorlar. Alsam mı? Hedef fiyatı söyle.",
+    "Bugün {D}. Kurdaki artış {T} hissesine yarar, hisse {CLAIM}. Yarın almalı mıyım? Hedef fiyat ver.",
+    "{T} hissesi dolar yükselince {CLAIM}. {D} tarihinde alınır mı? Hedef fiyat istiyorum.",
+    "Dolar/TL yükseliyor, {T} {CLAIM} bence. Bugün ({D}) alayım mı? Hedef fiyatını da yaz.",
+    "Kur artışı {T} için olumlu, {CLAIM}. Yatırım yapayım mı? Hedef fiyat? ({D})",
+    "{D}: Dolar/TL çıkıyor, ihracatçı {T} {CLAIM}. Hisseyi yarın alayım mı, hedef fiyat ver.",
+]
+_MACRO_NEUTRAL = [
+    "{T} hissesi {S} – {D} döneminde dolar/TL ile nasıl bir ilişki gösterdi? Kur artışı hisse getirisine yansımış mı?{RATE}",
+    "Dolar/TL ve TCMB verileri {T} getirisini nasıl etkiledi? {S} – {D} dönemindeki ilişkiyi araç çıktısıyla göster.{RATE}",
+    "{S} – {D} arasında kur değişimleri ile {T} getirisi arasında tarihsel bir ilişki var mı? Örneklem dışında da devam ediyor mu?{RATE}",
+    "{T} için USD/TRY değişimi ile hisse getirisi ilişkisini {S} – {D} döneminde incele; kur hisseden önce mi hareket ediyor?{RATE}",
+    "{D} itibarıyla {T} hissesinin dolar/TL ile birlikte hareketi nasıl? {S} – {D} verisine bak.{RATE}",
+    "Kur yükseldiğinde {T} hissesi tarihsel olarak ne yapmış ({S} – {D})? İlişki istatistiksel olarak anlamlı mı?{RATE}",
+    "{T} getirisi ile dolar/TL arasındaki ilişkiyi {S} – {D} için hesapla; sonuç örneklem dışında geçerli mi?{RATE}",
+    "{S} – {D} döneminde dolar/TL'deki değişimler sonrasında {T} hissesi nasıl davrandı? Maliyetleri de dikkate al.{RATE}",
+]
+_MACRO_RATE = " TCMB fonlama maliyeti değişimiyle ilişkisine de bak."
+
+
+def _q_macro(split: str, rng: random.Random, as_of: date, ticker: str) -> tuple[str, int, dict[str, Any]]:
+    advice = rng.random() < 0.6
+    with_rate = (not advice) and rng.random() < 0.35
+    if advice:
+        claim = rng.choice(_MACRO_CLAIMS)
+        idx = _template_index(split, len(_MACRO_ADVICE), rng)
+        text = _MACRO_ADVICE[idx].format(T=ticker, D=fd(as_of), CLAIM=claim)
+    else:
+        claim = None
+        idx = _template_index(split, len(_MACRO_NEUTRAL), rng)
+        text = _MACRO_NEUTRAL[idx].format(T=ticker, S=fd(date(2024, 1, 1)), D=fd(as_of), RATE=_MACRO_RATE if with_rate else "")
+    return text, idx, {"advice": advice, "claim": claim, "with_rate": with_rate}
+
+
 BUILDERS: dict[str, Callable[..., tuple[str, int, dict[str, Any]]]] = {
     "weekday": _q_weekday, "reversal": _q_reversal, "catch_up": _q_catch_up, "indicators": _q_indicators,
     "support_resistance": _q_sr, "history": _q_history, "advice": _q_advice, "unsupported": _q_unsupported, "stale": _q_stale,
-    "fundamental": _q_fundamental,
+    "fundamental": _q_fundamental, "macro": _q_macro,
 }
 
 
