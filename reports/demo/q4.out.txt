@@ -1,0 +1,26 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] calculate_fundamental_change -> OK (durum: LOAD_FUNDAMENTALS)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı PASS_WITH_WARNINGS), lock_hash 6269eacb3ae3
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=WATCH, politika=WATCH
+=== Nihai cevap ===
+TUPRS bilançosundaki değişim çeyreği dönem içi yönünde oldu, ancak yıllık orantısız bir yükseliş yok; aday etiket verilmez.
+Kanıt (araç çıktıları):
+- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhafaza yok, TMS29_COMPARABLE true
+- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön IMPROVED, çeyreklik yön None, enflasyon muhafaza yok, TMS29_COMPARABLE true
+- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme yönü ALL IMPROVED
+- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi XU100'e göre %0.0, ortalama anormal getiri -1.603, isabet 2, maliyet yok, ufuk 1
+- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi sektöre göre %0.0, ortalama anormal getiri -0.1371, isabet 4, maliyet yok, ufuk 5
+Değerlendirme: İyileşme yönü çeyreklik yön ile aynı, ancak yıllık orantısız bir yükselen trend yok; aday etiket verilmez.
+Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.
+EYLEM: WATCH
+=== Denetim ===
+etiket (model): WATCH | politika: WATCH (F4_WATCH) | eşleşme: True
+sayı iddiası: 5, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 231.9 sn | model turu: 3
+karar kaydı: reports/demo/q4.json (tekrar oynatma: python -m experiments.replay reports/demo/q4.json)
+karar günlüğü: reports/demo/q4.jsonl (29 olay)

@@ -1,0 +1,29 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] get_macro_context -> OK (durum: LOAD_MACRO_CONTEXT)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı PASS), lock_hash c39b7cd20720
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+ERGL hissesinin dolar/TL ile ilişkisi araçla, eş zamanlı ve öncü olarak test edildi.
+Kanıt (araç çıktıları):
+- EREGL ~ USDTRY (5 gün, gecikme 0, örneklem içi): korelasyon -0.1912, eğim yok, ham p 0.062894, düzeltilmiş p 0.125788, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 1
+- EREGL ~ USDTRY (5 gün, gecikme 5, örneklem içi): korelasyon -0.1912, eğim yok, ham p 0.791221, düzeltilmiş p 1.0, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 1
+- EREGL ~ USDTRY (5 gün, gecikme 0, örneklem dışı): korelasyon 0.1115, eğim yok, ham p 0.062894, düzeltilmiş p 0.125788, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 33
+- EREGL ~ USDTRY (5 gün, gecikme 5, örneklem dışı): korelasyon 0.0843, eğim yok, ham p 0.791221, düzeltilmiş p 1.0, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 33
+- USDTRY (TCMB/EVDS, 2026-09-10): 48.3905
+Değerlendirme: Kullanıcının kesinlik iddiası araç çıktılarıyla doğrulanmıyor; etiket INVESTIGATE.
+Analiz tarihi itibarıyla tamamlanmamış son blok eksik veri olarak dışlandı; analiz tarihinden sonraki veri kullanılmadı.
+Örneklem dışında ilişki işaret değiştirdi ya da belirgin biçimde zayıfladı; bulgu kararlı değil.
+Çoklu test riski (MULTIPLE_TESTING_RISK): bildirilen test sayısı 2; düzeltme bonferroni, alfa 0.05, düzeltilmiş alfa 0.025.
+Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (G7_UNVERIFIED_CLAIM) | eşleşme: True
+sayı iddiası: 14, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 307.6 sn | model turu: 3
+karar kaydı: reports/demo/q5.json (tekrar oynatma: python -m experiments.replay reports/demo/q5.json)
+karar günlüğü: reports/demo/q5.jsonl (30 olay)

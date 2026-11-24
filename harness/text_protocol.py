@@ -117,6 +117,20 @@ class ParsedReply:
 _FENCE = re.compile(r"^```[a-zA-Z]*\s*|\s*```$")
 
 
+def _loads_tolerant(body: str) -> Any:
+    """json.loads + tek bir söz dizimi toleransı: geçerli JSON nesnesinden SONRA yalnızca fazladan kapanış parantezi (`}` / `]`) varsa nesne kabul edilir
+    (model sık sık `}}}}}` fazla yazıyor ve aynı çağrıyı 40 kez tekrarlıyordu). Başka artık metin (ikinci nesne, söz vb.) hâlâ hatadır; anlam değişmez."""
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as exc:
+        if exc.msg != "Extra data":
+            raise
+        data, end = json.JSONDecoder().raw_decode(body)
+        if set(body[end:].strip()) <= set("}]"):
+            return data
+        raise
+
+
 def parse_reply(raw: str) -> ParsedReply:
     """Model yanıtını (metin, araç çağrıları) olarak ayırır. Biri bozuksa HİÇBİR çağrı döndürülmez (kısmi çalıştırma yok)."""
     cut = raw.find(TOOL_RESPONSE_OPEN)
@@ -136,7 +150,7 @@ def parse_reply(raw: str) -> ParsedReply:
             return ParsedReply(raw.strip(), (), f"{TOOL_CALL_OPEN} açıldı ama {TOOL_CALL_CLOSE} ile kapatılmadı")
         body = _FENCE.sub("", raw[start + len(TOOL_CALL_OPEN):end].strip()).strip()
         try:
-            data = json.loads(body)
+            data = _loads_tolerant(body)
         except json.JSONDecodeError as exc:
             return ParsedReply(raw.strip(), (), f"araç çağrısı geçerli JSON değil: {exc.msg}")
         if not isinstance(data, dict) or not isinstance(data.get("name"), str) or not isinstance(data.get("arguments"), dict):

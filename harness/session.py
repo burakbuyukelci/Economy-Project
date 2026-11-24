@@ -27,7 +27,7 @@ from harness.evidence import EnvelopeStore, EvidenceBundle, make_analysis_id
 from harness.final_check import FinalReport, build_feedback, check_final, fallback_text, render_policy_block
 from harness.gate_params import GateParamsError, derive_gate_params, detect_question_tickers
 from harness.label_policy import PolicyDecision, decide_session
-from harness.param_fixer import fix_params, repair_tickers
+from harness.param_fixer import drop_unknown_signal_params, fix_params, repair_tickers
 from harness.profiles import StageProfile, get_profile, harness_only_tools, routing_for, visible_tools
 from harness.routing import ReviewStatus, Routing, State
 from harness.state_machine import Decision, HarnessRuleViolation, StateMachine
@@ -152,6 +152,12 @@ class HarnessSession:
             self.log.append("PARAMS_NORMALIZED", tool=tool.value, notes=notes, original=params, fixed=fixed)
             self.warnings.append("PARAMS_NORMALIZED: " + "; ".join(notes))
             params = fixed
+        if settings.normalize_params():
+            dropped, notes_d = drop_unknown_signal_params(tool, params)
+            if dropped is not None:
+                self.log.append("PARAMS_NORMALIZED", tool=tool.value, notes=notes_d, original=params, fixed=dropped)
+                self.warnings.append("PARAMS_NORMALIZED: " + "; ".join(notes_d))
+                params = dropped
 
         # harness'in çalıştıracağı zorunlu adımlar (kalite kapısı, kanıt aşama 1) modelin çağrısından ÖNCE
         for state in decision.auto_before:

@@ -1,0 +1,41 @@
+{"analysis_id": "2026-09-10-4d43481576be", "as_of": "2026-09-10", "as_of_source": "question", "kind": "SESSION_START", "order_mode": "strict", "seq": 1, "stage": "D"}
+{"from": "START", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 2, "to": "SELECT_UNIVERSE"}
+{"from": "SELECT_UNIVERSE", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 3, "to": "LOAD_MARKET_DATA"}
+{"kind": "UNIVERSE_SELECTED", "seq": 4, "tickers_in_question": ["BIMAS", "MAVI", "MGROS"]}
+{"completion_tokens": 63, "estimated_prompt_tokens": 3520, "kind": "MODEL_TURN", "n_tool_calls": 1, "prompt_tokens": 2929, "seq": 5, "turn": 1}
+{"fixed": {"as_of": "2026-09-10", "horizon": 20, "sector": "retail", "split_date": "2026-01-01"}, "kind": "PARAMS_NORMALIZED", "notes": ["rank_sector_relative_strength: 'split_date' '2024-01-01' analiz başlangıcından sonra olmalı; as_of yılının 1 Ocak'ı (2026-01-01) yapıldı"], "original": {"as_of": "2026-09-10", "horizon": 20, "sector": "retail", "split_date": "2024-01-01"}, "seq": 6, "tool": "rank_sector_relative_strength"}
+{"from": "LOAD_MARKET_DATA", "kind": "STATE_TRANSITION", "reason": "tool_call:check_data_quality", "seq": 7, "to": "CHECK_DATA_QUALITY"}
+{"from": "CHECK_DATA_QUALITY", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 8, "to": "CALCULATE_TECHNICALS"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "5162ced035b11f0161f5a348c9f5f7af268e758ea38a6a2acda275ef7227076a", "kind": "TOOL_CALL", "seq": 9, "state_after": "CALCULATE_TECHNICALS", "state_before": "LOAD_MARKET_DATA", "status": "OK", "step_state": "CHECK_DATA_QUALITY", "tool": "check_data_quality"}
+{"from": "CALCULATE_TECHNICALS", "kind": "STATE_TRANSITION", "reason": "tool_call:rank_sector_relative_strength", "seq": 10, "to": "RUN_SECTOR_RELATIVE_ANALYSIS"}
+{"actor": "model", "data_version": "snap_2026-11-20_v2", "input_hash": "2afccf46b8a96bafc6242bf78075727333ff3b03c265e700d6d83514b5ba2777", "kind": "TOOL_CALL", "seq": 11, "state_after": "RUN_SECTOR_RELATIVE_ANALYSIS", "state_before": "CALCULATE_TECHNICALS", "status": "OK", "tool": "rank_sector_relative_strength"}
+{"completion_tokens": 99, "estimated_prompt_tokens": 5295, "kind": "MODEL_TURN", "n_tool_calls": 1, "prompt_tokens": 5099, "seq": 12, "turn": 2}
+{"fixed": {"as_of": "2026-09-10", "condition_sets": [{"label": "RSI_LOCAL_TROUGH", "rsi_state": "LOCAL_LOW", "supertrend_state": "BEARISH"}], "event_family": "RSI_LOCAL_TROUGH", "n_tests_declared": 1, "ticker": "MAVI"}, "kind": "PARAMS_NORMALIZED", "notes": ["detect_reversal_events: 'condition_sets.0.horizon' alanı bu araçta yok, çıkarıldı"], "original": {"as_of": "2026-09-10", "condition_sets": [{"horizon": 5, "label": "RSI_LOCAL_TROUGH", "rsi_state": "LOCAL_LOW", "supertrend_state": "BEARISH"}], "event_family": "RSI_LOCAL_TROUGH", "n_tests_declared": 1, "ticker": "MAVI"}, "seq": 13, "tool": "detect_reversal_events"}
+{"from": "RUN_SECTOR_RELATIVE_ANALYSIS", "kind": "STATE_TRANSITION", "reason": "tool_call:detect_reversal_events", "seq": 14, "to": "RUN_PATTERN_AND_REVERSAL_ANALYSIS"}
+{"actor": "model", "data_version": "snap_2026-11-20_v2", "input_hash": "2e1153dbf2af35840dc15689fa343356f278634690ca6c29f26f054460084552", "kind": "TOOL_CALL", "seq": 15, "state_after": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "state_before": "RUN_SECTOR_RELATIVE_ANALYSIS", "status": "OK", "tool": "detect_reversal_events"}
+{"completion_tokens": 4, "estimated_prompt_tokens": 6832, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6880, "seq": 16, "turn": 3}
+{"code": "MANDATORY_STATE_NOT_REACHED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce zorunlu durum(lar) tamamlanmalı: RUN_BACKTEST", "seq": 17, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 27, "estimated_prompt_tokens": 6914, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 6948, "seq": 18, "turn": 4}
+{"code": "MANDATORY_STATE_NOT_REACHED", "kind": "INVALID_TOOL_CALL", "message": "açıklamadan önce zorunlu durum(lar) tamamlanmalı: RUN_BACKTEST", "seq": 19, "state": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "tool": null}
+{"completion_tokens": 96, "estimated_prompt_tokens": 7024, "kind": "MODEL_TURN", "n_tool_calls": 1, "prompt_tokens": 7039, "seq": 20, "turn": 5}
+{"from": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "kind": "STATE_TRANSITION", "reason": "tool_call:build_evidence_bundle", "seq": 21, "to": "BUILD_EVIDENCE"}
+{"from": "BUILD_EVIDENCE", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 22, "to": "PREVIEW_STRATEGIES"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "06207cf8fc4a609fea5303dcde629c56b787f2af8af54d552f3c5b9ef4e08acd", "kind": "TOOL_CALL", "seq": 23, "state_after": "PREVIEW_STRATEGIES", "state_before": "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "status": "OK", "step_state": "BUILD_EVIDENCE", "tool": "build_evidence_bundle"}
+{"kind": "EVIDENCE_BUILT", "n_full": 27, "seq": 24, "stage": "BUILD_EVIDENCE", "version": 1}
+{"from": "PREVIEW_STRATEGIES", "kind": "STATE_TRANSITION", "reason": "tool_call:run_backtest", "seq": 25, "to": "RUN_BACKTEST"}
+{"actor": "model", "data_version": "snap_2026-11-20_v2", "input_hash": "882418f6672fe3657259b5ecfd84357d62acc2908780029285e3f449b4131aae", "kind": "TOOL_CALL", "seq": 26, "state_after": "RUN_BACKTEST", "state_before": "PREVIEW_STRATEGIES", "status": "OK", "tool": "run_backtest"}
+{"completion_tokens": 4, "estimated_prompt_tokens": 7689, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 7790, "seq": 27, "turn": 6}
+{"from": "RUN_BACKTEST", "kind": "STATE_TRANSITION", "reason": "tool_call:build_evidence_bundle", "seq": 28, "to": "RISK_GATE"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "ce6e4bd2015a17db3202b1fcf51bb5f2dbeef9c7ac8b3833dce0878a173ff84e", "kind": "TOOL_CALL", "seq": 29, "state_after": "RISK_GATE", "state_before": "RUN_BACKTEST", "status": "OK", "step_state": "RISK_GATE", "tool": "build_evidence_bundle"}
+{"kind": "EVIDENCE_BUILT", "n_full": 32, "seq": 30, "stage": "RISK_GATE", "version": 2}
+{"from": "RISK_GATE", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 31, "to": "GENERATE_EXPLANATION"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "8a2f2d794cfa69a41f63b2b6548bf2be4bd9f54d5326428eb9dca00785d4ace0", "kind": "TOOL_CALL", "seq": 32, "state_after": "GENERATE_EXPLANATION", "state_before": "RISK_GATE", "status": "OK", "step_state": "RISK_GATE", "tool": "check_data_quality"}
+{"analysis_id": "2026-09-10-4d43481576be", "gate_status": "INVESTIGATE", "kind": "EVIDENCE_LOCKED", "lock_hash": "0468bedfc8c20f486abe081cdd48611ec5a2aa458f6a9d817bb50b025ccf48eb", "seq": 33, "version": 2}
+{"completion_tokens": 430, "estimated_prompt_tokens": 5109, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 5773, "seq": 34, "turn": 7}
+{"action": "INVESTIGATE", "attempt": 1, "codes": [], "enforced": true, "kind": "FINAL_CHECK", "n_allowlisted_policy": 0, "n_hallucinated": 0, "n_number_claims": 21, "n_unevidenced": 4, "n_violations": 0, "ok": true, "policy_label": "INVESTIGATE", "policy_match": true, "seq": 35}
+{"action": "INVESTIGATE", "kind": "EXPLANATION_COMPLETE", "safe_failure": false, "seq": 36}
+{"from": "GENERATE_EXPLANATION", "kind": "STATE_TRANSITION", "reason": "explanation_complete", "seq": 37, "to": "HUMAN_REVIEW"}
+{"kind": "HUMAN_REVIEW_PENDING", "review_status": "PENDING_HUMAN_REVIEW", "seq": 38}
+{"action": "INVESTIGATE", "fallback": false, "kind": "FINAL_DELIVERED", "metrics": {"attempt_level": {"by_code": {}, "by_source": {}, "n_attempts_with_violation": 0, "n_hallucinated": 0, "n_number_claims": 21, "n_violations": 0}, "delivered_level": {"action": "INVESTIGATE", "action_source": "model", "by_code": {}, "by_source": {}, "delivered": true, "fallback": false, "n_allowlisted_policy": 0, "n_hallucinated": 0, "n_number_claims": 21, "n_unevidenced": 4, "n_violations": 0, "numerical_hallucination_rate": 0.0, "policy_label": "INVESTIGATE", "policy_match": true, "status": "ACCEPTED"}, "enforced": true, "max_attempts": 3, "n_attempts": 1}, "seq": 39, "status": "ACCEPTED"}
+{"from": "HUMAN_REVIEW", "kind": "STATE_TRANSITION", "reason": "close", "seq": 40, "to": "LOG_AND_CLOSE"}
+{"action": "INVESTIGATE", "kind": "SESSION_CLOSED", "n_invalid_calls": 2, "n_order_violations": 0, "review_status": "PENDING_HUMAN_REVIEW", "seq": 41}

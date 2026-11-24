@@ -1,0 +1,31 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] rank_sector_relative_strength -> OK (durum: RUN_SECTOR_RELATIVE_ANALYSIS)
+  [model] detect_reversal_events -> OK (durum: RUN_PATTERN_AND_REVERSAL_ANALYSIS)
+  [model] GEÇERSİZ çağrı None: MANDATORY_STATE_NOT_REACHED
+  [model] GEÇERSİZ çağrı None: MANDATORY_STATE_NOT_REACHED
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [model] run_backtest -> OK (durum: RUN_BACKTEST)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı INVESTIGATE), lock_hash 0468bedfc8c2
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+Perakende grubunda geride kalma ve toparlanma olayları araçla hesaplandı.
+Kanıt (araç çıktıları):
+- retail grubu (3 hisse), 20 işlem günü: sektör medyan getirisi %-1.8116, XU100 %1.8518, fark -3.6634 pp, sektör gücü WEAK
+- MAVI: 20 işlem günü getirisi %-5.0568, sektör medyanına göre -3.2452 pp, sıra 3
+- Geçici toparlanma (5 gün), maliyet sonrası %-0.8238, isabet %45.4135, ortalama %-0.3238, yanlış pozitif 7
+- Geçici toparlanma (10 gün), maliyet sonrası %-0.8852, isabet %48.8372, ortalama %-0.3852, yanlış pozitif 22
+- Geçici toparlanma (20 gün), maliyet sonrası %0.6596, isabet %48.8372, ortalama %1.1596, yanlış pozitif 22
+- Backtest işlem özcü maliyet %0.5, ortalama sıra 1, Sharpe 0.1103, maksimum düşüş %-18.6992, isabet %58.8235, sinyal gecikmesi 1 gün
+Değerlendirme: Geçmiş veride benzer geride kalmaların çoğu isabet yüzdesi bakımından tabanın altında ve/veya örneklem dışında bozulma gösteriyor; toparlanma sinyali güvenilir biçimde değerlendirilemez (INVESTIGATE).
+Not: uygun backtest yok, bu nedenle yatırım tavsiyesi ve hedef fiyat veremem.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (T4_VALIDATION_MISSING) | eşleşme: True
+sayı iddiası: 21, halüsinasyon: 0, kanıtsız: 4 | kural ihlali: 0 | geçersiz araç çağrısı: 2 | geri çekilme: False
+süre: 608.4 sn | model turu: 7
+karar kaydı: reports/demo/q1.json (tekrar oynatma: python -m experiments.replay reports/demo/q1.json)
+karar günlüğü: reports/demo/q1.jsonl (41 olay)

@@ -10,6 +10,7 @@ Kurallar (değişmez):
     anlamı tahmin gerektiren değerler onarılmaz (model orijinal hatayı görür).
   * Yılsız dönem ("Q3"): yıl = as_of yılı; dönem sonu as_of'tan sonraysa bir önceki yıl (as_of sonrası dönem seçilmez).
   * Sözleşmede olmayan alan (`extra_forbidden`) çıkarılır ve NOT edilir.
+  * `split_date` <= analiz başlangıcı ise (model başlangıç tarihini yazıyor) as_of yılının 1 Ocak'ına çekilir (kullanıcı kararı; sistem istemindeki kuralla aynı).
   * Sessiz değil: her düzeltme `notes` olarak döner; oturum bunu olaya, uyarıya ve araç zarfındaki gerçek `params`'a yansıtır (input_hash düzeltilmiş çağrıdan).
   * Tam doğrulanamayan sonuç döndürülmez: düzeltilmiş params hâlâ şemaya uymuyorsa `(None, [])`.
 """
@@ -80,6 +81,12 @@ def _set(obj: Any, loc: tuple[Any, ...], value: Any) -> None:
 
 def _fix_one(err: dict[str, Any], params: dict[str, Any], as_of: date, tool: str, notes: list[str]) -> bool:
     loc = tuple(err["loc"])
+    if not loc and err["type"] == "value_error" and "split_date analysis_start'tan sonra olmalı" in str(err.get("msg", "")):
+        # Model split_date'e analiz başlangıcını (örn. 2024-01-01) yazıyor; örneklem içi bölüm boş kalır. Sistem istemindeki kural: as_of yılının 1 Ocak'ı.
+        old = params.get("split_date")
+        params["split_date"] = date(as_of.year, 1, 1).isoformat()
+        notes.append(f"{tool}: 'split_date' {old!r} analiz başlangıcından sonra olmalı; as_of yılının 1 Ocak'ı ({params['split_date']}) yapıldı")
+        return True
     if not loc or "as_of" in [str(x) for x in loc]:
         return False                                           # as_of kilitli
     kind = err["type"]
@@ -180,3 +187,29 @@ def repair_tickers(params: dict[str, Any], question_tickers: list[str], universe
 
     walk(work, "")
     return (work, notes) if notes else (None, [])
+
+
+def drop_unknown_signal_params(tool: ToolName | str, params: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
+    """run_backtest: `strategy.signal_params` içinde araçta tanımlı olmayan anahtarları (örn. REVERSAL için `rsi_state`) çıkarır.
+    Neden: araç bunları INVALID_PARAMS ile reddediyor (geçerli anahtarları listeleyerek), model hatayı okumayıp aynı çağrıyı 40 kez tekrarlıyor (canlı demo Soru 1).
+    Çıkarılan anahtarlar NOT edilir (sessiz değil); geçerli anahtarlara ve değerlerine dokunulmaz. Değişiklik yoksa `(None, [])`."""
+    if ToolName(tool) is not ToolName.RUN_BACKTEST:
+        return None, []
+    from tools.run_backtest import _ALLOWED_PARAMS  # tembel: yalnızca gerçek araç kullanılıyorsa gerekir
+    from schemas.enums import SignalType
+
+    strat = params.get("strategy")
+    sp = strat.get("signal_params") if isinstance(strat, dict) else None
+    if not isinstance(sp, dict):
+        return None, []
+    try:
+        allowed = _ALLOWED_PARAMS[SignalType(strat.get("signal_type"))]
+    except (ValueError, KeyError):
+        return None, []
+    unknown = sorted(k for k in sp if k not in allowed)
+    if not unknown:
+        return None, []
+    work = copy.deepcopy(params)
+    for k in unknown:
+        del work["strategy"]["signal_params"][k]
+    return work, [f"run_backtest: strategy.signal_params içinde bu strateji türünde tanımsız anahtar(lar) çıkarıldı: {unknown}"]

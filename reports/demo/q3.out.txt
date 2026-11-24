@@ -1,0 +1,24 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] detect_reversal_events -> OK (durum: RUN_PATTERN_AND_REVERSAL_ANALYSIS)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı INVESTIGATE), lock_hash 1d60791a0ed5
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+ASELS hissesinde istenen olay türleri için araçla hesaplanan tamamlanmış olay, başarı, isabet yüzdesi, maliyet sonrası ortalama getiri ve ufuk (horizon) 1, 3, 5 ve 10 için:
+- BB_LOWER_TOUCH (single_indicator): tamamlanmış olay 12, başarı 8, isabet yüzdesi %66.6667, maliyet sonrası ortalama getiri %0.868, en kısa ufuk 1, en uzun ufuk 10
+- BB_LOWER_TOUCH (single_indicator), RSI dibi, BEARISH: tamamlanmış olay 5, başarı 5, isabet yüzdesi %100.0, maliyet sonrası ortalama getiri %2.7824, en kısa ufuk 1, en uzun ufuk 10
+Değerlendirme: Olay sayısı alt MIN_EVENTS olduğundan sonuçlar belirsizdir (INVESTIGATE).
+Backtest'te uygun aday olay sayısı sağlanmadı; sonuçlar kararlı biçimde değerlendirilemez.
+Olay sonrası doğrulama (OOS) yapılmadı.
+Bu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (T1_FEW_EVENTS) | eşleşme: True
+sayı iddiası: 5, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 339.7 sn | model turu: 3
+karar kaydı: reports/demo/q3.json (tekrar oynatma: python -m experiments.replay reports/demo/q3.json)
+karar günlüğü: reports/demo/q3.jsonl (29 olay)

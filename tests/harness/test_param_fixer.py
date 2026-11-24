@@ -163,3 +163,40 @@ def test_session_repairs_ticker_typo_from_question(monkeypatch):
                                           "n_tests_declared": 1})
     assert r.ok and r.envelope["status"] == "OK" and r.envelope["params"]["relate_to"][0]["ticker"] == "EREGL"
     assert any("EREGL" in w for w in s.warnings)
+
+
+# ---- split_date = analiz başlangıcı -------------------------------------------------------------------------------------
+def test_split_date_equal_to_analysis_start_is_moved_to_as_of_year_start():
+    p = {"as_of": "2026-09-10", "sector": "retail", "horizon": 20, "split_date": "2024-01-01", "universe": ["BIMAS"]}
+    fixed, notes = fix_params(T.RANK_SECTOR_RELATIVE_STRENGTH, p, date(2026, 9, 10))
+    assert fixed is not None and fixed["split_date"] == "2026-01-01" and "universe" not in fixed
+    assert any("split_date" in n for n in notes) and p["split_date"] == "2024-01-01"
+    validate_params(T.RANK_SECTOR_RELATIVE_STRENGTH, fixed)
+
+
+def test_valid_split_date_untouched():
+    p = {"as_of": "2026-09-10", "sector": "retail", "horizon": 20, "split_date": "2025-06-01"}
+    assert fix_params(T.RANK_SECTOR_RELATIVE_STRENGTH, p, date(2026, 9, 10)) == (None, [])
+
+
+# ---- run_backtest: tanımsız signal_params anahtarı ------------------------------------------------------------------------
+from harness.param_fixer import drop_unknown_signal_params  # noqa: E402
+
+
+def _bt(sp):
+    return {"as_of": "2026-09-10", "universe": ["BIMAS", "MAVI", "MGROS"], "start": "2024-01-01", "end": "2026-09-10",
+            "strategy": {"signal_type": "REVERSAL", "holding_days": 5, "variant": "B", "signal_params": sp}}
+
+
+def test_unknown_signal_param_is_dropped_valid_ones_kept():
+    p = _bt({"event_family": "BB_LOWER_TOUCH", "rsi_state": "LOCAL_LOW"})
+    fixed, notes = drop_unknown_signal_params(T.RUN_BACKTEST, p)
+    assert fixed["strategy"]["signal_params"] == {"event_family": "BB_LOWER_TOUCH"} and "rsi_state" in notes[0]
+    assert p["strategy"]["signal_params"]["rsi_state"] == "LOCAL_LOW"          # girdi değişmedi
+    validate_params(T.RUN_BACKTEST, fixed)
+
+
+def test_valid_signal_params_and_other_tools_untouched():
+    assert drop_unknown_signal_params(T.RUN_BACKTEST, _bt({"event_family": "RSI_LOCAL_TROUGH"})) == (None, [])
+    assert drop_unknown_signal_params(T.RUN_BACKTEST, _bt({})) == (None, [])
+    assert drop_unknown_signal_params(T.GET_FUNDAMENTAL_METRICS, _fund()) == (None, [])

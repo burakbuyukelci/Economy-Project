@@ -555,6 +555,10 @@ Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bi
 1. Dönem biçimi (`Q3`, `q3`, `2026-Q3`, `Q3 2026`, `2026/Q3` → `2026Q3`); yılsız dönemde yıl = as_of yılı, dönem sonu as_of'tan sonraysa önceki yıl (as_of sonrası dönem seçilmez).
 2. Enum değeri yalnızca büyük/küçük harf farkıysa ve tek eşleşme varsa (`Ichimoku` → `ICHIMOKU`).
 3. Sözleşmede olmayan alan (`extra_forbidden`) çıkarılır.
+4. (2026-11-25, canlı demo) `split_date` analiz başlangıcına eşit/öncesindeyse as_of yılının 1 Ocak'ına çekilir (kullanıcı kararı; sistem istemindeki kuralla aynı) — Soru 1.
+5. `run_backtest` `strategy.signal_params` içinde araçta tanımsız anahtarlar (örn. REVERSAL için `rsi_state`) çıkarılır (`drop_unknown_signal_params`) — Soru 1.
+6. Hisse kodu yazım hatası (`ERGL` → `EREGL`): yalnızca soruda geçen tek evren kodu düzenleme uzaklığı ≤ 2 ise (`repair_tickers`) — Soru 5.
+7. Ayrıştırıcı (`harness/text_protocol.py`): geçerli JSON nesnesinden sonra YALNIZCA fazladan `}`/`]` varsa nesne kabul edilir (model `}}}}}` yazıyordu); başka artık metin hâlâ hata.
 **Sınırlar (tasarım gereği):** `as_of` hata içeriyorsa dokunulmaz; "son çeyrek" gibi tahmin gerektiren değerler onarılmaz; onarım sonrası doğrulama geçmezse orijinal hata modele döner. Her onarım sessiz değildir: `PARAMS_NORMALIZED` olayı (özgün ve düzeltilmiş params), oturum uyarısı ve zarfın gerçek `params`'ı (`input_hash` düzeltilmiş çağrıdan). Onarılamayan dönem hatasına biçim ipucu eklendi (`YYYYQn, örn. 2026Q3; en son dönem için alanı yazmayın`).
 **Dürüstlük notu:** düzeltici geçersiz çağrı oranını düşürür; bu, modelin kendi başına doğru çağrı ürettiği anlamına gelmez. Raporda model-ham (`HARNESS_NORMALIZE_PARAMS=0`) ve harness-destekli sonuçlar ayrı raporlanır.
 

@@ -1,0 +1,680 @@
+{
+ "format": 1,
+ "question": "Analiz tarihi: 10.09.2026\nTUPRS'un 01.01.2024 – 10.09.2026 döneminde kamuya açıklanan tüm çeyreklik bilançolarında FAVÖK marjı ve Net Borç/FAVÖK nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?",
+ "as_of": "2026-09-10",
+ "as_of_source": "question",
+ "profile": "D",
+ "model": "gemma3-bist-v23",
+ "messages": [
+  {
+   "role": "system",
+   "content": "Sen BIST 100 hisseleri için finansal analiz yorumcususun; hesaplamayı araçlar yapar, sen araç çıktılarını yorumlarsın.\n\nKURALLAR:\n1. Sayılar yalnızca araç çıktısından gelir; kendin sayı türetme ya da hesaplama (oran, fark, yüzde) yapma.\n2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasak; doğrulanmamış iddiayı tırnak içinde alıntılayıp doğrulanmadığını söyle.\n3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini belirt; nedensellik kurma. Sonuçlar geçmiş gözlemdir (gelecek getiri garantisi yok); backtest işlem maliyeti ve kayma varsayımını içerir.\n5. Çıktıda bulunmayan alan boştur (null). `view_trimmed` bölümleri kısaltılmıştır; kısaltılan sayıları yazma.\n\nARAÇ KULLANIMI: gerekli araçları çağır; as_of = 2026-09-10 (soruda belirtilen analiz tarihi). Belirtmediğin parametreler varsayılanla çalışır. Örneklem dışı doğrulama için split_date / out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi); verilmezse analiz INVESTIGATE kalır. İşin bitince araç çağırmadan `HAZIR` yaz; harness politika kararını verip nihai açıklamayı isteyecek.\n\nNİHAİ ÇIKTI: son satır tam olarak `EYLEM: <ETİKET>`. Etiketler: HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE."
+  },
+  {
+   "role": "user",
+   "content": "Analiz tarihi: 10.09.2026\nTUPRS'un 01.01.2024 – 10.09.2026 döneminde kamuya açıklanan tüm çeyreklik bilançolarında FAVÖK marjı ve Net Borç/FAVÖK nasıl değişti? Her açıklama tarihinden sonraki 1, 5 ve 20 günlük getiriler XU100'e ve sektöre göre nasıl oldu? İyileşen çeyrekler daha iyi fiyat tepkisi almış mı?"
+  },
+  {
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "function": {
+      "name": "calculate_fundamental_change",
+      "arguments": {
+       "as_of": "2026-09-10",
+       "ticker": "TUPRS",
+       "improvement_metric": "EBITDA_MARGIN",
+       "improvement_basis": "QOQ"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "name": "calculate_fundamental_change",
+   "content": "{\"data_version\": \"snap_2026-11-20_v2\", \"n_events\": 4, \"n_excluded_incomplete_horizon\": 0, \"results\": {\"improvement_basis\": \"QOQ\", \"improvement_metric\": \"EBITDA_MARGIN\", \"n_quarters_disclosed_by_as_of\": 4, \"n_quarters_excluded_not_yet_disclosed\": 0, \"quarters\": [{\"disclosure_date\": \"2026-08-04\", \"fiscal_period\": \"2026Q2\", \"metrics\": [{\"change_unit\": \"PCT\", \"name\": \"REVENUE\", \"qoq_change\": 49.6281, \"qoq_direction\": \"IMPROVED\", \"value\": 386420.235}, {\"change_unit\": \"PCT\", \"name\": \"EBITDA\", \"qoq_change\": 206.7095, \"qoq_direction\": \"IMPROVED\", \"value\": 57455.015}, {\"change_unit\": \"PCT\", \"name\": \"NET_PROFIT\", \"qoq_change\": 1136.6766, \"qoq_direction\": \"IMPROVED\", \"value\": 45877.721}, {\"change_unit\": \"PP\", \"name\": \"EBITDA_MARGIN\", \"qoq_change\": 7.6149, \"qoq_direction\": \"IMPROVED\", \"value\": 14.8685}, {\"change_unit\": \"PP\", \"name\": \"NET_PROFIT_MARGIN\", \"qoq_change\": 10.436, \"qoq_direction\": \"IMPROVED\", \"value\": 11.8725}, {\"change_unit\": \"ABS\", \"name\": \"NET_DEBT_EBITDA\", \"qoq_change\": -0.1425, \"qoq_direction\": \"IMPROVED\", \"value\": -0.7646}, {\"change_unit\": \"ABS\", \"name\": \"DEBT_EQUITY\", \"qoq_change\": -0.0066, \"qoq_direction\": \"FLAT\", \"value\": 0.1495}], \"tms29_comparable\": true}], \"reaction_summary\": [{\"group\": \"IMPROVED\", \"hit_rate_vs_xu100_pct\": 0.0, \"horizon\": 1, \"mean_abnormal_vs_xu100_pct\": -1.603, \"n\": 2, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"NOT_IMPROVED\", \"hit_rate_vs_xu100_pct\": 0.0, \"horizon\": 1, \"mean_abnormal_vs_xu100_pct\": -2.8161, \"n\": 1, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"ALL\", \"hit_rate_vs_xu100_pct\": 0.0, \"horizon\": 1, \"mean_abnormal_vs_xu100_pct\": -1.6111, \"n\": 4, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"IMPROVED\", \"hit_rate_vs_xu100_pct\": 50.0, \"horizon\": 5, \"mean_abnormal_vs_xu100_pct\": 4.1419, \"n\": 2, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"NOT_IMPROVED\", \"hit_rate_vs_xu100_pct\": 0.0, \"horizon\": 5, \"mean_abnormal_vs_xu100_pct\": -7.7771, \"n\": 1, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"ALL\", \"hit_rate_vs_xu100_pct\": 25.0, \"horizon\": 5, \"mean_abnormal_vs_xu100_pct\": -0.1371, \"n\": 4, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"IMPROVED\", \"hit_rate_vs_xu100_pct\": 100.0, \"horizon\": 20, \"mean_abnormal_vs_xu100_pct\": 21.8048, \"n\": 2, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"NOT_IMPROVED\", \"hit_rate_vs_xu100_pct\": 0.0, \"horizon\": 20, \"mean_abnormal_vs_xu100_pct\": -7.4186, \"n\": 1, \"n_excluded_incomplete_horizon\": 0}, {\"group\": \"ALL\", \"hit_rate_vs_xu100_pct\": 50.0, \"horizon\": 20, \"mean_abnormal_vs_xu100_pct\": 8.5686, \"n\": 4, \"n_excluded_incomplete_horizon\": 0}], \"ticker\": \"TUPRS\"}, \"status\": \"OK\", \"view_trimmed\": [\"fundamental_view\"], \"warnings\": [\"INSUFFICIENT_HISTORY: NET_DEBT_EBITDA 2025Q3, 2025Q4, 2026Q1: 4 ardışık çeyrek yok; çeyreklik FAVÖK x4 (yıllıklandırılmış) kullanıldı\", \"SMALL_PEER_GROUP: TUPRS peer grubu 2 hisse: sektör medyanı zayıf ölçüt\", \"INSUFFICIENT_HISTORY: NET_DEBT_EBITDA değişim tabanı aynı iki uçta hesaplandı; yıllıklandırılmış (çeyreklik FAVÖK x4, iki dönemde de): 2025Q4 QOQ, 2026Q1 QOQ, 2026Q2 QOQ\", \"PRE_TMS29_NOT_COMPARABLE: 2025Q3, 2025Q4: önceki çeyrek/yıl TMS 29 öncesi (2025 öncesi) olduğundan ilgili QoQ/YoY değişim None (karşılaştırılamaz)\", \"INSUFFICIENT_HISTORY: 1/4 çeyrekte EBITDA_MARGIN QOQ değişimi hesaplanamadı (karşılaştırma dönemi yok/TMS 29 öncesi); bu çeyrekler IMPROVED/NOT_IMPROVED gruplarına girmedi, yalnız ALL'a girdi\", \"FEW_EVENTS: n_quarters=4 < MIN_EVENTS=20; istatistik zayıf, örneklem dışı ayrımı yapılamaz\", \"MULTIPLE_TESTING_RISK: 3 ufuk x 3 grup özet; çoklu karşılaştırma düzeltmesi yapılmadı\", \"ASSOCIATION_NOT_CAUSATION: bilanço iyileşmesi ile fiyat tepkisi arasındaki ilişki gözlemdir; nedensellik iddia edilmez\", \"INSUFFICIENT_HISTORY: KAP_DATE_VIA_NEWS: 2025Q3, 2025Q4, 2026Q1, 2026Q2 dönemlerinin açıklama tarihi haber/KAP kaynaklarından doğrulandı; açıklama saati bilinmiyor (tepki bazı muhafazakâr: açıklamadan önceki son kapanış)\"]}"
+  },
+  {
+   "role": "assistant",
+   "content": "HAZIR"
+  },
+  {
+   "role": "user",
+   "content": "POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):\nEYLEM: WATCH\nKural: F4_WATCH\nKalite kapısı: PASS_WITH_WARNINGS\nGerekçeler:\n- YOY_NOT_COMPUTABLE: YoY hesaplanamadı, QoQ mevsim arındırılmamış: aday etiket verilmez\n- THRESHOLDS_PROVISIONAL: temel veri eşikleri GEÇİCİDİR; gerçek veri gelince gözden geçirilecek\n\nAraç çıktılarına dayanarak nihai açıklamayı şimdi yaz. Yalnızca araç çıktılarındaki sayıları kullan, kendin hesaplama yapma; yatırım tavsiyesi verme. Son satır tam olarak yukarıdaki EYLEM satırı olmalı."
+  },
+  {
+   "role": "assistant",
+   "content": "TUPRS bilançosundaki değişim çeyreği dönem içi yönünde oldu, ancak yıllık orantısız bir yükseliş yok; aday etiket verilmez.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhafaza yok, TMS29_COMPARABLE true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön IMPROVED, çeyreklik yön None, enflasyon muhafaza yok, TMS29_COMPARABLE true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme yönü ALL IMPROVED\n- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi XU100'e göre %0.0, ortalama anormal getiri -1.603, isabet 2, maliyet yok, ufuk 1\n- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi sektöre göre %0.0, ortalama anormal getiri -0.1371, isabet 4, maliyet yok, ufuk 5\nDeğerlendirme: İyileşme yönü çeyreklik yön ile aynı, ancak yıllık orantısız bir yükselen trend yok; aday etiket verilmez.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: WATCH"
+  }
+ ],
+ "summary": {
+  "tool_hashes": [
+   "1526e55ea45e53bf3aecdf43187e76d1adf07f9a5dc643cdaaebd20f57a7d255",
+   "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "54331a6dbd2c9b76a4a4308c87dfb58ff6f0084a51983995e7835074f4319852",
+   "54331a6dbd2c9b76a4a4308c87dfb58ff6f0084a51983995e7835074f4319852",
+   "be2948a463fea23de76d395beb50eb9faa83de0ee68e5ae5ae3456ee75d8a124"
+  ],
+  "tool_names": [
+   "check_data_quality",
+   "calculate_fundamental_change",
+   "build_evidence_bundle",
+   "build_evidence_bundle",
+   "check_data_quality"
+  ],
+  "final_text": "TUPRS bilançosundaki değişim çeyreği dönem içi yönünde oldu, ancak yıllık orantısız bir yükseliş yok; aday etiket verilmez.\nKanıt (araç çıktıları):\n- TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhafaza yok, TMS29_COMPARABLE true\n- TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön IMPROVED, çeyreklik yön None, enflasyon muhafaza yok, TMS29_COMPARABLE true\n- Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme yönü ALL IMPROVED\n- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi XU100'e göre %0.0, ortalama anormal getiri -1.603, isabet 2, maliyet yok, ufuk 1\n- Açıklama tarihinden sonraki 1, 5 ve 20 gün getirisi sektöre göre %0.0, ortalama anormal getiri -0.1371, isabet 4, maliyet yok, ufuk 5\nDeğerlendirme: İyileşme yönü çeyreklik yön ile aynı, ancak yıllık orantısız bir yükselen trend yok; aday etiket verilmez.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: WATCH",
+  "action": "WATCH",
+  "policy_label": "WATCH",
+  "rule_id": "F4_WATCH",
+  "lock_hash": "6269eacb3ae36555196cc9769123ea8ee51b6349cd94a7026c1fbdc984aa9ae6",
+  "n_number_claims": 5,
+  "n_hallucinated": 0,
+  "n_unevidenced": 0,
+  "n_invalid_calls": 0
+ },
+ "committed_evidence": [
+  {
+   "evidence_id": "E1",
+   "statement": "TUPRS 2026Q2: REVENUE 386420.235, yıllık değişim yok PCT, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "REVENUE",
+     "value": 386420.235,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": 49.6281,
+     "unit": "PCT"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E2",
+   "statement": "TUPRS 2026Q2: EBITDA 57455.015, yıllık değişim yok PCT, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "EBITDA",
+     "value": 57455.015,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": 206.7095,
+     "unit": "PCT"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E3",
+   "statement": "TUPRS 2026Q2: NET_PROFIT 45877.721, yıllık değişim yok PCT, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "NET_PROFIT",
+     "value": 45877.721,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": 1136.6766,
+     "unit": "PCT"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E4",
+   "statement": "TUPRS 2026Q2: EBITDA_MARGIN 14.8685, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "EBITDA_MARGIN",
+     "value": 14.8685,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": 7.6149,
+     "unit": "PP"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E5",
+   "statement": "TUPRS 2026Q2: NET_PROFIT_MARGIN 11.8725, yıllık değişim yok PP, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "NET_PROFIT_MARGIN",
+     "value": 11.8725,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": 10.436,
+     "unit": "PP"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E6",
+   "statement": "TUPRS 2026Q2: NET_DEBT_EBITDA -0.7646, yıllık değişim yok ABS, yön None, çeyreklik yön IMPROVED, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "NET_DEBT_EBITDA",
+     "value": -0.7646,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": -0.1425,
+     "unit": "ABS"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "IMPROVED",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E7",
+   "statement": "TUPRS 2026Q2: DEBT_EQUITY 0.1495, yıllık değişim yok ABS, yön None, çeyreklik yön FLAT, enflasyon muhasebesi sonrası karşılaştırılabilir true",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "fiscal_period",
+     "value": "2026Q2",
+     "unit": null
+    },
+    {
+     "name": "disclosure_date",
+     "value": "2026-08-04",
+     "unit": null
+    },
+    {
+     "name": "DEBT_EQUITY",
+     "value": 0.1495,
+     "unit": null
+    },
+    {
+     "name": "qoq_change",
+     "value": -0.0066,
+     "unit": "ABS"
+    },
+    {
+     "name": "qoq_direction",
+     "value": "FLAT",
+     "unit": null
+    },
+    {
+     "name": "tms29_comparable",
+     "value": "true",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E8",
+   "statement": "Açıklanmış çeyrek 4, henüz açıklanmadığı için dışlanan 0, iyileşme metriği EBITDA_MARGIN (QOQ)",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "n_quarters_disclosed_by_as_of",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "n_quarters_excluded_not_yet_disclosed",
+     "value": 0,
+     "unit": null
+    },
+    {
+     "name": "improvement_metric",
+     "value": "EBITDA_MARGIN",
+     "unit": null
+    },
+    {
+     "name": "improvement_basis",
+     "value": "QOQ",
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E9",
+   "statement": "Açıklama sonrası ufuk 1, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %-1.603, isabet %0.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -1.603,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E10",
+   "statement": "Açıklama sonrası ufuk 1, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-2.8161, isabet %0.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -2.8161,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E11",
+   "statement": "Açıklama sonrası ufuk 1, grup ALL: gözlem 4, XU100'e göre ortalama anormal getiri %-1.6111, isabet %0.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -1.6111,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E12",
+   "statement": "Açıklama sonrası ufuk 5, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %4.1419, isabet %50.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": 4.1419,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 50.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E13",
+   "statement": "Açıklama sonrası ufuk 5, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.7771, isabet %0.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -7.7771,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E14",
+   "statement": "Açıklama sonrası ufuk 5, grup ALL: gözlem 4, XU100'e göre ortalama anormal getiri %-0.1371, isabet %25.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -0.1371,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 25.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E15",
+   "statement": "Açıklama sonrası ufuk 20, grup IMPROVED: gözlem 2, XU100'e göre ortalama anormal getiri %21.8048, isabet %100.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 20,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": 21.8048,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E16",
+   "statement": "Açıklama sonrası ufuk 20, grup NOT_IMPROVED: gözlem 1, XU100'e göre ortalama anormal getiri %-7.4186, isabet %0.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 20,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": -7.4186,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E17",
+   "statement": "Açıklama sonrası ufuk 20, grup ALL: gözlem 4, XU100'e göre ortalama anormal getiri %8.5686, isabet %50.0, ufku dolmamış dışlanan 0",
+   "source_tool": "calculate_fundamental_change",
+   "source_input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 20,
+     "unit": null
+    },
+    {
+     "name": "n",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "mean_abnormal_vs_xu100_pct",
+     "value": 8.5686,
+     "unit": "pct"
+    },
+    {
+     "name": "hit_rate_vs_xu100_pct",
+     "value": 50.0,
+     "unit": "pct"
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  }
+ ],
+ "data_versions": {
+  "price": [
+   "snap_2026-11-20_v2"
+  ],
+  "fundamentals": [
+   "fundamentals_2026-11-23_v2"
+  ],
+  "macro": []
+ },
+ "review": null
+}

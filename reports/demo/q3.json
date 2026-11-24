@@ -1,0 +1,815 @@
+{
+ "format": 1,
+ "question": "Analiz tarihi: 10.09.2026\nASELS'te 01.01.2024 – 10.09.2026 döneminde kaç kez alt Bollinger bandına dokunuldu? Bunların kaçında fiyat 5 gün içinde yükseldi? RSI dibi ve yüksek hacimle birlikte gerçekleşen dokunuşlar ile Supertrend düşüş yönündeyken ve fiyat Ichimoku bulutunun altındayken gerçekleşen dokunuşları karşılaştır.",
+ "as_of": "2026-09-10",
+ "as_of_source": "question",
+ "profile": "D",
+ "model": "gemma3-bist-v23",
+ "messages": [
+  {
+   "role": "system",
+   "content": "Sen BIST 100 hisseleri için finansal analiz yorumcususun; hesaplamayı araçlar yapar, sen araç çıktılarını yorumlarsın.\n\nKURALLAR:\n1. Sayılar yalnızca araç çıktısından gelir; kendin sayı türetme ya da hesaplama (oran, fark, yüzde) yapma.\n2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasak; doğrulanmamış iddiayı tırnak içinde alıntılayıp doğrulanmadığını söyle.\n3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini belirt; nedensellik kurma. Sonuçlar geçmiş gözlemdir (gelecek getiri garantisi yok); backtest işlem maliyeti ve kayma varsayımını içerir.\n5. Çıktıda bulunmayan alan boştur (null). `view_trimmed` bölümleri kısaltılmıştır; kısaltılan sayıları yazma.\n\nARAÇ KULLANIMI: gerekli araçları çağır; as_of = 2026-09-10 (soruda belirtilen analiz tarihi). Belirtmediğin parametreler varsayılanla çalışır. Örneklem dışı doğrulama için split_date / out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi); verilmezse analiz INVESTIGATE kalır. İşin bitince araç çağırmadan `HAZIR` yaz; harness politika kararını verip nihai açıklamayı isteyecek.\n\nNİHAİ ÇIKTI: son satır tam olarak `EYLEM: <ETİKET>`. Etiketler: HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE."
+  },
+  {
+   "role": "user",
+   "content": "Analiz tarihi: 10.09.2026\nASELS'te 01.01.2024 – 10.09.2026 döneminde kaç kez alt Bollinger bandına dokunuldu? Bunların kaçında fiyat 5 gün içinde yükseldi? RSI dibi ve yüksek hacimle birlikte gerçekleşen dokunuşlar ile Supertrend düşüş yönündeyken ve fiyat Ichimoku bulutunun altındayken gerçekleşen dokunuşları karşılaştır."
+  },
+  {
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "function": {
+      "name": "detect_reversal_events",
+      "arguments": {
+       "as_of": "2026-09-10",
+       "ticker": "ASELS",
+       "event_family": "BB_LOWER_TOUCH",
+       "n_tests_declared": 2,
+       "split_date": "2026-01-01",
+       "condition_sets": [
+        {
+         "label": "RSI dibi",
+         "rsi_state": "LOCAL_LOW",
+         "supertrend_state": "BEARISH"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "name": "detect_reversal_events",
+   "content": "{\"data_version\": \"snap_2026-11-20_v2\", \"n_events\": 12, \"n_excluded_incomplete_horizon\": 0, \"results\": {\"analysis_end\": \"2026-09-10\", \"analysis_start\": \"2024-01-01\", \"cost_model\": {\"round_trip_cost_pct\": 0.5, \"slippage_bps_per_side\": 5.0, \"transaction_cost_bps_per_side\": 20.0}, \"event_family\": \"BB_LOWER_TOUCH\", \"expected_direction\": \"UP\", \"groups\": [{\"events\": [{\"date\": \"2026-06-04\"}], \"label\": \"single_indicator\", \"n_events_detected\": 12, \"n_overlapping_forward_windows\": 5, \"n_raw_event_days\": 17, \"per_horizon\": [{\"baseline\": {\"hit_rate_pct\": 52.608}, \"full\": {\"cost_adjusted_mean_return_pct\": 0.368, \"hit_rate_pct\": 66.6667, \"mean_return_pct\": 0.868, \"n_events_complete\": 12, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 4, \"n_success\": 8}, \"horizon\": 1, \"in_sample\": {\"cost_adjusted_mean_return_pct\": -0.4238, \"hit_rate_pct\": 55.5556, \"n_events_complete\": 9}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 2.7435, \"hit_rate_pct\": 100.0, \"n_events_complete\": 3}}, {\"baseline\": {\"hit_rate_pct\": 58.296}, \"full\": {\"cost_adjusted_mean_return_pct\": 1.4797, \"hit_rate_pct\": 66.6667, \"mean_return_pct\": 1.9797, \"n_events_complete\": 12, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 4, \"n_success\": 8}, \"horizon\": 3, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 2.1244, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 9}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": -0.4546, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 3}}, {\"baseline\": {\"hit_rate_pct\": 59.2204}, \"full\": {\"cost_adjusted_mean_return_pct\": 2.4608, \"hit_rate_pct\": 66.6667, \"mean_return_pct\": 2.9608, \"n_events_complete\": 12, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 4, \"n_success\": 8}, \"horizon\": 5, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 2.594, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 9}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 2.0614, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 3}}, {\"baseline\": {\"hit_rate_pct\": 61.7825}, \"full\": {\"cost_adjusted_mean_return_pct\": 2.2972, \"hit_rate_pct\": 50.0, \"mean_return_pct\": 2.7972, \"n_events_complete\": 12, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 6, \"n_success\": 6}, \"horizon\": 10, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 2.6079, \"hit_rate_pct\": 55.5556, \"n_events_complete\": 9}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 1.3649, \"hit_rate_pct\": 33.3333, \"n_events_complete\": 3}}]}, {\"conditions\": {\"label\": \"RSI dibi\", \"rsi_state\": \"LOCAL_LOW\", \"supertrend_state\": \"BEARISH\"}, \"events\": [{\"date\": \"2026-05-26\"}], \"label\": \"RSI dibi\", \"n_events_detected\": 5, \"n_overlapping_forward_windows\": 1, \"n_raw_event_days\": 5, \"per_horizon\": [{\"baseline\": {\"hit_rate_pct\": 52.608}, \"full\": {\"cost_adjusted_mean_return_pct\": 2.7824, \"hit_rate_pct\": 100.0, \"mean_return_pct\": 3.2824, \"n_events_complete\": 5, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 0, \"n_success\": 5}, \"horizon\": 1, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 1.7961, \"hit_rate_pct\": 100.0, \"n_events_complete\": 3}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 4.2618, \"hit_rate_pct\": 100.0, \"n_events_complete\": 2}}, {\"baseline\": {\"hit_rate_pct\": 58.296}, \"full\": {\"cost_adjusted_mean_return_pct\": 1.5673, \"hit_rate_pct\": 80.0, \"mean_return_pct\": 2.0673, \"n_events_complete\": 5, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 1, \"n_success\": 4}, \"horizon\": 3, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 2.4399, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 3}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 0.2583, \"hit_rate_pct\": 100.0, \"n_events_complete\": 2}}, {\"baseline\": {\"hit_rate_pct\": 59.2204}, \"full\": {\"cost_adjusted_mean_return_pct\": 3.9414, \"hit_rate_pct\": 80.0, \"mean_return_pct\": 4.4414, \"n_events_complete\": 5, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 1, \"n_success\": 4}, \"horizon\": 5, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 5.7672, \"hit_rate_pct\": 100.0, \"n_events_complete\": 3}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": 1.2026, \"hit_rate_pct\": 50.0, \"n_events_complete\": 2}}, {\"baseline\": {\"hit_rate_pct\": 61.7825}, \"full\": {\"cost_adjusted_mean_return_pct\": 0.3295, \"hit_rate_pct\": 40.0, \"mean_return_pct\": 0.8295, \"n_events_complete\": 5, \"n_excluded_incomplete_horizon\": 0, \"n_false_positive\": 3, \"n_success\": 2}, \"horizon\": 10, \"in_sample\": {\"cost_adjusted_mean_return_pct\": 3.4804, \"hit_rate_pct\": 66.6667, \"n_events_complete\": 3}, \"oos_degradation_flag\": false, \"out_of_sample\": {\"cost_adjusted_mean_return_pct\": -4.3969, \"hit_rate_pct\": 0.0, \"n_events_complete\": 2}}]}], \"multiple_testing\": {\"adjusted_alpha\": 0.025, \"alpha\": 0.05, \"method\": \"bonferroni\", \"n_tests_declared\": 2, \"note\": \"Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar.\"}, \"split_date\": \"2026-01-01\", \"ticker\": \"ASELS\", \"touch_mode\": \"close\"}, \"status\": \"OK\", \"view_trimmed\": [\"groups[].events\", \"groups[].regime_breakdown\", \"block_stats\"], \"warnings\": [\"FEW_EVENTS: single_indicator: n_events_detected=12 < MIN_EVENTS=20\", \"FEW_EVENTS: RSI dibi: n_events_detected=5 < MIN_EVENTS=20\", \"OOS_TOO_SMALL: single_indicator: OOS tamamlanmış olay sayısı MIN_OOS_EVENTS altında (h=1: n=3; h=3: n=3; h=5: n=3; h=10: n=3)\", \"OOS_TOO_SMALL: RSI dibi: OOS tamamlanmış olay sayısı MIN_OOS_EVENTS altında (h=1: n=2; h=3: n=2; h=5: n=2; h=10: n=2)\", \"MULTIPLE_TESTING_RISK: n_tests_declared=2; 1 birleşik koşul aynı olay kümesinde ek karşılaştırmadır (çağıran sayıyı beyan eder; Bonferroni alpha/n). Bu araç p-değeri üretmez\", \"HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. Koşulsuz grupta 17 ham olay gününden 12 olay (ardışık serinin ilk günü); 5 olayın ileri penceresi bir sonraki olayla çakışıyor, bu yüzden olaylar tam bağımsız değildir\", \"ASSOCIATION_NOT_CAUSATION: Olay sonrası getiri ilişki gözlemidir; nedensellik iddiası değildir\"]}"
+  },
+  {
+   "role": "assistant",
+   "content": "HAZIR"
+  },
+  {
+   "role": "user",
+   "content": "POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):\nEYLEM: INVESTIGATE\nKural: T1_FEW_EVENTS\nKalite kapısı: INVESTIGATE\nGerekçeler:\n- BACKTEST_MISSING: uygun backtest yok (aynı sinyal türü ve evren)\n- OOS_VALIDATION_MISSING: OOS doğrulaması yapılmadı\n- FEW_EVENTS: tamamlanmış olay sayısı MIN_EVENTS (20) altında\n\nAraç çıktılarına dayanarak nihai açıklamayı şimdi yaz. Yalnızca araç çıktılarındaki sayıları kullan, kendin hesaplama yapma; yatırım tavsiyesi verme. Son satır tam olarak yukarıdaki EYLEM satırı olmalı."
+  },
+  {
+   "role": "assistant",
+   "content": "ASELS hissesinde istenen olay türleri için araçla hesaplanan tamamlanmış olay, başarı, isabet yüzdesi, maliyet sonrası ortalama getiri ve ufuk (horizon) 1, 3, 5 ve 10 için:\n- BB_LOWER_TOUCH (single_indicator): tamamlanmış olay 12, başarı 8, isabet yüzdesi %66.6667, maliyet sonrası ortalama getiri %0.868, en kısa ufuk 1, en uzun ufuk 10\n- BB_LOWER_TOUCH (single_indicator), RSI dibi, BEARISH: tamamlanmış olay 5, başarı 5, isabet yüzdesi %100.0, maliyet sonrası ortalama getiri %2.7824, en kısa ufuk 1, en uzun ufuk 10\nDeğerlendirme: Olay sayısı alt MIN_EVENTS olduğundan sonuçlar belirsizdir (INVESTIGATE).\nBacktest'te uygun aday olay sayısı sağlanmadı; sonuçlar kararlı biçimde değerlendirilemez.\nOlay sonrası doğrulama (OOS) yapılmadı.\nBu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.\nEYLEM: INVESTIGATE"
+  }
+ ],
+ "summary": {
+  "tool_hashes": [
+   "6e00622f2c8930969570fddad266a08d9b32bb232f4b1f93d4271734cccccf35",
+   "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "6beafa8f9424b2bc5ddd53a7dd76eef6c2d1bcd9c061dbcf893fa712eca9749d",
+   "6beafa8f9424b2bc5ddd53a7dd76eef6c2d1bcd9c061dbcf893fa712eca9749d",
+   "5c3023a457f6e9f493ef607cf3799719a227b484a2ac8036211bda4416727521"
+  ],
+  "tool_names": [
+   "check_data_quality",
+   "detect_reversal_events",
+   "build_evidence_bundle",
+   "build_evidence_bundle",
+   "check_data_quality"
+  ],
+  "final_text": "ASELS hissesinde istenen olay türleri için araçla hesaplanan tamamlanmış olay, başarı, isabet yüzdesi, maliyet sonrası ortalama getiri ve ufuk (horizon) 1, 3, 5 ve 10 için:\n- BB_LOWER_TOUCH (single_indicator): tamamlanmış olay 12, başarı 8, isabet yüzdesi %66.6667, maliyet sonrası ortalama getiri %0.868, en kısa ufuk 1, en uzun ufuk 10\n- BB_LOWER_TOUCH (single_indicator), RSI dibi, BEARISH: tamamlanmış olay 5, başarı 5, isabet yüzdesi %100.0, maliyet sonrası ortalama getiri %2.7824, en kısa ufuk 1, en uzun ufuk 10\nDeğerlendirme: Olay sayısı alt MIN_EVENTS olduğundan sonuçlar belirsizdir (INVESTIGATE).\nBacktest'te uygun aday olay sayısı sağlanmadı; sonuçlar kararlı biçimde değerlendirilemez.\nOlay sonrası doğrulama (OOS) yapılmadı.\nBu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.\nEYLEM: INVESTIGATE",
+  "action": "INVESTIGATE",
+  "policy_label": "INVESTIGATE",
+  "rule_id": "T1_FEW_EVENTS",
+  "lock_hash": "1d60791a0ed509f5cdb6c0ef4534f2e69eb1d6e3ba32b59d3769df6b9b889f5c",
+  "n_number_claims": 5,
+  "n_hallucinated": 0,
+  "n_unevidenced": 0,
+  "n_invalid_calls": 0
+ },
+ "committed_evidence": [
+  {
+   "evidence_id": "E1",
+   "statement": "BB_LOWER_TOUCH (single_indicator): tespit edilen olay 12, son olay tarihi 2026-06-04, ham olay günü 17, çakışan ileri pencere 5",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "n_events_detected",
+     "value": 12,
+     "unit": null
+    },
+    {
+     "name": "last_event_date",
+     "value": "2026-06-04",
+     "unit": null
+    },
+    {
+     "name": "n_raw_event_days",
+     "value": 17,
+     "unit": null
+    },
+    {
+     "name": "n_overlapping_forward_windows",
+     "value": 5,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E2",
+   "statement": "BB_LOWER_TOUCH (single_indicator), ufuk 1: tamamlanmış olay 12, başarı 8, isabet %66.6667, ortalama getiri %0.868, maliyet sonrası %0.368, taban isabet %52.608, örneklem içi: olay 9, isabet %55.5556, maliyet sonrası %-0.4238, örneklem dışı: olay 3, isabet %100.0, maliyet sonrası %2.7435, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 12,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 8,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 0.868,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 0.368,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 52.608,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 9,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 55.5556,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": -0.4238,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 2.7435,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E3",
+   "statement": "BB_LOWER_TOUCH (single_indicator), ufuk 3: tamamlanmış olay 12, başarı 8, isabet %66.6667, ortalama getiri %1.9797, maliyet sonrası %1.4797, taban isabet %58.296, örneklem içi: olay 9, isabet %66.6667, maliyet sonrası %2.1244, örneklem dışı: olay 3, isabet %66.6667, maliyet sonrası %-0.4546, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 12,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 8,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 1.9797,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 1.4797,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 58.296,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 9,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 2.1244,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": -0.4546,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E4",
+   "statement": "BB_LOWER_TOUCH (single_indicator), ufuk 5: tamamlanmış olay 12, başarı 8, isabet %66.6667, ortalama getiri %2.9608, maliyet sonrası %2.4608, taban isabet %59.2204, örneklem içi: olay 9, isabet %66.6667, maliyet sonrası %2.594, örneklem dışı: olay 3, isabet %66.6667, maliyet sonrası %2.0614, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 12,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 8,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 2.9608,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 2.4608,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 59.2204,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 9,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 2.594,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 2.0614,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E5",
+   "statement": "BB_LOWER_TOUCH (single_indicator), ufuk 10: tamamlanmış olay 12, başarı 6, isabet %50.0, ortalama getiri %2.7972, maliyet sonrası %2.2972, taban isabet %61.7825, örneklem içi: olay 9, isabet %55.5556, maliyet sonrası %2.6079, örneklem dışı: olay 3, isabet %33.3333, maliyet sonrası %1.3649, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 10,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 12,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 6,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 50.0,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 2.7972,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 2.2972,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 61.7825,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 9,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 55.5556,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 2.6079,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 33.3333,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 1.3649,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E10",
+   "statement": "BB_LOWER_TOUCH (RSI dibi): tespit edilen olay 5, son olay tarihi 2026-05-26, ham olay günü 5, çakışan ileri pencere 1",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "n_events_detected",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "last_event_date",
+     "value": "2026-05-26",
+     "unit": null
+    },
+    {
+     "name": "n_raw_event_days",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_overlapping_forward_windows",
+     "value": 1,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E11",
+   "statement": "BB_LOWER_TOUCH (RSI dibi), ufuk 1: tamamlanmış olay 5, başarı 5, isabet %100.0, ortalama getiri %3.2824, maliyet sonrası %2.7824, taban isabet %52.608, örneklem içi: olay 3, isabet %100.0, maliyet sonrası %1.7961, örneklem dışı: olay 2, isabet %100.0, maliyet sonrası %4.2618, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 1,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 3.2824,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 2.7824,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 52.608,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 1.7961,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 4.2618,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E12",
+   "statement": "BB_LOWER_TOUCH (RSI dibi), ufuk 3: tamamlanmış olay 5, başarı 4, isabet %80.0, ortalama getiri %2.0673, maliyet sonrası %1.5673, taban isabet %58.296, örneklem içi: olay 3, isabet %66.6667, maliyet sonrası %2.4399, örneklem dışı: olay 2, isabet %100.0, maliyet sonrası %0.2583, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 80.0,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 2.0673,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 1.5673,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 58.296,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 2.4399,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 0.2583,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E13",
+   "statement": "BB_LOWER_TOUCH (RSI dibi), ufuk 5: tamamlanmış olay 5, başarı 4, isabet %80.0, ortalama getiri %4.4414, maliyet sonrası %3.9414, taban isabet %59.2204, örneklem içi: olay 3, isabet %100.0, maliyet sonrası %5.7672, örneklem dışı: olay 2, isabet %50.0, maliyet sonrası %1.2026, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 4,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 80.0,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 4.4414,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 3.9414,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 59.2204,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 100.0,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 5.7672,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 50.0,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": 1.2026,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  },
+  {
+   "evidence_id": "E14",
+   "statement": "BB_LOWER_TOUCH (RSI dibi), ufuk 10: tamamlanmış olay 5, başarı 2, isabet %40.0, ortalama getiri %0.8295, maliyet sonrası %0.3295, taban isabet %61.7825, örneklem içi: olay 3, isabet %66.6667, maliyet sonrası %3.4804, örneklem dışı: olay 2, isabet %0.0, maliyet sonrası %-4.3969, örneklem dışı bozulma işareti false, ufku dolmamış dışlanan 0",
+   "source_tool": "detect_reversal_events",
+   "source_input_hash": "343927118cfc364d2f697ab566b945f486d7de11be863a6a367453cc65e9d262",
+   "values": [
+    {
+     "name": "horizon",
+     "value": 10,
+     "unit": null
+    },
+    {
+     "name": "n_events_complete",
+     "value": 5,
+     "unit": null
+    },
+    {
+     "name": "n_success",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "hit_rate_pct",
+     "value": 40.0,
+     "unit": "pct"
+    },
+    {
+     "name": "mean_return_pct",
+     "value": 0.8295,
+     "unit": "pct"
+    },
+    {
+     "name": "cost_adjusted_mean_return_pct",
+     "value": 0.3295,
+     "unit": "pct"
+    },
+    {
+     "name": "baseline_hit_rate_pct",
+     "value": 61.7825,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_n_events_complete",
+     "value": 3,
+     "unit": null
+    },
+    {
+     "name": "in_sample_hit_rate_pct",
+     "value": 66.6667,
+     "unit": "pct"
+    },
+    {
+     "name": "in_sample_cost_adjusted_mean_return_pct",
+     "value": 3.4804,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_n_events_complete",
+     "value": 2,
+     "unit": null
+    },
+    {
+     "name": "out_of_sample_hit_rate_pct",
+     "value": 0.0,
+     "unit": "pct"
+    },
+    {
+     "name": "out_of_sample_cost_adjusted_mean_return_pct",
+     "value": -4.3969,
+     "unit": "pct"
+    },
+    {
+     "name": "oos_degradation_flag",
+     "value": "false",
+     "unit": null
+    },
+    {
+     "name": "n_excluded_incomplete_horizon",
+     "value": 0,
+     "unit": null
+    }
+   ]
+  }
+ ],
+ "data_versions": {
+  "price": [
+   "snap_2026-11-20_v2"
+  ],
+  "fundamentals": [],
+  "macro": []
+ },
+ "review": null
+}

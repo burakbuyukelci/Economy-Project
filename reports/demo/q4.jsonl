@@ -1,0 +1,29 @@
+{"analysis_id": "2026-09-10-041dd49887cf", "as_of": "2026-09-10", "as_of_source": "question", "kind": "SESSION_START", "order_mode": "strict", "seq": 1, "stage": "D"}
+{"from": "START", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 2, "to": "SELECT_UNIVERSE"}
+{"from": "SELECT_UNIVERSE", "kind": "STATE_TRANSITION", "reason": "begin", "seq": 3, "to": "LOAD_MARKET_DATA"}
+{"kind": "UNIVERSE_SELECTED", "seq": 4, "tickers_in_question": ["TUPRS"]}
+{"completion_tokens": 61, "estimated_prompt_tokens": 3515, "kind": "MODEL_TURN", "n_tool_calls": 1, "prompt_tokens": 2921, "seq": 5, "turn": 1}
+{"from": "LOAD_MARKET_DATA", "kind": "STATE_TRANSITION", "reason": "tool_call:check_data_quality", "seq": 6, "to": "CHECK_DATA_QUALITY"}
+{"from": "CHECK_DATA_QUALITY", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 7, "to": "CALCULATE_TECHNICALS"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "1526e55ea45e53bf3aecdf43187e76d1adf07f9a5dc643cdaaebd20f57a7d255", "kind": "TOOL_CALL", "seq": 8, "state_after": "CALCULATE_TECHNICALS", "state_before": "LOAD_MARKET_DATA", "status": "OK", "step_state": "CHECK_DATA_QUALITY", "tool": "check_data_quality"}
+{"from": "CALCULATE_TECHNICALS", "kind": "STATE_TRANSITION", "reason": "tool_call:calculate_fundamental_change", "seq": 9, "to": "LOAD_FUNDAMENTALS"}
+{"actor": "model", "data_version": "snap_2026-11-20_v2", "input_hash": "03f71119b17444ac12ad94c84a3a14b0f6f7a28fe8a8c219ca17fb0fd8db644e", "kind": "TOOL_CALL", "seq": 10, "state_after": "LOAD_FUNDAMENTALS", "state_before": "CALCULATE_TECHNICALS", "status": "OK", "tool": "calculate_fundamental_change"}
+{"completion_tokens": 4, "estimated_prompt_tokens": 5021, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 4762, "seq": 11, "turn": 2}
+{"from": "LOAD_FUNDAMENTALS", "kind": "STATE_TRANSITION", "reason": "tool_call:build_evidence_bundle", "seq": 12, "to": "BUILD_EVIDENCE"}
+{"from": "BUILD_EVIDENCE", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 13, "to": "PREVIEW_STRATEGIES"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "54331a6dbd2c9b76a4a4308c87dfb58ff6f0084a51983995e7835074f4319852", "kind": "TOOL_CALL", "seq": 14, "state_after": "PREVIEW_STRATEGIES", "state_before": "LOAD_FUNDAMENTALS", "status": "OK", "step_state": "BUILD_EVIDENCE", "tool": "build_evidence_bundle"}
+{"kind": "EVIDENCE_BUILT", "n_full": 17, "seq": 15, "stage": "BUILD_EVIDENCE", "version": 1}
+{"from": "PREVIEW_STRATEGIES", "kind": "STATE_TRANSITION", "reason": "tool_call:build_evidence_bundle", "seq": 16, "to": "RISK_GATE"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "54331a6dbd2c9b76a4a4308c87dfb58ff6f0084a51983995e7835074f4319852", "kind": "TOOL_CALL", "seq": 17, "state_after": "RISK_GATE", "state_before": "PREVIEW_STRATEGIES", "status": "OK", "step_state": "RISK_GATE", "tool": "build_evidence_bundle"}
+{"kind": "EVIDENCE_BUILT", "n_full": 17, "seq": 18, "stage": "RISK_GATE", "version": 1}
+{"from": "RISK_GATE", "kind": "STATE_TRANSITION", "reason": "auto_advance", "seq": 19, "to": "GENERATE_EXPLANATION"}
+{"actor": "harness", "data_version": "snap_2026-11-20_v2", "input_hash": "be2948a463fea23de76d395beb50eb9faa83de0ee68e5ae5ae3456ee75d8a124", "kind": "TOOL_CALL", "seq": 20, "state_after": "GENERATE_EXPLANATION", "state_before": "RISK_GATE", "status": "OK", "step_state": "RISK_GATE", "tool": "check_data_quality"}
+{"analysis_id": "2026-09-10-041dd49887cf", "gate_status": "PASS_WITH_WARNINGS", "kind": "EVIDENCE_LOCKED", "lock_hash": "6269eacb3ae36555196cc9769123ea8ee51b6349cd94a7026c1fbdc984aa9ae6", "seq": 21, "version": 1}
+{"completion_tokens": 371, "estimated_prompt_tokens": 2326, "kind": "MODEL_TURN", "n_tool_calls": 0, "prompt_tokens": 2633, "seq": 22, "turn": 3}
+{"action": "WATCH", "attempt": 1, "codes": [], "enforced": true, "kind": "FINAL_CHECK", "n_allowlisted_policy": 0, "n_hallucinated": 0, "n_number_claims": 5, "n_unevidenced": 0, "n_violations": 0, "ok": true, "policy_label": "WATCH", "policy_match": true, "seq": 23}
+{"action": "WATCH", "kind": "EXPLANATION_COMPLETE", "safe_failure": false, "seq": 24}
+{"from": "GENERATE_EXPLANATION", "kind": "STATE_TRANSITION", "reason": "explanation_complete", "seq": 25, "to": "HUMAN_REVIEW"}
+{"kind": "HUMAN_REVIEW_PENDING", "review_status": "PENDING_HUMAN_REVIEW", "seq": 26}
+{"action": "WATCH", "fallback": false, "kind": "FINAL_DELIVERED", "metrics": {"attempt_level": {"by_code": {}, "by_source": {}, "n_attempts_with_violation": 0, "n_hallucinated": 0, "n_number_claims": 5, "n_violations": 0}, "delivered_level": {"action": "WATCH", "action_source": "model", "by_code": {}, "by_source": {}, "delivered": true, "fallback": false, "n_allowlisted_policy": 0, "n_hallucinated": 0, "n_number_claims": 5, "n_unevidenced": 0, "n_violations": 0, "numerical_hallucination_rate": 0.0, "policy_label": "WATCH", "policy_match": true, "status": "ACCEPTED"}, "enforced": true, "max_attempts": 3, "n_attempts": 1}, "seq": 27, "status": "ACCEPTED"}
+{"from": "HUMAN_REVIEW", "kind": "STATE_TRANSITION", "reason": "close", "seq": 28, "to": "LOG_AND_CLOSE"}
+{"action": "WATCH", "kind": "SESSION_CLOSED", "n_invalid_calls": 0, "n_order_violations": 0, "review_status": "PENDING_HUMAN_REVIEW", "seq": 29}

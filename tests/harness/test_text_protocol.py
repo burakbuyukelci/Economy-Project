@@ -128,3 +128,18 @@ def test_fold_system_matches_the_training_text_layout():
     assert folded == [{"role": "user", "content": "S\n\nq"}, {"role": "assistant", "content": "a"}, {"role": "user", "content": "r"}]
     assert fold_system([{"role": "system", "content": "S"}]) == [{"role": "user", "content": "S"}]
     assert fold_system(folded) == folded and enc[0]["role"] == "system"                  # girdi değişmez, idempotent
+
+
+# ---- fazladan kapanış parantezi toleransı --------------------------------------------------------------------------------
+from harness.text_protocol import parse_reply as _pr  # noqa: E402
+
+
+def test_extra_closing_braces_are_tolerated():
+    r = _pr('<tool_call>{"name":"run_backtest","arguments":{"as_of":"2026-09-10","strategy":{"holding_days":5}}}}}</tool_call>')
+    assert r.error is None and r.calls[0].name == "run_backtest" and r.calls[0].arguments["strategy"] == {"holding_days": 5}
+
+
+def test_other_trailing_junk_is_still_an_error():
+    assert _pr('<tool_call>{"name":"a","arguments":{}} {"name":"b","arguments":{}}</tool_call>').error
+    assert _pr('<tool_call>{"name":"a","arguments":{}} merhaba</tool_call>').error
+    assert _pr('<tool_call>{"name":"a","arguments":{</tool_call>').error
