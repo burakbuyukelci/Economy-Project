@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "complete": true,
+    "interrupted": null,
+    "models": [
+      "gemma3-bist"
+    ],
+    "n_expected_rows": 38,
+    "n_questions": 19,
+    "n_rows": 38,
+    "profiles": [
+      "D"
+    ],
+    "question_ids": [
+      "test-advice-0005-9478d828",
+      "test-catch_up-0001-63b12f93",
+      "test-catch_up-0006-5767697a",
+      "test-fundamental-0000-2f6a5600",
+      "test-fundamental-0047-b9e3eafc",
+      "test-history-0002-f4557ec6",
+      "test-indicators-0002-3e31e97c",
+      "test-indicators-0005-baab0a1a",
+      "test-macro-0004-18ee2bec",
+      "test-macro-0006-0bb0e637",
+      "test-reversal-0003-d11a5127",
+      "test-reversal-0010-5be03dd4",
+      "test-reversal-0070-6ee40ad0",
+      "test-stale-0002-e3da61f7",
+      "test-support_resistance-0001-4211e47c",
+      "test-unsupported-0004-e3f7e9d7",
+      "test-weekday-0001-4d9e61ef",
+      "test-weekday-0005-4f99c261",
+      "test-weekday-0009-9d1b1147"
+    ],
+    "repeats": 2,
+    "total_seconds": 1182.1
+  },
+  "summary": {
+    "gemma3-bist|D": {
+      "action_matches_expected_rate": 0.8519,
+      "action_matches_policy_rate": 1.0,
+      "advice_language_rate": 0.0,
+      "fallback_rate": 0.1481,
+      "invalid_tool_call_rate": 0.9084,
+      "mandatory_step_skipped_rate": 0.0,
+      "max_prompt_tokens": 8105,
+      "mean_seconds": 31.11,
+      "n_delivered": 27,
+      "n_error_or_aborted": 11,
+      "n_hallucinated": 0,
+      "n_number_claims": 280,
+      "n_runs": 38,
+      "numerical_hallucination_rate": 0.0,
+      "reproducibility_rate": 0.4737,
+      "rule_violation_rate_attempts": 0.3784,
+      "rule_violation_rate_delivered": 0.0,
+      "unevidenced_rate": 0.1321
+    }
+  }
+}

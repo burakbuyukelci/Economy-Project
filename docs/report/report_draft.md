@@ -203,28 +203,53 @@ Temel veri örneğinde (Soru 4) incelemeden doğan iki düzeltme (2026-11-23): (
 ---
 
 ## 9. Sonuçlar: temel model ve ince ayarlı model karşılaştırması
-> Bu bölümün tamamı **[SONUÇ BEKLENİYOR]**. Üretim: Kaggle'da `python -m experiments.eval_runner --questions data/training/v2_2/test.jsonl --n 40 --models gemma3:4b gemma3-bist --out <klasör>` (+ `--repeats 2`). Kaynak: `results.csv`, `results.jsonl`, `summary.json`.
+Koşu: Kaggle T4, Ollama (ham istem yolu), 40 test sorusu (`data/training/v2_2/test.jsonl`; 11 soru tipi), her model × A–E profili = 400 oturum, toplam 13 160 sn. İnce ayarlı model: Gemma 3 4B QLoRA, **120 adım (~1,6 epoch)**, Q4_K_M GGUF. Tekrarlanabilirlik için ayrı koşu: profil D, 19 soru × 2 tekrar. Sayılar `experiments/eval_tables.py` ile dosyalardan üretilmiştir. [KANIT: `reports/eval_v2_3/summary.json`, `results.csv`, `summary_repro.json`]
 
 ### 9.1 A–E × {temel, ince ayarlı}: hocanın metrikleri
-| Model | Profil | Sayısal halüsinasyon oranı | Hatalı araç çağrısı oranı | Kanıtsız sayı oranı | Kural ihlali (teslim) | Kural ihlali (deneme) | Tavsiye dili | Zorunlu adım atlama | Geri çekilme | Etiket = politika | Tekrarlanabilirlik | Maks. prompt token | Ort. süre (sn) |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| gemma3:4b | A | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3:4b | B | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3:4b | C | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3:4b | D | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3:4b | E | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3-bist | A | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3-bist | B | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3-bist | C | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | – | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3-bist | D | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
-| gemma3-bist | E | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] | [SONUÇ BEKLENİYOR] |
+| Model | Profil | Teslim / koşu | Sayısal halüsinasyon | Hatalı araç çağrısı* | Kanıtsız sayı | Kural ihlali (teslim) | Kural ihlali (deneme) | Tavsiye dili | Zorunlu adım atlama | Geri çekilme | Etiket = politika | Etiket = beklenen | Tekrarlanabilirlik | Maks. prompt token | Ort. süre (sn) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| gemma3:4b | A | 40/40 | %100.0 | – | – | %100.0 | %100.0 | %35.0 | – | – | %60.0 | %42.5 | – | 485 | 17.1 |
+| gemma3:4b | B | 37/40 | %83.3 | %80.6 | – | %94.6 | %94.6 | %0.0 | – | – | %97.3 | %46.0 | – | 8122 | 11.8 |
+| gemma3:4b | C | 12/40 | %6.7 | %97.5 | – | %58.3 | %58.3 | %0.0 | %0.0 | – | %75.0 | %41.7 | – | 8191 | 50.6 |
+| gemma3:4b | D | 1/40 | %0.0 | %99.9 | %0.0 | %0.0 | %0.0 | %0.0 | %0.0 | %100.0 | %100.0 | %100.0 | – | 8181 | 71.0 |
+| gemma3:4b | E | 1/40 | %0.0 | %99.9 | %0.0 | %0.0 | %0.0 | %0.0 | %0.0 | %100.0 | %100.0 | %100.0 | – | 8181 | 71.2 |
+| gemma3-bist | A | 40/40 | %100.0 | – | – | %95.0 | %95.0 | %0.0 | – | – | %7.5 | %10.0 | – | 484 | 5.9 |
+| gemma3-bist | B | 38/40 | %0.0 | %57.0 | – | %36.8 | %36.8 | %2.6 | – | – | %47.4 | %26.3 | – | 8097 | 10.9 |
+| gemma3-bist | C | 31/40 | %22.2 | %81.7 | – | %22.6 | %22.6 | %0.0 | %0.0 | – | %22.6 | %22.6 | – | 8174 | 28.9 |
+| gemma3-bist | D | 30/40 | %0.0 | %86.6 | %11.8 | %0.0 | %31.6 | %0.0 | %0.0 | %13.3 | %100.0 | %80.0 | %47.4 | 8181 | 30.8 |
+| gemma3-bist | E | 30/40 | %0.0 | %86.6 | %11.8 | %0.0 | %31.6 | %0.0 | %0.0 | %13.3 | %100.0 | %80.0 | – | 8181 | 30.9 |
+
+\* Hatalı araç çağrısı oranı, reddedilen metin turlarını da içerir; bu yüzden şişkindir (bkz. `limitations.md`).
+
+Okuma notları: (1) Profil A araçsızdır; model sayı uydurur (halüsinasyon %100, her iki modelde de). (2) D/E'de **teslim edilen** cevaplarda halüsinasyon %0, kural ihlali %0, etiket = politika %100: bu garanti modelden değil harness'in zorlamasından gelir. "Kural ihlali (deneme)" %31,6: model ilk denemede ihlal yapar, harness reddeder ve geri besleme verir. (3) Teslim edilemeyen oturumlar `TURN_LIMIT` (40 tur) ile güvenli biçimde kesilir; uydurma metin teslim edilmez. (4) Profil E, D ile aynı sonucu verdi: bu protokolde bellek/insan incelemesi eklentisinin ölçülebilir etkisi yok. (5) Maks. prompt token 8181–8191: bağlam sınırına (8192) çok yakın; bu sınır L46'da belgelidir.
 
 ### 9.2 Fine-tuning neyi iyileştirdi? (hocanın raporda istediği karşılaştırma)
-* Temel → ince ayarlı fark (her metrik için mutlak ve oransal): **[SONUÇ BEKLENİYOR]**
-* Tip bazında kırılım (catch-up, haftalık, teknik dönüş, bilanço, göstergeler, tavsiye, araçta olmayan veri, bayat veri): **[SONUÇ BEKLENİYOR]**
-* Mimari etkisi (A → E, aynı model): hangi eklenti hangi metriği ne kadar iyileştirdi: **[SONUÇ BEKLENİYOR]**
-* Beklenen davranışlar (tavsiye reddi, "kesin yükselir" çürütmesi, güvenli hata yolu, ufku dolmamış olayı belirtme) modelde gözlendi mi: **[SONUÇ BEKLENİYOR]**
-* F3 ve CU etiketleri: eğitimde örnek yok [L1, L2]; ince ayarlı modelin bu etiketlerdeki davranışı: **[SONUÇ BEKLENİYOR]** (D/E'de etiket politikadan geldiği için model başarısı sayılmaz).
+* **Temel → ince ayarlı (profil D):** teslim edilen cevap **1/40 → 30/40**. Temel model D/E'de neredeyse hiç geçerli araç çağrısı üretemedi (36 oturum `MODEL_ERROR`). Profil B'de sayısal halüsinasyon **%83,3 → %0,0**; profil C'de teslim 12/40 → 31/40.
+* **İlk koşuya (75 adım) göre 120 adım:** D/E'de teslim 23/40 → **30/40**, `TURN_LIMIT` 17 → 10, kanıtsız sayı %18,2 → %11,8, etiket = beklenen %78,3 → %80,0; halüsinasyon ve teslim ihlali her iki koşuda 0. [VARSAYIM: ilk koşu 75 adımlık modelle yapıldı; kaynak `reports/eval_v2_2/`]
+* **Kötüleşen yönler (dürüstlük):** korumasız profillerde 120 adımlık model ilk koşudan kötü: C'de teslim 40 → 31 ve halüsinasyon %0 → %22,2; B'de ihlal %7,7 → %36,8. Nihai sistem D/E olduğu için asıl ölçüt orasıdır; ama model tek başına (korumasız) daha güvenilir olmadı. Tekrarlanabilirlik %57,9 → %47,4.
+Soru tipine göre teslim (gemma3-bist, profil D):
+| Soru tipi | eval_v2_2 | eval_v2_3 |
+|---|---|---|
+| advice | 1/3 | 3/3 |
+| catch_up | 0/4 | 2/4 |
+| fundamental | 5/5 | 4/5 |
+| history | 0/2 | 1/2 |
+| indicators | 2/3 | 2/3 |
+| macro | 4/5 | 5/5 |
+| reversal | 1/6 | 3/6 |
+| stale | 3/3 | 3/3 |
+| support_resistance | 2/2 | 2/2 |
+| unsupported | 0/2 | 0/2 |
+| weekday | 5/5 | 5/5 |
+| **Toplam** | **23/40** | **30/40** |
+
+* **Hâlâ kesilen 10 oturum (D):** catch-up 2, reversal 3, `unsupported` 2, bilanço 1, history 1, indicators 1. Kesilenlerde model aynı geçersiz çağrıyı ~38/40 turda tekrarlıyor. Örnek (yerelde yeniden üretildi): `get_fundamental_metrics period="Q3"` (geçerli: `2026Q3`) 40 kez. Bunun için harness'e parametre düzeltici eklendi (bölüm 9.4).
+* **Mimari etkisi (A → D):** A: halüsinasyon %100 → araç eklenince (B) %0 → durum makinesi ve kapı (C) teslim ihlali %22,6 → kanıt kilidi + sayı doğrulayıcı + eylem koruması (D) teslim ihlali **%0**. E eklentisi D'den farklı sonuç vermedi.
+* **Beklenen davranışlar:** tavsiye sorularında teslim 3/3 ve etiket politikayla %100 uyumlu; "kesin yükselir" çürütmesi ve hedef fiyat vermeme D/E'de kurala bağlıdır (model başarısı sayılmaz). Ufku dolmamış olay uyarısı araç çıktısından gelir.
+* F3 ve CU etiketleri: eğitimde örnek yok [L1, L2]; D/E'de etiket politikadan geldiği için model başarısı sayılmaz.
+
+### 9.4 Parametre düzeltici (harness) — ölçüm
+Kesilen oturumların nedeni model kaynaklı **biçim hatalarıdır** (ör. dönem yazımı). `harness/param_fixer.py` yalnızca şema doğrulaması başarısız olan çağrıları, tek anlamlı ve deterministik kurallarla onarır: dönem biçimi (`Q3`, `2026-Q3` → `2026Q3`; yılsız dönemde yıl = as_of yılı, dönem sonu as_of'tan sonraysa önceki yıl), enum büyük/küçük harfi (`Ichimoku` → `ICHIMOKU`), sözleşmede olmayan alanın çıkarılması. `as_of` hiçbir koşulda değiştirilmez; belirsiz değerler (`son çeyrek`) tahmin edilmez; her düzeltme olaya (`PARAMS_NORMALIZED`), uyarıya ve zarfın gerçek `params`'ına (`input_hash`) yazılır. Kapatma: `HARNESS_NORMALIZE_PARAMS=0`. **A/B ölçümü: [SONUÇ BEKLENİYOR]** (kesilen 10 sorunun yerelde, düzeltici açık/kapalı yeniden koşulması).
 
 ### 9.0 Yedek model (v2.1) eğitim sonuçları — ölçüldü (Kaggle T4, tek GPU, 2026-11-23)
 v2.1 modeli **yedektir** (makro aracını eğitimde görmedi, L21); asıl model v2.2'dir ve sonuçları bu tablonun yerine geçecektir. Yine de eğitim hattının çalıştığının kanıtıdır. [KANIT: `reports/v2_1/train_result.json`, `data_stats.json`, Kaggle log]

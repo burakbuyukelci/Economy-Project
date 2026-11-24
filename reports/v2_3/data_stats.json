@@ -1,0 +1,47 @@
+{
+  "train": {
+    "n_in": 600,
+    "n_kept": 600,
+    "n_dropped_long": 0,
+    "dropped_ids": [],
+    "max_len": 8192,
+    "total_tokens": 3006456,
+    "train_tokens": 337996,
+    "train_token_share": 0.1124,
+    "mean_len": 5011,
+    "longest": 7890
+  },
+  "val": {
+    "n_in": 50,
+    "n_kept": 50,
+    "n_dropped_long": 0,
+    "dropped_ids": [],
+    "max_len": 8192,
+    "total_tokens": 254761,
+    "train_tokens": 28773,
+    "train_token_share": 0.1129,
+    "mean_len": 5095,
+    "longest": 7371
+  },
+  "model": "unsloth/gemma-3-4b-it",
+  "args": {
+    "train": "train.jsonl",
+    "val": "val.jsonl",
+    "model": "unsloth/gemma-3-4b-it",
+    "max_seq": 8192,
+    "epochs": 2.0,
+    "lr": 0.0002,
+    "rank": 16,
+    "grad_accum": 8,
+    "eval_steps": 40,
+    "seed": 3407,
+    "out": "/tmp/outputs/v2",
+    "max_steps": 120,
+    "save_steps": 5,
+    "save_total_limit": 2,
+    "checkpoint_dir": "/kaggle/working/ckpt",
+    "resume": true,
+    "gguf": "q4_k_m",
+    "dry_run": false
+  }
+}
