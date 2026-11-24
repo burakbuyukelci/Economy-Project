@@ -547,3 +547,13 @@ Varsayılan: 39 soru (n=40 orantılı alt küme) x 2 model (gemma3:4b, gemma3-bi
 * **Doğrulama (`experiments/check_template.py`, yeni):** (1) her önekte `render_gemma_prompt(önek) == eğitim metni` (gerçek v2.2 doğrulama verisinin TÜM önekleri; sunucu gerekmez), (2) `<bos>` yazılsa da token sayısı değişmez (BOS tek kez eklenir; gerçek modelde 10 = 10), (3) isteğe bağlı `--chat` eski yolun farkını gösterir.
   Testler: `tests/harness/test_raw_prompt.py`, `tests/experiments/test_check_template.py`.
 
+
+### 14.9 v2.3 değerlendirmesi, tur sınırı kesilmeleri ve parametre düzeltici (2026-11-24)
+**Ölçüm (Kaggle T4, 40 soru, A–E):** D/E'de teslim 23/40 (v2.2) → 30/40 (v2.3); kesilen (`TURN_LIMIT`) 17 → 10; teslim edilen cevaplarda halüsinasyon ve kural ihlali 0, etiket = politika %100 (`reports/eval_v2_3/`; rapor bölüm 9).
+**Kesilme nedeni (yerelde yeniden üretildi):** model aynı geçersiz çağrıyı ~38/40 turda tekrarlıyor. Örnek: TTKOM cari oran sorusunda `get_fundamental_metrics period="Q3"` (geçerli `YYYYQn`, örn. `2026Q3`); hata metni deseni verir ama model biçimi çıkaramaz.
+**Parametre düzeltici (`harness/param_fixer.py`, `HARNESS_NORMALIZE_PARAMS`, varsayılan açık):** şema doğrulaması BAŞARISIZ olan çağrıyı araçtan önce onarır:
+1. Dönem biçimi (`Q3`, `q3`, `2026-Q3`, `Q3 2026`, `2026/Q3` → `2026Q3`); yılsız dönemde yıl = as_of yılı, dönem sonu as_of'tan sonraysa önceki yıl (as_of sonrası dönem seçilmez).
+2. Enum değeri yalnızca büyük/küçük harf farkıysa ve tek eşleşme varsa (`Ichimoku` → `ICHIMOKU`).
+3. Sözleşmede olmayan alan (`extra_forbidden`) çıkarılır.
+**Sınırlar (tasarım gereği):** `as_of` hata içeriyorsa dokunulmaz; "son çeyrek" gibi tahmin gerektiren değerler onarılmaz; onarım sonrası doğrulama geçmezse orijinal hata modele döner. Her onarım sessiz değildir: `PARAMS_NORMALIZED` olayı (özgün ve düzeltilmiş params), oturum uyarısı ve zarfın gerçek `params`'ı (`input_hash` düzeltilmiş çağrıdan). Onarılamayan dönem hatasına biçim ipucu eklendi (`YYYYQn, örn. 2026Q3; en son dönem için alanı yazmayın`).
+**Dürüstlük notu:** düzeltici geçersiz çağrı oranını düşürür; bu, modelin kendi başına doğru çağrı ürettiği anlamına gelmez. Raporda model-ham (`HARNESS_NORMALIZE_PARAMS=0`) ve harness-destekli sonuçlar ayrı raporlanır.
