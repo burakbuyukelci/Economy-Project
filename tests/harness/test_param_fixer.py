@@ -19,8 +19,6 @@ def _fund(**kw):
 
 
 @pytest.mark.parametrize("raw,want", [
-    ("Q3", "2026Q3"),            # yılsız: as_of yılı (dönem sonu as_of'u aşmıyor)
-    ("q3", "2026Q3"),
     ("2026-Q3", "2026Q3"),
     ("2026 Q3", "2026Q3"),
     ("Q3 2026", "2026Q3"),
@@ -32,6 +30,19 @@ def test_period_formats_are_repaired(raw, want):
     fixed, notes = fix_params(T.GET_FUNDAMENTAL_METRICS, _fund(period=raw), AS_OF)
     assert fixed["period"] == want and notes
     validate_params(T.GET_FUNDAMENTAL_METRICS, fixed)
+
+
+@pytest.mark.parametrize("raw", ["Q3", "q3"])
+def test_bare_latest_quarter_means_latest_disclosed_so_period_is_dropped(raw):
+    """as_of 2026-11-13: en son biten çeyrek 2026Q3 ama bilançosu henüz açıklanmamış olabilir; "Q3" = "son çeyrek" -> period yazılmaz (None = en son açıklanmış dönem)."""
+    fixed, notes = fix_params(T.GET_FUNDAMENTAL_METRICS, _fund(period=raw), AS_OF)
+    assert fixed is not None and "period" not in fixed and any("son çeyrek" in n for n in notes)
+    validate_params(T.GET_FUNDAMENTAL_METRICS, fixed)
+
+
+def test_bare_older_quarter_gets_the_year():
+    fixed, notes = fix_params(T.GET_FUNDAMENTAL_METRICS, _fund(period="Q2"), AS_OF)
+    assert fixed["period"] == "2026Q2" and notes
 
 
 def test_bare_quarter_after_as_of_falls_back_to_previous_year():
@@ -104,7 +115,7 @@ def test_session_runs_repaired_call_and_records_note(monkeypatch):
     s = _session()
     r = s.call_tool("get_fundamental_metrics", _fund(period="Q3"))
     assert r.ok, r.error
-    assert r.envelope["params"]["period"] == "2026Q3"          # çalışan çağrı = düzeltilmiş çağrı (input_hash buna göre)
+    assert r.envelope["params"].get("period") is None                 # çalışan çağrı = düzeltilmiş çağrı (input_hash buna göre); "Q3" = son çeyrek -> en son açıklanmış dönem
     assert any(w.startswith("PARAMS_NORMALIZED") for w in s.warnings)
     assert any(e["kind"] == "PARAMS_NORMALIZED" for e in s.log.events)
 

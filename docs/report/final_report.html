@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSE-481 Final Report: Agentic Financial Analytics Harness for BIST 100 with a Fine-Tuned Local LLM</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10.2pt; line-height: 1.42; color: #1a1a1a; }
+  h1 { font-size: 20pt; margin: 0 0 4pt 0; line-height: 1.2; }
+  h2 { font-size: 14pt; margin: 18pt 0 6pt 0; padding-bottom: 2pt; border-bottom: 1.5px solid #2b4c7e; color: #2b4c7e; page-break-after: avoid; }
+  h3 { font-size: 11.2pt; margin: 12pt 0 4pt 0; color: #2b4c7e; page-break-after: avoid; }
+  p { margin: 4pt 0 6pt 0; text-align: justify; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 8pt 0; font-size: 8.6pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #b8c2d0; padding: 2.5pt 4pt; vertical-align: top; text-align: left; }
+  th { background: #e8eef7; }
+  td.n, th.n { text-align: right; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 8.8pt; background: #f2f4f7; padding: 0 2px; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 8.2pt; background: #f2f4f7; border: 1px solid #d5dbe5; padding: 6pt; white-space: pre-wrap; page-break-inside: avoid; }
+  .cover { text-align: left; margin-top: 30mm; }
+  .cover .sub { font-size: 12pt; color: #444; margin: 6pt 0 18pt 0; }
+  .meta { font-size: 10pt; color: #333; }
+  .box { border-left: 4px solid #2b4c7e; background: #f4f7fb; padding: 5pt 8pt; margin: 8pt 0; }
+  .warn { border-left: 4px solid #b5651d; background: #fbf5ee; padding: 5pt 8pt; margin: 8pt 0; }
+  ul, ol { margin: 3pt 0 6pt 0; padding-left: 18pt; }
+  li { margin: 1.5pt 0; }
+  .pb { page-break-before: always; }
+  .small { font-size: 8.8pt; color: #444; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>CSE-481 Engineering Economics<br>Integrated BIST 100 Agentic Financial Analytics Harness</h1>
+  <div class="sub">A deterministic-tool, stateful-harness system with a fine-tuned local LLM (Gemma 3 4B, QLoRA)</div>
+  <p class="meta"><b>Final Technical Report</b><br>
+  Course: CSE-481 Engineering Economics, Akdeniz University &middot; Instructor: Dr. Alper &Ouml;zcan<br>
+  Team: two students &middot; Report date: 24 November 2026<br>
+  Analysis date used in all live-test scenarios: 10 September 2026<br>
+  Data snapshots: prices <code>snap_2026-11-20_v2</code>, fundamentals <code>fundamentals_2026-11-23_v2</code>, macro <code>macro_2026-11-09_v2</code></p>
+  <div class="box"><b>Educational and research purpose only.</b> The system has no broker connection, places no orders, and gives no personal investment advice or price targets. Every output action is restricted to the allowed educational action set.</div>
+  <p class="small">Source code, tests, data dictionary, the five research reports and all result files referenced below are in the delivered repository. Section 10 lists them and explains how to reproduce every number.</p>
+</div>
+
+<div class="pb"></div>
+
+<h2>Abstract</h2>
+<p>We built an integrated, educational financial-analysis system for 30 BIST 100 stocks in which the language model <em>interprets and explains</em>, deterministic Python tools <em>compute</em>, a stateful harness <em>controls</em>, and a backtest <em>verifies</em>. The model runs entirely locally (Ollama, Q4_K_M GGUF); no cloud AI API is used. We fine-tuned Gemma 3 4B with QLoRA on 600 tool-using sessions generated from real tool outputs, with action labels derived by a deterministic policy and explanations assembled from locked evidence.</p>
+<p>On a 40-question held-out test (11 question types) run under five harness profiles (A: raw LLM ... E: memory and human review) for both the base and the fine-tuned model (400 sessions on a Kaggle T4), fine-tuning raised the number of delivered answers in the full harness (profile D) from <b>1/40 to 30/40</b> and cut numerical hallucination in the tools-only profile from <b>83.3% to 0.0%</b>. In the full harness, the delivered answers contained <b>0% numerical hallucination, 0% rule violations and 100% agreement with the policy label</b>; this guarantee comes from the harness (number verifier, action guard, locked evidence), not from the model alone. We also report weaknesses openly: about 25% of full-harness sessions are safely cut off at the 40-turn limit, live reproducibility is only 47%, and without the harness the fine-tuned model is not reliable by itself.</p>
+
+<h2>1. Problem and objective</h2>
+<p><b>Problem.</b> A small local language model answering financial questions can invent numbers, call the wrong tool or use wrong parameters, state conclusions without evidence, give investment advice, or use information from after the analysis date (look-ahead bias). The course project measures exactly these failures: numerical hallucination rate, invalid tool-call rate, unsupported-conclusion rate, evidence integrity and reproducibility, and rule violations.</p>
+<p><b>Objective.</b> Answer the four mandatory scenarios (sector laggard/catch-up, weekday and multi-day patterns, technical reversals, quarterly fundamentals and post-disclosure price reaction) plus a macro-context scenario in a reliable and auditable way, using a fine-tuned local LLM inside a stateful harness. The evaluation question is not &ldquo;which LLM is best&rdquo; but how much more reliable and reproducible the system becomes as tools, states, evidence/quality gates, verification and human review are added.</p>
+<p><b>Scope decisions.</b> News and speech tools (<code>get_news_events</code>, <code>get_speech_features</code>) were not implemented. The macro tool is real (USDTRY, EURTRY, CPI, and the CBRT <em>funding cost</em>; the policy rate series is not used). All limitations are listed in Section 9.</p>
+
+<h2>2. System architecture</h2>
+<pre>question --&gt; local model (Ollama) --&gt; HarnessSession
+                                  |
+        +-------------------------+----------------------------+
+        |                         |                            |
+  StateMachine              tools/&lt;name&gt;.run            EvidenceBundle
+  (pure Python,             deterministic, cut at         (two stages, locked)
+  rule table = data;        as_of, reads snapshots              |
+  mandatory: quality        only (no network)             label policy
+  gate, evidence,                                         --&gt; allowed action
+  risk gate)                                                    |
+        +-------------------------+----------------------------+
+                                  |
+        number verifier + action guard + final-output check</pre>
+<table>
+<tr><th>Layer</th><th>Responsibility</th><th>Trust</th></tr>
+<tr><td><b>Model (LLM)</b></td><td>Understand the question, call the right tool with the right parameters, write the explanation <em>only</em> from tool output, state the allowed action label</td><td>Not trusted for any computation</td></tr>
+<tr><td><b>Tools (<code>tools/</code>)</b></td><td>Compute every number. Every tool takes <code>as_of</code>, cuts rows after it at the data layer, and returns an <code>input_hash</code></td><td>Snapshots only</td></tr>
+<tr><td><b>Harness (<code>harness/</code>)</b></td><td>17-state machine; runs the quality gate and evidence bundle itself (profiles D/E); computes the label from policy; verifies numbers and actions</td><td>Does not trust the model</td></tr>
+<tr><td><b>Backtest</b></td><td>Signal shifting (decision at t uses information up to t, entry at t+1), costs, in-sample/out-of-sample, benchmarks</td><td>-</td></tr>
+</table>
+<h3>Key design decisions</h3>
+<ul>
+<li><b>Common tool envelope.</b> All tools return the same envelope (<code>tool, params, as_of, data_version, input_hash, results, n_events, n_excluded_incomplete_horizon, warnings, status</code>); the schema is versioned (current 1.5.0) and changes only by explicit agreement.</li>
+<li><b>Zero look-ahead.</b> <code>as_of</code> is mandatory for every tool; events whose forward horizon (1/3/5/10/20 days) extends past <code>as_of</code> are excluded from statistics and reported as <code>n_excluded_incomplete_horizon</code>; fundamentals are aligned by KAP <em>disclosure date</em> and macro data by <em>publication date</em>.</li>
+<li><b>Mandatory steps derived from the tools the model calls</b> (not from question classification): quality gate, evidence bundle and risk gate always; calling <code>rank_sector_relative_strength</code> additionally requires <code>run_backtest</code>. Skipping a mandatory step, a bad <code>as_of</code> or a schema error is always a hard failure.</li>
+<li><b>Two-stage locked evidence bundle.</b> Stage 1: observational analyses; stage 2: backtest evidence and final gate; then the bundle is locked (<code>lock_hash</code>). Every number in an evidence sentence is copied verbatim from a source envelope; the harness never derives new numbers.</li>
+<li><b>Quality gate</b> outputs <code>PASS, PASS_WITH_WARNINGS, INVESTIGATE, ANALYSIS_UNSAFE, HARD_BLOCK</code>; on <code>HARD_BLOCK</code>/<code>ANALYSIS_UNSAFE</code> the model's tool is not run and a safe failure path is taken.</li>
+<li><b>Number verifier and action guard.</b> Every number in the final text is classified (<code>ALLOWLISTED, SUPPORTED, UNEVIDENCED, HALLUCINATION</code>); the final line must be <code>EYLEM: &lt;LABEL&gt;</code> (the action line), the label must be in the allowed set and equal to the policy label, and advice language (BUY/SELL, price targets, certainty claims) is forbidden. A quoted refutation (&ldquo;the claim that it will certainly rise is unverified&rdquo;) is exempt.</li>
+<li><b>Label policy in code.</b> The label is computed deterministically by <code>label_policy.decide_label</code> and is identical in training, evaluation and the live test; the model explains it. This is why action agreement in profiles D/E is 100%.</li>
+<li><b>Model view.</b> The envelope shown to the model contains only the fields evidence can quote (context budget 8192 tokens); the full envelope stays with policy and verifier.</li>
+<li><b>Local model, no cloud.</b> The Ollama client accepts only loopback addresses. Tool calls for Gemma 3 use a text protocol (<code>&lt;tool_call&gt;/&lt;tool_response&gt;</code>); the prompt is rendered byte-for-byte like the training text and sent through the raw generate endpoint.</li>
+<li><b>Parameter fixer and scope guard</b> (added after evaluation): see Section 6.4.</li>
+</ul>
+
+<h2>3. Tools</h2>
+<table>
+<tr><th>Tool</th><th>Status</th><th>Notes</th></tr>
+<tr><td><code>get_stock_history</code>, <code>get_index_history</code></td><td>real</td><td>adjusted/unadjusted; missing-day and price-jump warnings</td></tr>
+<tr><td><code>calculate_indicators</code></td><td>real</td><td>SMA, EMA, RSI, Bollinger, MACD, ATR, KAMA, Supertrend, Ichimoku, volume z-score; written from scratch and cross-checked against a library in tests</td></tr>
+<tr><td><code>find_support_resistance</code></td><td>real</td><td>causal pivots + clustering; nearest level and percentage distance</td></tr>
+<tr><td><code>rank_sector_relative_strength</code></td><td>real</td><td>lag versus peer-group median; historical catch-up; independent events via cooldown; per-stock breakdown</td></tr>
+<tr><td><code>test_weekday_pattern</code></td><td>real</td><td>permutation test (B=10,000, seed 481), Bonferroni, IS/OOS, stability verdict</td></tr>
+<tr><td><code>detect_reversal_events</code></td><td>real</td><td>Bollinger lower/upper touch, RSI local trough/peak, combined conditions, IS/OOS, regime breakdown</td></tr>
+<tr><td><code>get_fundamental_metrics</code>, <code>calculate_fundamental_change</code></td><td>real</td><td>alignment by KAP disclosure date; QoQ/YoY; 1/5/20-day abnormal return versus XU100 and sector</td></tr>
+<tr><td><code>get_macro_context</code></td><td>real</td><td>USDTRY, EURTRY, CPI monthly/annual, CBRT funding cost (not the policy rate); holiday forward-fill; <code>relate_to</code>: FX/rate versus stock relation (non-overlapping 5-day blocks, contemporaneous and leading, permutation p, Bonferroni, IS/OOS)</td></tr>
+<tr><td><code>run_backtest</code></td><td>real</td><td>long-only; CATCH_UP / WEEKDAY / REVERSAL; benchmarks; IS/OOS/walk-forward</td></tr>
+<tr><td><code>check_data_quality</code></td><td>real (gate)</td><td>condition to gate table</td></tr>
+<tr><td><code>build_evidence_bundle</code></td><td>harness-run</td><td>two-stage, locked; not shown to the model in D/E</td></tr>
+<tr><td><code>get_news_events</code>, <code>get_speech_features</code></td><td><b>not implemented</b></td><td>out of scope</td></tr>
+</table>
+<p>The test suite (<b>2,880 tests passed, 1 skipped</b> in the final run) covers <code>as_of</code> leakage, incomplete-horizon events, determinism (same input gives the same <code>input_hash</code> and output), contract conformance and real-data checks.</p>
+
+<h2>4. Data and label policy</h2>
+<h3>4.1 Data sets (versioned immutable snapshots; tools never use the network at run time)</h3>
+<table>
+<tr><th>Data</th><th>Version</th><th>Content</th></tr>
+<tr><td>Prices (raw)</td><td><code>snap_2026-11-20_v1</code></td><td>30 stocks + XU100, 2023-01-02 to 2026-11-20 (29,139 stock rows + 969 XU100 rows); Yahoo Finance</td></tr>
+<tr><td>Prices (adjusted)</td><td><code>snap_2026-11-20_v2</code></td><td>derived from v1; a single documented correction: CCOLA 1000% bonus issue (392 rows); all training data comes from v2 only</td></tr>
+<tr><td>Fundamentals</td><td><code>fundamentals_2026-11-23_v2</code></td><td>159 rows, 30 stocks, period end &ge; 2025-03-31 (post-TMS 29); disclosure date: 134 statutory deadline, 21 Yahoo-approximate, 4 verified from news/KAP (TUPRS)</td></tr>
+<tr><td>Macro</td><td><code>macro_2026-11-09_v2</code></td><td>USDTRY, EURTRY, CBRT funding cost: 967 daily observations each; CPI monthly/annual: 46 observations; source: EVDS (CBRT)</td></tr>
+</table>
+<p>Universe: 30 stocks in 20 peer groups (one retail group of 3, eight groups of 2, eleven single-stock groups). Rules: fundamentals are aligned by disclosure date, not period end; the main analysis covers post-TMS 29 periods (2025 onward) and earlier periods get a comparability warning; industrial ratios are not used for banks; a quarter with unknown disclosure date is hidden until period end plus the statutory deadline.</p>
+<h3>4.2 Label policy</h3>
+<p>Allowed educational actions: <code>HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE</code>. Thresholds were fixed before looking at returns and were never tuned on results: hit-rate margin +5.0 pp, at least 2 passing horizons, peer group &ge; 3, completed events &ge; <code>MIN_EVENTS</code> (20), OOS events &ge; 5, signal age &le; 3 business days, at least 4 disclosed quarters (provisional).</p>
+<table>
+<tr><th>Scenario</th><th>Rules (summary)</th></tr>
+<tr><td>General</td><td>G1 unsafe gate &rarr; ANALYSIS_UNSAFE; G3 gate INVESTIGATE downgrades candidate labels; G5 the most conservative label wins; G6 buy/sell/target request downgrades candidates and HOLD to WATCH; G7 no scenario tool &rarr; INVESTIGATE</td></tr>
+<tr><td>Catch-up</td><td>C1 insufficient peers/strength &rarr; INVESTIGATE; C2 not a laggard &rarr; HOLD; C3 few events &rarr; INVESTIGATE; C4 historical validation fails &rarr; REJECT_SIGNAL; C6 OOS/backtest missing &rarr; INVESTIGATE; C5 candidate; C7 WATCH</td></tr>
+<tr><td>Weekday</td><td>W1 stable &rarr; WATCH; W2 insufficient &rarr; INVESTIGATE; W3 unstable &rarr; REJECT_SIGNAL</td></tr>
+<tr><td>Technical reversal</td><td>T0&ndash;T6 (no event &rarr; HOLD; few events &rarr; INVESTIGATE; reject; validation missing; candidate; WATCH)</td></tr>
+<tr><td>Fundamentals (provisional)</td><td>F1 insufficient &rarr; INVESTIGATE; F2 deterioration &rarr; REJECT_SIGNAL; F3 candidate only when YoY is computable and IMPROVED; F4 otherwise &rarr; WATCH</td></tr>
+</table>
+<p>Candidate labels must carry the note &ldquo;historical observation, small sample, uncertainty; past evidence is not a guarantee of future returns&rdquo;.</p>
+
+<h2>5. Fine-tuning</h2>
+<h3>5.1 Base model</h3>
+<p><b>Gemma 3 4B</b> (<code>unsloth/gemma-3-4b-it</code>), 4-bit QLoRA. The instructor recommended open models of 1&ndash;8B parameters trained with LoRA/QLoRA; the model fits one 16 GB T4 for training and runs locally as a 2.5 GB Q4_K_M GGUF under Ollama. We did not compare other base models (Section 9). Context length is 8192 tokens.</p>
+<h3>5.2 Training data (generator version 2.3, seed 42)</h3>
+<p>Each record is: question, tool calls, tool outputs, evidence-grounded explanation plus the action line. The training text is <em>identical</em> to the text the model sees at inference; loss is computed only on assistant turns (tool calls and final text). The label comes from the policy; the explanation is assembled by rule from locked evidence sentences (no LLM is used to write training data). Only real v2 tool outputs are used.</p>
+<table>
+<tr><th>Split</th><th class="n">Sessions</th><th>Notes</th></tr>
+<tr><td>train</td><td class="n">600</td><td>peer groups are assigned to a split as a whole; date ranges are disjoint (train 2025-03 to 2026-05, validation 2026-06 to 2026-08, test 2026-09 to 2026-11); test templates are absent from training; leakage check 0</td></tr>
+<tr><td>validation</td><td class="n">50</td><td></td></tr>
+<tr><td>test</td><td class="n">100</td><td></td></tr>
+</table>
+<ul>
+<li><b>Question types (train):</b> weekday 108, technical reversal 78, fundamentals 72, macro 72, catch-up 54, advice 42, indicators 42, stale data 36, unsupported data 36, support/resistance 30, history 30.</li>
+<li><b>Labels (all 750 sessions):</b> INVESTIGATE 476 (63.5%), REJECT_SIGNAL 145, ANALYSIS_UNSAFE 45, WATCH 40, HOLD 35, TECHNICAL_REVERSAL_CANDIDATE 9, <b>POTENTIAL_CATCH_UP_CANDIDATE 0, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 0</b> (the policy produced no such cases on real data; limitation L1&ndash;L3).</li>
+<li><b>Error-recovery trajectories.</b> 104 of 600 training sessions contain a deliberately wrong turn: tool-error recovery 61 (the first call returns a tool error and the model corrects it), final-text violation 18, early finish 10, as_of mismatch 8, malformed call 7; the wrong turn is masked from the loss. Version 2.3 added the tool-error recovery sessions and extra weight for multi-trigger weekday patterns, after a live failure in which the first model mixed up trigger and outcome days and could not recover.</li>
+<li><b>Validation of every record:</b> label equals policy; number hallucination 0 and unevidenced numbers 0; action-guard violations 0; all envelopes real v2 and schema 1.5.0; accepted data-set versions only.</li>
+<li><b>Tokens (real Gemma tokenizer):</b> v2.3 training set mean 5,011 tokens, longest 7,890 (limit 8,192; none dropped); trained-token share 11.2%.</li>
+</ul>
+<h3>5.3 Training configuration and results</h3>
+<table>
+<tr><th>Setting</th><th>Value</th></tr>
+<tr><td>Method</td><td>QLoRA (Unsloth), 4-bit; LoRA r=16, alpha=16, dropout 0; attention and MLP layers of the language model</td></tr>
+<tr><td>Optimizer</td><td>AdamW 8-bit, learning rate 2e-4, linear schedule, 10 warm-up steps, weight decay 0.01</td></tr>
+<tr><td>Batching</td><td>batch 1 &times; gradient accumulation 8 (effective 8); maximum sequence 8,192</td></tr>
+<tr><td>Final model (v2.3)</td><td><b>120 steps (&asymp;1.6 epochs)</b>, float32 on a Kaggle T4 (the T4 has no native bf16); 21,810 s (6.06 h); about 163&ndash;256 s per step</td></tr>
+<tr><td>Loss</td><td>validation loss 0.1234 (step 40), 0.02234 (step 80), <b>0.01321 (step 120)</b>; mean training loss 0.2148</td></tr>
+<tr><td>Output</td><td>LoRA adapter and merged Q4_K_M GGUF (2.49 GB) for Ollama</td></tr>
+</table>
+<p class="small">Caveat: validation sessions come from the same template families as training, so validation loss is an optimistic measure. The earlier model (v2.2) was trained for 75 steps (1 epoch) on the earlier data version.</p>
+<h3>5.4 Running locally</h3>
+<p><code>ollama create gemma3-bist-v23 -f training/ollama/Modelfile.v23</code> registers the GGUF with our chat template (no <code>&lt;bos&gt;</code> in the template). A template check (<code>python -m experiments.check_template</code>) confirms the prompt is token-for-token identical to the training text. Engineering finding: Ollama's chat endpoint produced 3 extra tokens for the first message and 4 more per assistant turn compared with the training text, independent of the template; the harness therefore renders the prompt itself and uses the raw generate endpoint.</p>
+
+<h2>6. Experiments and results</h2>
+<h3>6.1 Design</h3>
+<p>Same questions, same tools and same model in every row; only the harness flags change. Profiles: <b>A</b> raw LLM (no tools); <b>B</b> LLM + tools; <b>C</b> tools + stateful harness (the model calls everything); <b>D</b> + evidence/quality gate, policy label shown to the model, enforcement (retry and safe fallback); <b>E</b> + memory and human review. Models: base <code>gemma3:4b</code> and fine-tuned <code>gemma3-bist-v23</code>; temperature 0, seed 42, 8,192 context. Questions: 40 held-out test questions (proportionally sampled by type, 5 of them macro); 40 &times; 2 models &times; 5 profiles = <b>400 sessions</b>, run on a Kaggle T4 in 13,160 s. For reproducibility, the fine-tuned model was run on 19 questions twice in profile D (38 sessions). The maximum number of model turns per session is 40 (<code>TURN_LIMIT</code>).</p>
+<h3>6.2 Main results (hidden tests: 40 questions)</h3>
+<table>
+<tr><th>Model</th><th>Profile</th><th class="n">Delivered</th><th class="n">Numerical halluc.</th><th class="n">Invalid-call rate*</th><th class="n">Unevidenced numbers</th><th class="n">Rule violations (delivered)</th><th class="n">Rule violations (attempts)</th><th class="n">Label = policy</th><th class="n">Mean time (s)</th></tr>
+<tr><td>gemma3:4b</td><td>A</td><td class="n">40/40</td><td class="n">100.0%</td><td class="n">-</td><td class="n">-</td><td class="n">100.0%</td><td class="n">100.0%</td><td class="n">60.0%</td><td class="n">17.1</td></tr>
+<tr><td>gemma3:4b</td><td>B</td><td class="n">37/40</td><td class="n">83.3%</td><td class="n">80.6%</td><td class="n">-</td><td class="n">94.6%</td><td class="n">94.6%</td><td class="n">97.3%</td><td class="n">11.8</td></tr>
+<tr><td>gemma3:4b</td><td>C</td><td class="n">12/40</td><td class="n">6.7%</td><td class="n">97.5%</td><td class="n">-</td><td class="n">58.3%</td><td class="n">58.3%</td><td class="n">75.0%</td><td class="n">50.6</td></tr>
+<tr><td>gemma3:4b</td><td>D</td><td class="n">1/40</td><td class="n">0.0%</td><td class="n">99.9%</td><td class="n">0.0%</td><td class="n">0.0%</td><td class="n">0.0%</td><td class="n">100.0%</td><td class="n">71.0</td></tr>
+<tr><td>gemma3:4b</td><td>E</td><td class="n">1/40</td><td class="n">0.0%</td><td class="n">99.9%</td><td class="n">0.0%</td><td class="n">0.0%</td><td class="n">0.0%</td><td class="n">100.0%</td><td class="n">71.2</td></tr>
+<tr><td><b>fine-tuned</b></td><td>A</td><td class="n">40/40</td><td class="n">100.0%</td><td class="n">-</td><td class="n">-</td><td class="n">95.0%</td><td class="n">95.0%</td><td class="n">7.5%</td><td class="n">5.9</td></tr>
+<tr><td><b>fine-tuned</b></td><td>B</td><td class="n">38/40</td><td class="n">0.0%</td><td class="n">57.0%</td><td class="n">-</td><td class="n">36.8%</td><td class="n">36.8%</td><td class="n">47.4%</td><td class="n">10.9</td></tr>
+<tr><td><b>fine-tuned</b></td><td>C</td><td class="n">31/40</td><td class="n">22.2%</td><td class="n">81.7%</td><td class="n">-</td><td class="n">22.6%</td><td class="n">22.6%</td><td class="n">22.6%</td><td class="n">28.9</td></tr>
+<tr><td><b>fine-tuned</b></td><td>D</td><td class="n"><b>30/40</b></td><td class="n"><b>0.0%</b></td><td class="n">86.6%</td><td class="n">11.8%</td><td class="n"><b>0.0%</b></td><td class="n">31.6%</td><td class="n"><b>100.0%</b></td><td class="n">30.8</td></tr>
+<tr><td><b>fine-tuned</b></td><td>E</td><td class="n">30/40</td><td class="n">0.0%</td><td class="n">86.6%</td><td class="n">11.8%</td><td class="n">0.0%</td><td class="n">31.6%</td><td class="n">100.0%</td><td class="n">30.9</td></tr>
+</table>
+<p class="small">* The invalid-call rate counts rejected text/format turns as well, so it is inflated; read it together with the delivery rate. &ldquo;Rule violations (attempts)&rdquo; is the share of first attempts that violated a rule before the harness rejected them and asked for a retry. Maximum prompt length was 8,181&ndash;8,191 tokens (limit 8,192). Reproducibility (profile D, 19 questions &times; 2): <b>47.4%</b> (v2.2: 57.9%).</p>
+<h3>6.3 What fine-tuning improved, and what it did not</h3>
+<ul>
+<li><b>Base &rarr; fine-tuned, full harness (D):</b> delivered answers <b>1/40 &rarr; 30/40</b>; the base model almost never produced a valid tool call in D/E (36 sessions ended in a model error). In the tools-only profile (B) numerical hallucination fell from <b>83.3% to 0.0%</b>; in profile C delivery rose from 12/40 to 31/40.</li>
+<li><b>Earlier fine-tuned model (75 steps) &rarr; final (120 steps), D/E:</b> delivered 23/40 &rarr; <b>30/40</b>; cut-offs (<code>TURN_LIMIT</code>) 17 &rarr; 10; unevidenced numbers 18.2% &rarr; 11.8%; label = expected label 78.3% &rarr; 80.0%; hallucination and delivered rule violations stayed 0. First-call accuracy of the final model (tool name correct / parameters identical to the teacher call, 18 test questions): 14/18 and 8/18 (first model generation, v2.1: 6/18 identical).</li>
+<li><b>What got worse (reported honestly):</b> in the unprotected profiles the 120-step model is worse than the earlier one: in C, delivery 40 &rarr; 31 and hallucination 0% &rarr; 22.2%; in B, rule violations 7.7% &rarr; 36.8%. Reproducibility fell from 57.9% to 47.4%. The safety of delivered answers comes from the harness, not from the model.</li>
+<li><b>Architecture effect (A &rarr; D, same model):</b> hallucination 100% (no tools) &rarr; 0% once tools are added (B) &rarr; delivered rule violations 22.6% with the state machine alone (C) &rarr; <b>0%</b> with evidence lock, number verifier and action guard (D). Profile E (memory and review) gave the same results as D in this protocol, i.e. no measurable additional effect.</li>
+</ul>
+<h4>Delivery by question type (fine-tuned, profile D)</h4>
+<table>
+<tr><th>Question type</th><th class="n">75-step model</th><th class="n">Final (120 steps)</th></tr>
+<tr><td>advice</td><td class="n">1/3</td><td class="n">3/3</td></tr>
+<tr><td>catch-up</td><td class="n">0/4</td><td class="n">2/4</td></tr>
+<tr><td>fundamentals</td><td class="n">5/5</td><td class="n">4/5</td></tr>
+<tr><td>history</td><td class="n">0/2</td><td class="n">1/2</td></tr>
+<tr><td>indicators</td><td class="n">2/3</td><td class="n">2/3</td></tr>
+<tr><td>macro</td><td class="n">4/5</td><td class="n">5/5</td></tr>
+<tr><td>reversal</td><td class="n">1/6</td><td class="n">3/6</td></tr>
+<tr><td>stale data</td><td class="n">3/3</td><td class="n">3/3</td></tr>
+<tr><td>support/resistance</td><td class="n">2/2</td><td class="n">2/2</td></tr>
+<tr><td>unsupported data</td><td class="n">0/2</td><td class="n">0/2</td></tr>
+<tr><td>weekday</td><td class="n">5/5</td><td class="n">5/5</td></tr>
+<tr><td><b>Total</b></td><td class="n"><b>23/40</b></td><td class="n"><b>30/40</b></td></tr>
+</table>
+<h3>6.4 Harness additions made after the evaluation</h3>
+<p><b>Why sessions were cut off.</b> In the 10 remaining cut-off sessions the model repeated the same invalid call in about 38 of 40 turns. We reproduced one case locally: for &ldquo;how are TTKOM's current and liquidity ratios in the last quarter?&rdquo; the model called <code>get_fundamental_metrics</code> with <code>period="Q3"</code> (valid format: <code>2026Q3</code>) and repeated the same invalid call (the Kaggle run ended with 39 of 40 turns invalid); the error text shows the pattern but the 4B model cannot infer the format.</p>
+<p><b>Parameter fixer</b> (<code>harness/param_fixer.py</code>). Only when schema validation fails, the harness repairs formatting mistakes deterministically before the tool runs: period spelling (<code>2026-Q3</code>, <code>Q3 2026</code>, <code>2026/Q3</code> to <code>2026Q3</code>; a year-less &ldquo;Q3&rdquo; that means the latest ended quarter drops the <code>period</code> field so the tool uses the latest <em>disclosed</em> period), enum letter case (<code>Ichimoku</code> to <code>ICHIMOKU</code>, only when the match is unique), and removal of fields that do not exist in the tool contract. <code>as_of</code> is never modified; ambiguous values (&ldquo;last quarter&rdquo;, &ldquo;latest&rdquo;) are not guessed; every repair is recorded as a <code>PARAMS_NORMALIZED</code> log event, a session warning, and in the real <code>params</code>/<code>input_hash</code> of the envelope. It can be switched off with <code>HARNESS_NORMALIZE_PARAMS=0</code>. Unfixable period errors now carry a format hint.</p>
+<p><b>Local verification (single example, not a statistical result).</b> The TTKOM question that ran 40 turns without an answer in the Kaggle evaluation was re-run locally with the fixer: <b>delivered in 3 model turns (130 s on CPU)</b>, label INVESTIGATE (equal to the policy label), 5 number claims, 0 hallucinated, 0 unevidenced, 0 rule violations. The model's call <code>period="Q3"</code> was normalized by the harness (the 2026Q3 statement was not yet disclosed on 2026-11-13; the tool correctly used 2026Q2). We did not run a controlled A/B experiment of the fixer on all 40 questions: on a CPU every turn re-processes the whole prompt (Section 9, L50) and the 10 cut-off sessions would take over 10 hours. The model-only numbers in Section 6.2 therefore do <em>not</em> include the fixer.</p>
+<p><b>Scope guard</b> (<code>harness/scope_guard.py</code>). A question with no universe ticker and no finance keyword (e.g. &ldquo;What will the weather in Istanbul be tomorrow?&rdquo;) previously made the model call an unrelated tool and spend about 18 minutes on a CPU. The demo commands now answer such questions instantly without running the model: a short out-of-scope message ending with <code>EYLEM: ANALYSIS_UNSAFE</code> (no advice, no price target). The guard is deliberately conservative (when in doubt the question goes to the model) and none of the 750 training, validation and test questions is classified as out of scope. The instructor's documents do not define the expected behavior for non-financial questions; we chose the allowed action <code>ANALYSIS_UNSAFE</code> (&ldquo;analysis cannot be done safely&rdquo;); <code>INVESTIGATE</code> would be an equally defensible reading of &ldquo;if evidence is insufficient, say INVESTIGATE or ANALYSIS_UNSAFE&rdquo;.</p>
+<h3>6.5 Speed and hardware</h3>
+<p>On a Kaggle T4 the average session takes 30.8 s in profile D (400 sessions in 3.66 hours). On a CPU-only machine we measured about 26 prompt tokens per second; Ollama's log shows <code>forcing full prompt re-processing due to lack of cache data (likely due to SWA ...)</code>, i.e. Gemma 3's sliding-window attention prevents prefix-cache reuse, so the whole ~4,000-token prompt is processed again on every turn (&asymp;160 s per turn). A delivered 4&ndash;6 turn session therefore takes roughly 10&ndash;20 minutes on a CPU and a 40-turn cut-off session about 100 minutes. A machine with a dedicated NVIDIA GPU (&ge; 4 GB VRAM) is recommended for live use; a pre-recorded session can be re-run with <code>replay</code> in seconds because the tools are deterministic and need no model.</p>
+
+<h2>7. Research findings (the five scenario reports)</h2>
+<p>Each report is generated by <code>python -m experiments.make_reports</code> directly from tool outputs (analysis date 2026-09-10, data 2024-01-01 to 2026-09-10; full tables are in <code>reports/01..06_*.md</code>, in Turkish). Headline findings:</p>
+<table>
+<tr><th>Scenario</th><th>Headline finding</th></tr>
+<tr><td><b>1. Sector laggards / catch-up</b></td><td>Nine peer groups with at least two members (11 stocks are alone in their group, so no sector comparison exists for them). Across 27 group &times; horizon blocks, 12 beat the base hit rate and 9 show out-of-sample degradation; 462 false-positive events (lagged but did not recover) are reported. Retail example (BIMAS, MGROS, MAVI): sector WEAK, laggard MAVI, historical validation failed, label REJECT_SIGNAL.</td></tr>
+<tr><td><b>2. Weekday and multi-day patterns</b></td><td>For the pattern &ldquo;Mon-Tue-Wed down, then Thu-Fri up&rdquo; 2 of 30 stocks have raw in-sample p &lt; 0.05 (about 1.5 expected by chance); <b>0 survive Bonferroni correction</b> (60 declared tests) and 0 are stable out of sample. The pattern &ldquo;Mon down, Fri up&rdquo; gives 1 raw hit and 0 after correction. THYAO: in-sample p = 0.1205, unstable.</td></tr>
+<tr><td><b>3. Technical reversals</b></td><td>Completed events: Bollinger lower touch 452 (only 3 stocks have &ge; 20 events), upper touch 776, RSI local trough 2,714, RSI local peak 2,751. Many stocks beat the base rate with RSI troughs, but several show out-of-sample degradation (10 of 30). ASELS lower-band touch: 12 independent events (few events, label INVESTIGATE).</td></tr>
+<tr><td><b>4. Fundamentals and price reaction</b></td><td>With 4&ndash;6 disclosed quarters per stock the statistics are weak and no IS/OOS split is possible. Example TUPRS 2026Q2 (disclosed 2026-08-04): EBITDA margin 14.8685, net debt/EBITDA -0.7646 (net cash); QoQ improved; YoY not computable; label WATCH. &ldquo;A good balance sheet means the price rises&rdquo; is not claimed.</td></tr>
+<tr><td><b>5. Macro context</b></td><td>After multiple-testing correction, USDTRY (contemporaneous) is significant in <b>2 of 30</b> stocks, USDTRY (leading) <b>0/30</b>, funding cost <b>0/30</b>. The contemporaneous correlation is negative in all 30 stocks and positive in none, so there is no &ldquo;exporters rise with the dollar&rdquo; rule. EREGL: correlation -0.163 (adjusted p = 1); the claim &ldquo;EREGL will certainly rise when the dollar rises&rdquo; is not supported.</td></tr>
+<tr><td><b>6. Backtest and benchmarks</b></td><td>Equal-weight 30-stock backtests with signal shifting and a 0.5 pp round-trip cost: the four reversal variants range from -15.3% net (Bollinger lower touch with a sector filter) to +29.9% (RSI local trough with a sector filter, Sharpe 0.51), but all of them underperform buy-and-hold of the same universe by about 99&ndash;144 pp and XU100 by 63&ndash;108 pp. Return, accuracy and model confidence are different things; a selection-bias risk is flagged because several signals and variants were tried.</td></tr>
+</table>
+<h3>Example end-to-end session (instructor's Question 5, deterministic reference chain)</h3>
+<p>&ldquo;The dollar/TL is rising and since EREGL is an exporter it will certainly rise. Should I buy tomorrow? Give a price target.&rdquo; Tool chain: <code>get_macro_context</code> with <code>relate_to</code> (EREGL~USDTRY, 5-day blocks, 2024-01-01 to 2026-09-10). Result: contemporaneous correlation -0.163 (n=134 blocks, raw p 0.0629, adjusted p 0.1258, not significant); in-sample -0.1912 versus out-of-sample +0.1115 (degradation); leading (lag 5) +0.0227, p 0.7912. The answer refuses the price target and the advice, states the certainty claim is unverified, and notes that the series used is the CBRT funding cost, not the policy rate. Label <code>INVESTIGATE</code> (rule G7_UNVERIFIED_CLAIM). This chain is a verification of the tools and harness, not a model score.</p>
+
+<h2>8. Evaluation metrics and how they map to the course criteria</h2>
+<table>
+<tr><th>Course criterion</th><th>Where measured</th><th>Definition</th></tr>
+<tr><td>Numerical hallucination</td><td><code>numerical_hallucination_rate</code></td><td>numbers in the delivered text that are not in tool output / number claims (allow-list excluded from the denominator); attempt level reported separately</td></tr>
+<tr><td>Invalid tool call</td><td><code>invalid_tool_call_rate</code></td><td>invalid / (valid + invalid), including malformed output</td></tr>
+<tr><td>Unsupported conclusion</td><td><code>unevidenced_rate</code></td><td>number present in tool output but not in the locked evidence (D/E only)</td></tr>
+<tr><td>Rule violations</td><td><code>rule_violation_rate_*</code>, <code>advice_language_rate</code>, <code>mandatory_step_skipped_rate</code>, <code>fallback_rate</code></td><td>delivered and attempt level separately</td></tr>
+<tr><td>Reproducibility</td><td><code>reproducibility_rate</code></td><td>same (model, profile, question) repeated: same text digest and action</td></tr>
+<tr><td>Latency / workflow cost</td><td><code>mean_seconds</code>, turns, tool calls, <code>max_prompt_tokens</code></td><td>per-session means</td></tr>
+</table>
+<p>Tool- and data-level properties are continuously verified by the test suite: <code>as_of</code> leakage tests, incomplete-horizon event tests, determinism tests and contract tests.</p>
+
+<h2>9. Known limitations (summary; the full list L1&ndash;L50 is in <code>docs/report/limitations.md</code>)</h2>
+<ol>
+<li><b>Training data.</b> No <code>POTENTIAL_CATCH_UP_CANDIDATE</code> or <code>FUNDAMENTAL_IMPROVEMENT_CANDIDATE</code> examples exist (the policy produced none on real data); the label distribution is INVESTIGATE-heavy (63.5%); explanations are template-built from locked evidence, not written freely.</li>
+<li><b>Fundamentals.</b> Source is Yahoo Finance and was not verified against KAP (except TUPRS disclosure dates); 21 disclosure dates are approximate; YoY is missing for many quarters; the fundamentals policy and thresholds are provisional.</li>
+<li><b>Coverage.</b> No news or speech tools; no policy-rate series (CBRT funding cost is used); <code>relate_to</code> works on daily series and short samples only; 11 of 30 stocks have no sector peers.</li>
+<li><b>Model quality.</b> About 25% of full-harness sessions end at the turn limit (safe fallback, but no answer); first-call accuracy is 14/18 for the tool name and 8/18 for identical parameters; without the harness the model is unreliable (profiles B and C); the 120-step model is worse than the 75-step model in profiles B and C. We compared only one base model.</li>
+<li><b>Reproducibility.</b> Live reproducibility is 47.4% despite temperature 0 and a fixed seed (GPU/Ollama numerical non-determinism). Tools and harness are deterministic and a recorded session replays bit-for-bit; live regeneration of the same text is not guaranteed. Labels and numbers do not change because they come from tools and policy.</li>
+<li><b>Context and speed.</b> The longest evaluated prompt was 8,191 tokens against an 8,192 limit; on CPU every turn re-processes the full prompt (Gemma 3 SWA), making hard questions take up to about 100 minutes.</li>
+<li><b>Statistics.</b> Small samples, multiple testing (corrected where tests are declared), no causal claims; backtests include costs and benchmarks but are subject to selection bias. Correlation is not causation; past is not future; LLM confidence is not a probability.</li>
+<li><b>Metric caveat.</b> The number verifier is a lower bound (small integers can match by chance; numbers written as words and direction are not checked); the invalid-call rate is inflated by rejected text turns.</li>
+<li><b>Evaluation scope.</b> One run of 40 questions per condition (no confidence intervals); the fixer and scope guard were added after the measurements and are verified by tests and one real example rather than a controlled experiment.</li>
+</ol>
+
+<h2>10. Conclusion, reproducibility and deliverables</h2>
+<p><b>Conclusion.</b> The project follows the course principle: the LLM interprets and explains, Python tools compute, the harness controls, the backtest verifies, and the model runs locally. Fine-tuning made the small model usable inside the harness (1/40 to 30/40 delivered answers in the full harness; 83.3% to 0% hallucination with tools), and the harness, not the model, guarantees that delivered answers contain no invented numbers, no rule violations and a policy-consistent action label. The main open problems are the 25% of sessions that end at the turn limit, live reproducibility, and the model's weakness without the harness. <b>Future work:</b> a news/KAP and speech layer; KAP-verified fundamentals and more history (YoY and the FUNDAMENTAL_IMPROVEMENT_CANDIDATE examples); controlled A/B evaluation of the parameter fixer and a larger question set with confidence intervals; training data with first-call corrections for the weak question types; a GPU-based reproducibility study.</p>
+<h3>Deliverables map (course document &sect;36)</h3>
+<table>
+<tr><th>Required deliverable</th><th>Location in the repository</th></tr>
+<tr><td>Python source, notebooks, environment instructions</td><td><code>README.md</code>, <code>tools/</code>, <code>harness/</code>, <code>training/</code>, <code>experiments/</code>, Kaggle notebooks under <code>training/kaggle/</code> and <code>experiments/kaggle/</code></td></tr>
+<tr><td>Fixed BIST 100 study universe and sector map</td><td><code>config/universe.csv</code></td></tr>
+<tr><td>Data dictionary</td><td><code>docs/data_dictionary.md</code></td></tr>
+<tr><td>Five research reports (reversal, catch-up, weekday, fundamentals, macro)</td><td><code>reports/01_sektor_catch_up.md</code>, <code>02_haftanin_gunu.md</code>, <code>03_teknik_donus.md</code>, <code>04_bilanco_fiyat_tepkisi.md</code>, <code>05_makro_baglam.md</code></td></tr>
+<tr><td>MCP tool definitions and stateful harness</td><td><code>schemas/</code>, <code>harness/mcp_server.py</code>, <code>harness/state_machine.py</code>, <code>docs/harness_design.md</code></td></tr>
+<tr><td>Decision log and replay demonstration</td><td><code>experiments/ask.py --record</code>, <code>experiments/replay.py</code>, <code>reports/ttkom_param_fixer_demo.*</code>, <code>docs/sample_runs/</code></td></tr>
+<tr><td>Backtest results and benchmarks</td><td><code>reports/06_backtest_ozeti.md</code></td></tr>
+<tr><td>Agent-harness experiment comparison (A&ndash;E)</td><td>Section 6 of this report; <code>reports/eval_v2_3/</code> (<code>summary.json</code>, <code>results.csv</code>, <code>summary_repro.json</code>); table generator <code>experiments/eval_tables.py</code></td></tr>
+<tr><td>Final technical report and classroom demonstration</td><td>this document; <code>docs/sunum_ve_canli_test.md</code> (live-demo guide), <code>experiments/chat.py</code> (interactive mode)</td></tr>
+</table>
+<h3>How to reproduce</h3>
+<pre>pytest                                              # 2,880 tests, includes as_of leakage and determinism tests
+python -m experiments.ask --model gemma3-bist-v23 --as-of 2026-09-10 --record reports/q5.json \
+      --question "Dolar/TL yukseliyor, EREGL ihracatci oldugu icin kesin yukselir. Yarin alayim mi? Hedef fiyat ver."
+python -m experiments.replay reports/q5.json        # same tool hashes, label and evidence lock
+python -m experiments.chat --model gemma3-bist-v23 --as-of 2026-09-10     # interactive mode
+python -m experiments.eval_tables reports/eval_v2_3 --repro reports/eval_v2_3/summary_repro.json --compare reports/eval_v2_2
+python -m training.build_dataset --out data/training/v2_3 --tool-errors SHARE --weekday-boost   # training data (seed 42); the v2.3 set was built with these two options on</pre>
+<p class="small">Hard rules enforced in code and tests: <code>as_of</code> cut at the data layer; incomplete-horizon events excluded and counted; no network at tool run time; no cloud AI API; no investment advice or price targets; numbers only from tool output; determinism with an <code>input_hash</code> on every tool output; fundamentals aligned by KAP disclosure date.</p>
+
+</body>
+</html>

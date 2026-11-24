@@ -1,0 +1,24 @@
+=== Oturum: as_of 2026-11-13 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] get_fundamental_metrics -> OK (durum: LOAD_FUNDAMENTALS)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı PASS_WITH_WARNINGS), lock_hash dd48d7636d8b
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+TTKOM için bilanço metrikleri analiz edildi.
+Kanıt (araç çıktıları):
+- TTKOM 2026Q2: EBITDA 47912.26 TRY_mn, EBITDA Marjı %65.8084, NET_PROFIT 5961.745 TRY_mn, NET_PROFIT Marjı %8.1886, NET_DEBT_EBITDA 0.7944
+Değerlendirme: Eldeki araç çıktıları durum bilgisi veriyor, ama bir sinyali doğrulamıyor; etiket INVESTIGATE.
+Göstergeler yalnızca son çeyrek için veri gösteriyor; daha fazla dönem için veri yok (eksik veri, az olay, örneklem dışı bozulma).
+Analiz tarihi itibarıyla açıklanmamış geçmiş dönem bilançoları var; bu nedenle ilgili dönemler dışlandı.
+Bu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (G7_NO_SCENARIO) | eşleşme: True
+sayı iddiası: 5, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 130.5 sn | model turu: 3
+karar kaydı: reports/debug/uns4_fix2.json (tekrar oynatma: python -m experiments.replay reports/debug/uns4_fix2.json)
+karar günlüğü: reports/debug/uns4_fix2.jsonl (30 olay)

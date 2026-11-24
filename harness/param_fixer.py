@@ -35,6 +35,16 @@ _QUARTER_END = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
 _MAX_PASSES = 4
 
 
+def _latest_ended_quarter(as_of: date) -> str:
+    """as_of'a göre dönem sonu as_of'u aşmayan EN SON takvim çeyreği ("YYYYQn")."""
+    for year in (as_of.year, as_of.year - 1):
+        for q in (4, 3, 2, 1):
+            month, day = _QUARTER_END[q]
+            if date(year, month, day) <= as_of:
+                return f"{year}Q{q}"
+    return f"{as_of.year - 2}Q4"  # pragma: no cover
+
+
 def _parse_period(raw: str, as_of: date) -> str | None:
     m = _P_YEAR_FIRST.match(raw)
     if m:
@@ -88,6 +98,12 @@ def _fix_one(err: dict[str, Any], params: dict[str, Any], as_of: date, tool: str
             fixed = _parse_period(value, as_of)
             if fixed is None:
                 return False
+            if loc == ("period",) and _P_BARE.match(value) and fixed == _latest_ended_quarter(as_of):
+                # yılsız "Q3" = "son çeyrek" anlamı: o çeyreğin bilançosu as_of'ta henüz açıklanmamış olabilir (KAP gecikmesi); tek anlamlı güvenli karşılık
+                # `period` alanını hiç yazmamaktır (None = as_of'a kadar AÇIKLANMIŞ en son dönem). Hangi dönemin kullanıldığı araç çıktısında görünür.
+                del params["period"]
+                notes.append(f"{tool}: 'period' {value!r} = son çeyrek; alan çıkarıldı (as_of'a kadar açıklanmış en son dönem kullanılır)")
+                return True
             _set(params, loc, fixed)
             notes.append(f"{tool}: '{'.'.join(str(x) for x in loc)}' {value!r} -> {fixed!r} (dönem biçimi YYYYQn)")
             return True
