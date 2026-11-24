@@ -41,6 +41,8 @@ python -m experiments.replay reports/q5.json        # kayıtlı oturumu yeniden 
 ```
 `ask` çıktısı: araç/durum izi, nihai cevap (`EYLEM:` satırı dahil), sayı/kural denetimi (halüsinasyon, kanıtsız sayı, ihlal), karar günlüğü. Profil `--profile A..E` (varsayılan D). İnsan incelemesi (profil E): `--review APPROVED|REJECTED --reviewer ad --reason "…"`.
 
+**Sohbet gibi kullanım (arayüz = terminal):** `python -m experiments.chat --model gemma3-bist-v23 --as-of 2026-09-10` → `Soru>` satırına sorunuzu yazıp Enter'a basın, cevap ve denetim yazılır; çıkış `q`. Her soru `reports/chat/` altına karar kaydı olarak kaydedilir (`replay` ile yeniden oynatılır).
+
 **Modelsiz örnek zincirler** (öğretmen betiği, gerçek araçlar, 5 örnek soru): `python -m experiments.sample_runs` → `docs/sample_runs/`.
 
 **Araçları doğrudan çağırmak:**

@@ -18,6 +18,7 @@ PowerShell, repo kökünde. `^` satır devamı yerine tek satır yazın.
 $q = "<soru metni>"
 python -m experiments.ask --model gemma3-bist-v23 --as-of 2026-09-10 --record reports/demo/q1.json --log reports/demo/q1.jsonl --question $q
 ```
+**Sohbet gibi kullanım:** soruları tek tek komut yazmadan sormak için `python -m experiments.chat --model gemma3-bist-v23 --as-of 2026-09-10` çalıştırın; `Soru>` satırına soruyu yapıştırıp Enter'a basın (çok satırlıysa satır sonlarına `\` koyun ya da tek satıra çevirin), cevap bitince yeni soru sorun, çıkış `q`. Her soru kaydedilir (`reports/chat/`), canlıda yavaş kalırsa `replay` ile gösterilebilir.
 | # | Soru (docs/ornek_test_sorulari.txt) | Beklenen araçlar | Referans etiket (gerçek araçlarla politika) |
 |---|---|---|---|
 | 1 | Perakende (BIMAS, MGROS, MAVI) son 20 gün, en çok geride kalan, benzer geride kalmalar 5/10/20 günde kapanmış mı, POTENTIAL_CATCH_UP_CANDIDATE? | `rank_sector_relative_strength`, `run_backtest` | REJECT_SIGNAL (C4) |
