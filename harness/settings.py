@@ -155,6 +155,19 @@ def llm_raw() -> bool:
     raise ValueError(f"{LLM_RAW_ENV}={v!r} geçersiz; geçerli: 1/0")
 
 
+NORMALIZE_PARAMS_ENV = "HARNESS_NORMALIZE_PARAMS"
+
+
+def normalize_params() -> bool:
+    """Parametre düzeltici (harness/param_fixer.py): biçim hatalı çağrıları (dönem yazımı, enum harfi, fazla alan) araçtan önce onarır. Varsayılan AÇIK; 0 = kapalı (A/B ölçümü için)."""
+    v = os.environ.get(NORMALIZE_PARAMS_ENV, "").strip().lower()
+    if v in ("", "1", "true", "evet"):
+        return True
+    if v in ("0", "false", "hayir", "hayır"):
+        return False
+    raise ValueError(f"{NORMALIZE_PARAMS_ENV}={v!r} geçersiz; geçerli: 1/0")
+
+
 def llm_model() -> str:
     return os.environ.get(LLM_MODEL_ENV, "").strip() or LLM_MODEL
 

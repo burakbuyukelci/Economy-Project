@@ -27,6 +27,7 @@ from harness.evidence import EnvelopeStore, EvidenceBundle, make_analysis_id
 from harness.final_check import FinalReport, build_feedback, check_final, fallback_text, render_policy_block
 from harness.gate_params import GateParamsError, derive_gate_params, detect_question_tickers
 from harness.label_policy import PolicyDecision, decide_session
+from harness.param_fixer import fix_params
 from harness.profiles import StageProfile, get_profile, harness_only_tools, routing_for, visible_tools
 from harness.routing import ReviewStatus, Routing, State
 from harness.state_machine import Decision, HarnessRuleViolation, StateMachine
@@ -135,7 +136,13 @@ class HarnessSession:
         try:
             validate_params(tool, params)
         except ValidationError as exc:
-            return self._invalid(tool, "INVALID_PARAMS", _short_errors(exc))
+            fixed, notes = fix_params(tool, params, self.as_of) if settings.normalize_params() else (None, [])
+            if fixed is None:
+                return self._invalid(tool, "INVALID_PARAMS", _short_errors(exc))
+            # biçim hatası onarıldı: çalışan çağrı düzeltilmiş çağrıdır (zarfın params'ı ve input_hash buna göre); sessiz değil
+            self.log.append("PARAMS_NORMALIZED", tool=tool.value, notes=notes, original=params, fixed=fixed)
+            self.warnings.append("PARAMS_NORMALIZED: " + "; ".join(notes))
+            params = fixed
 
         # harness'in çalıştıracağı zorunlu adımlar (kalite kapısı, kanıt aşama 1) modelin çağrısından ÖNCE
         for state in decision.auto_before:
@@ -462,6 +469,11 @@ class HarnessSession:
 
 def _short_errors(exc: Exception) -> str:
     if isinstance(exc, ValidationError):
-        parts = [f"{'.'.join(str(p) for p in e['loc']) or '<kök>'}: {e['msg']}" for e in exc.errors()[:5]]
+        parts = []
+        for e in exc.errors()[:5]:
+            msg = f"{'.'.join(str(p) for p in e['loc']) or '<kök>'}: {e['msg']}"
+            if e["type"] == "string_pattern_mismatch" and (e.get("ctx") or {}).get("pattern") == r"^\d{4}Q[1-4]$":
+                msg += " (biçim YYYYQn, örn. 2026Q3; en son dönem için bu alanı hiç yazmayın)"   # modelin tekrar döngüsünü kırmak için ipucu
+            parts.append(msg)
         return "; ".join(parts)
     return str(exc)
