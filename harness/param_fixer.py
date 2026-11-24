@@ -137,3 +137,46 @@ def fix_params(tool: ToolName | str, params: dict[str, Any], as_of: date) -> tup
             continue
         return (work, notes) if notes else (None, [])
     return None, []
+
+
+def _edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def repair_tickers(params: dict[str, Any], question_tickers: list[str], universe: set[str]) -> tuple[dict[str, Any] | None, list[str]]:
+    """Modelin yazım hatası yaptığı hisse kodunu ("ERGL" -> "EREGL") onarır; YALNIZCA şu koşullarda:
+    kod evrende yok, sorudaki evren hisse kodlarından TAM BİRİ düzenleme uzaklığı <= 2 ile eşleşiyor. Belirsizse (iki aday) ya da uzaksa dokunulmaz.
+    `ticker` / `tickers` / `universe` alanları ve iç içe `relate_to[*].ticker` taranır. Girdi değiştirilmez; değişiklik yoksa `(None, [])`."""
+    work = copy.deepcopy(params)
+    notes: list[str] = []
+
+    def fix(value: str, where: str) -> str:
+        if value in universe or len(value) < 3:
+            return value
+        cands = [q for q in question_tickers if _edit_distance(value.upper(), q) <= 2]
+        if len(cands) != 1:
+            return value
+        notes.append(f"{where}: {value!r} evrende yok; sorudaki hisse kodu {cands[0]!r} olarak düzeltildi (yazım hatası)")
+        return cands[0]
+
+    def walk(obj: Any, path: str) -> None:
+        if isinstance(obj, dict):
+            for k, v in list(obj.items()):
+                if k == "ticker" and isinstance(v, str):
+                    obj[k] = fix(v, f"{path}{k}")
+                elif k in ("tickers", "universe") and isinstance(v, list):
+                    obj[k] = [fix(x, f"{path}{k}[{i}]") if isinstance(x, str) else x for i, x in enumerate(v)]
+                elif isinstance(v, (dict, list)):
+                    walk(v, f"{path}{k}.")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                walk(item, f"{path}[{i}].")
+
+    walk(work, "")
+    return (work, notes) if notes else (None, [])

@@ -133,3 +133,33 @@ def test_session_unfixable_still_returns_error_with_hint(monkeypatch):
     r = s.call_tool("get_fundamental_metrics", _fund(period="son çeyrek"))
     assert not r.ok and r.error["code"] == "INVALID_PARAMS"
     assert "2026Q3" in r.error["message"] or "YYYYQn" in r.error["message"]   # biçim ipucu
+
+
+# ---- hisse kodu yazım hatası ------------------------------------------------------------------------------------------
+from harness.param_fixer import repair_tickers  # noqa: E402
+
+UNI = {"EREGL", "THYAO", "TUPRS", "ASELS", "BIMAS", "MGROS", "MAVI"}
+
+
+def test_ticker_typo_is_repaired_when_question_has_exactly_one_close_ticker():
+    p = {"as_of": "2026-09-10", "relate_to": [{"ticker": "ERGL", "macro_series": "USDTRY"}, {"ticker": "ERGL", "macro_series": "USDTRY"}]}
+    fixed, notes = repair_tickers(p, ["EREGL"], UNI | {"EREGL"})
+    assert fixed is not None and all(r["ticker"] == "EREGL" for r in fixed["relate_to"]) and len(notes) == 2
+    assert p["relate_to"][0]["ticker"] == "ERGL"                       # girdi değişmedi
+
+
+def test_ticker_valid_or_far_or_ambiguous_is_not_touched():
+    assert repair_tickers({"ticker": "THYAO"}, ["THYAO"], UNI)[0] is None              # zaten geçerli
+    assert repair_tickers({"ticker": "XXXXX"}, ["THYAO"], UNI)[0] is None              # uzak
+    assert repair_tickers({"ticker": "BIMA"}, ["BIMAS", "BIMAZ"], UNI | {"BIMAZ"})[0] is None   # iki aday: belirsiz
+    assert repair_tickers({"ticker": "ERGL"}, [], UNI)[0] is None                      # soruda hisse yok
+
+
+def test_session_repairs_ticker_typo_from_question(monkeypatch):
+    monkeypatch.setenv("HARNESS_NORMALIZE_PARAMS", "1")
+    s = HarnessSession.from_question("Analiz tarihi: 10.09.2026\nBugün EREGL için dolar/TL ilişkisi nedir?", profile="D")
+    r = s.call_tool("get_macro_context", {"as_of": "2026-09-10", "start": "2024-01-01", "end": "2026-09-10", "series": ["USDTRY"],
+                                          "relate_to": [{"ticker": "ERGL", "macro_series": "USDTRY", "horizon": 5, "lag_days": 0, "split_date": "2026-01-01"}],
+                                          "n_tests_declared": 1})
+    assert r.ok and r.envelope["status"] == "OK" and r.envelope["params"]["relate_to"][0]["ticker"] == "EREGL"
+    assert any("EREGL" in w for w in s.warnings)

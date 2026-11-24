@@ -27,7 +27,7 @@ from harness.evidence import EnvelopeStore, EvidenceBundle, make_analysis_id
 from harness.final_check import FinalReport, build_feedback, check_final, fallback_text, render_policy_block
 from harness.gate_params import GateParamsError, derive_gate_params, detect_question_tickers
 from harness.label_policy import PolicyDecision, decide_session
-from harness.param_fixer import fix_params
+from harness.param_fixer import fix_params, repair_tickers
 from harness.profiles import StageProfile, get_profile, harness_only_tools, routing_for, visible_tools
 from harness.routing import ReviewStatus, Routing, State
 from harness.state_machine import Decision, HarnessRuleViolation, StateMachine
@@ -133,6 +133,15 @@ class HarnessSession:
         problem = self._check_as_of(params)
         if problem:
             return self._invalid(tool, *problem)
+        if settings.normalize_params() and self.question_tickers:
+            # hisse kodu yazım hatası ("ERGL" -> "EREGL"): şema geçer ama araç UNKNOWN_TICKER döner ve model aynı çağrıyı tekrarlar (canlı demo Soru 5'te ölçüldü)
+            from harness.gate_params import load_universe
+
+            fixed_t, notes_t = repair_tickers(params, self.question_tickers, set(load_universe()["ticker"]))
+            if fixed_t is not None:
+                self.log.append("PARAMS_NORMALIZED", tool=tool.value, notes=notes_t, original=params, fixed=fixed_t)
+                self.warnings.append("PARAMS_NORMALIZED: " + "; ".join(notes_t))
+                params = fixed_t
         try:
             validate_params(tool, params)
         except ValidationError as exc:
