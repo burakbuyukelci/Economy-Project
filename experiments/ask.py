@@ -24,6 +24,7 @@ from experiments.decision_record import attach_review
 from harness.agent_loop import run_session
 from harness.as_of import _markers
 from harness.event_log import EventLog
+from harness.scope_guard import MESSAGE, is_out_of_scope
 from harness.llm_backend import LLMError
 from harness.routing import ReviewStatus
 from harness.session import HarnessSession
@@ -65,6 +66,10 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     args = ap.parse_args(argv)
     text = args.question if args.question is not None else Path(args.question_file).read_text(encoding="utf-8")
     text = text.replace("\\n", "\n")
+    if is_out_of_scope(text):                                     # finans dışı soru (hava durumu...): model çalıştırılmadan hemen kısa cevap
+        print("=== Kapsam dışı soru: model ve araç çalıştırılmadı ===")
+        print(MESSAGE)
+        return 0
     as_of = date.fromisoformat(args.as_of) if args.as_of else None
     found = _markers(text)
     head_date = as_of or (next(iter(found)) if len(found) == 1 else None)     # --as-of ya da sorudaki tek işaret ("Bugün 10.09.2026")

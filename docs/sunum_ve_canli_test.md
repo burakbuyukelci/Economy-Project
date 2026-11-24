@@ -59,6 +59,7 @@ Referans etiketler `docs/sample_runs/` içindeki gerçek araç zincirlerinden ge
 |---|---|
 | Çok yavaş | `replay` ile önceden kaydedilmiş oturumu göster; model turlarının CPU'da yavaş olduğunu söyle (ölçülen hız: ~27 token/sn) |
 | `Ollama'ya bağlanılamadı` | `ollama list` çalışıyor mu; Ollama uygulamasını başlat |
+| Finans dışı soru (hava durumu...) | `ask`/`chat` bunu model çalıştırmadan, anında "kapsam dışı" diye yanıtlar (`EYLEM: ANALYSIS_UNSAFE`, tavsiye yok). Şüpheli (finans sözcüğü içeren) sorular modele gider: koruma bilerek muhafazakârdır (`harness/scope_guard.py`) |
 | Oturum 40 tur sonra "geri çekilme" ile bitiyor | Beklenen: model aynı geçersiz çağrıyı tekrarladı; harness uydurma cevap vermez. Soruyu bir kez daha çalıştırın (CPU'da sonuç GPU'dan farklı olabilir) ya da kayıtlı oturumu `replay` ile gösterin |
 | Model araç hatasından sonra metin yazıyor | Beklenen güvenlik davranışı: harness reddeder ve tur sınırında güvenli geri çekilme yapar; denetim satırında "geri çekilme" görünür (`docs/report/limitations.md`) |
 | Tarih hatası | `--as-of 2026-09-10` ver |

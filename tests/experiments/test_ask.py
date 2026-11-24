@@ -65,3 +65,12 @@ def test_as_of_flag_prepends_the_training_format_marker_when_the_question_has_no
 
     assert ask.main(["--question", raw, "--as-of", "2026-09-10", "--model", "scripted"], backend_factory=factory) == 0
     assert seen["text"].startswith("Analiz tarihi: 10.09.2026\n" + raw[:20]) and "EYLEM: INVESTIGATE" in capsys.readouterr().out
+
+
+def test_off_topic_question_is_answered_instantly_without_model_or_tools(capsys):
+    """Kapsam dışı (hava durumu): model/araç çağrılmaz (backend_factory çağrılırsa test düşer), kısa cevap + izinli eylem."""
+    def boom(text, session):
+        raise AssertionError("kapsam dışı soruda model çalıştırılmamalı")
+    code = ask.main(["--question", "Yarın İstanbul'da hava nasıl olacak, şemsiye almalı mıyım?", "--as-of", "2026-09-10", "--model", "x"], backend_factory=boom)
+    out = capsys.readouterr().out
+    assert code == 0 and "Kapsam dışı" in out and out.rstrip().endswith("EYLEM: ANALYSIS_UNSAFE")
