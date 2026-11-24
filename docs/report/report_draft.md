@@ -139,10 +139,10 @@ Kayıt biçimi: soru → araç çağrıları → araç çıktısı → kanıta d
 | Çıktı | LoRA adaptörü + GGUF `q4_k_m` (Ollama) | `train_qlora.py` |
 | Ölçülen hız (Kaggle T4, float32; bf16 YOK: yerleşik destek yok, emülasyon kapatıldı) | ~167 sn/adım (ilk adımlar 223/180/163/166/167 sn); 75 adım ≈ 3,5 saat | Kaggle log (2026-11-23) |
 
-* **Nihai kullanılan hiperparametreler, epoch sayısı, GPU tipi ve toplam eğitim süresi: [SONUÇ BEKLENİYOR]** (eğitim koşusundan; `data_stats.json`, `train_result.json`). [L38]
-* **Eğitim kaybı eğrisi (train/val loss): [SONUÇ BEKLENİYOR]** (`train_result.json`, `trainer_state.json`). Gözlenen ilk kayıp (v2.1 koşusu, adım 5): 1,414. Eğitilen token payı %11,0 (ölçüldü); bağlamdan elenen örnek 0 (ölçüldü).
+* **Nihai model v2.3:** QLoRA r=16, lr 2e-4, batch 1 × grad. biriktirme 8, **120 adım (~1,6 epoch)**, `max_seq` 8192, float32, Kaggle T4; eğitim süresi 21 810 sn (6,06 saat); eğitim verisi 600 oturum (3 006 456 token; eğitilen token payı %11,24), doğrulama 50 oturum; hiçbir oturum elenmedi. v2.3 verisi: araç-hata-kurtarma yörüngeleri (ilk çağrı hata verir, düzeltilir; hatalı tur kayıptan maskeli) ve haftalık örüntüde çok tetik günü ağırlığı. [KANIT: `reports/v2_3/train_result.json`, `data_stats.json`, `train_log.txt`] [L38]
+* **Kayıp eğrisi (v2.3):** doğrulama kaybı adım 40: 0,1234; adım 80: 0,02234; adım 120: **0,01321**; eğitim kaybı (tüm koşu ortalaması) 0,2148. Doğrulama kaybı eğitimle birlikte düşüyor (aşırı öğrenme belirtisi yok; ancak doğrulama oturumları eğitim şablonlarıyla aynı aileden olduğu için bu iyimser bir ölçüdür). v2.1 koşusunda ilk kayıp (adım 5): 1,414. [KANIT: `reports/v2_3/train_log.txt`]
 * **Eğitim platformu:** Colab T4 bu hesapta bağlanmadığından Kaggle (T4 x2, tek GPU'ya sabitli) kullanıldı: `training/kaggle/train_qlora_kaggle.ipynb`. Bir hata düzeltmesi: yeni PyTorch T4'te bf16'yı emülasyonla "destekleniyor" gösterdiğinden (çok yavaş) bf16 yalnızca compute capability >= 8 ise seçilir (`compat.bf16_native`).
-* **Yerelde çalıştırma:** GGUF → `ollama create gemma3-bist -f training/ollama/Modelfile` (kendi sohbet şablonumuz; `<bos>` şablonda yok); şablon denetimi `python -m experiments.check_template` (eğitim metniyle aynı token sayısı). Fine-tuned GGUF için şablon denetim sonucu: **[SONUÇ BEKLENİYOR]** [L8]. [KANIT: `training/ollama/Modelfile`, `experiments/check_template.py`]
+* **Yerelde çalıştırma:** GGUF → `ollama create gemma3-bist -f training/ollama/Modelfile` (kendi sohbet şablonumuz; `<bos>` şablonda yok); şablon denetimi `python -m experiments.check_template` (eğitim metniyle aynı token sayısı). Fine-tuned GGUF için şablon denetim sonucu: **eğitim metniyle AYNI (ham yol)**; Kaggle'da (Ollama 0.x, v2.3 GGUF) ve yerelde doğrulandı. [L8] [KANIT: `training/ollama/Modelfile`, `experiments/check_template.py`]
 
 ---
 
@@ -162,7 +162,7 @@ Aynı sorular, aynı araçlar ve aynı model; yalnızca harness bayrakları değ
 * **Sorular:** v2.2 test bölmesi (100 oturum) içinden tipe orantılı ve belirlenimli alt küme; `--n 40` → **40 soru** (5'i makro); 40 × 2 model × 5 profil = **400 koşu**; tekrarlanabilirlik için ince ayarlı model, profil D, 20 soru, `--repeats 2`. [KANIT: `experiments/eval_runner.py`, `experiments/kaggle/eval_ollama_kaggle.ipynb`]
 * **Koşucu:** her oturum sonrası satır yazma (CSV + JSONL), süre log'u, kesilince devam (`--resume`), `--max-runs` ile iki Colab oturumuna bölme. [KANIT: `docs/harness_design.md` §14.5]
 * **Değerlendirme ortamı:** Kaggle GPU + Ollama (CPU'da tam değerlendirme pratik değil [L36, L37]); paket `experiments.colab.make_eval_bundle --questions data/training/v2_2` (1,3 MB zip), notebook `experiments/kaggle/eval_ollama_kaggle.ipynb` (Colab sürümü `experiments/colab/`). Canlı demo: `python -m experiments.ask --model gemma3-bist --question "..."` (araç izi, denetim özeti, karar günlüğü). [KANIT: `docs/harness_design.md` §14.5, `experiments/ask.py`]
-* **Koşu süresi tahmini** [VARSAYIM; gerçek hızlar **[SONUÇ BEKLENİYOR]** (L39)]: T4 ~222 dk (2 oturum), L4 ~171 dk (2 oturum), A100 ~86 dk (1 oturum); `plan.py --calibrate` ilk koşulardan ölçümle yeniler. [KANIT: `experiments/colab/plan.py` çıktısı]
+* **Koşu süresi tahmini** [VARSAYIM; gerçek hız ölçüldü: Kaggle T4'te 400 oturum 13 160 sn = 219 dk (tahminle uyumlu) (L39)]: T4 ~222 dk (2 oturum), L4 ~171 dk (2 oturum), A100 ~86 dk (1 oturum); `plan.py --calibrate` ilk koşulardan ölçümle yeniler. [KANIT: `experiments/colab/plan.py` çıktısı]
 * **Örnek-soru zinciri (model yok):** beş sorunun araç zinciri öğretmen betiğiyle gerçek veride koşuldu (bölüm 8). Bu, model başarısı DEĞİL, araç ve harness zincirinin doğrulamasıdır [L9].
 
 ---
@@ -225,8 +225,8 @@ Okuma notları: (1) Profil A araçsızdır; model sayı uydurur (halüsinasyon %
 
 ### 9.2 Fine-tuning neyi iyileştirdi? (hocanın raporda istediği karşılaştırma)
 * **Temel → ince ayarlı (profil D):** teslim edilen cevap **1/40 → 30/40**. Temel model D/E'de neredeyse hiç geçerli araç çağrısı üretemedi (36 oturum `MODEL_ERROR`). Profil B'de sayısal halüsinasyon **%83,3 → %0,0**; profil C'de teslim 12/40 → 31/40.
-* **İlk koşuya (75 adım) göre 120 adım:** D/E'de teslim 23/40 → **30/40**, `TURN_LIMIT` 17 → 10, kanıtsız sayı %18,2 → %11,8, etiket = beklenen %78,3 → %80,0; halüsinasyon ve teslim ihlali her iki koşuda 0. [VARSAYIM: ilk koşu 75 adımlık modelle yapıldı; kaynak `reports/eval_v2_2/`]
-* **Kötüleşen yönler (dürüstlük):** korumasız profillerde 120 adımlık model ilk koşudan kötü: C'de teslim 40 → 31 ve halüsinasyon %0 → %22,2; B'de ihlal %7,7 → %36,8. Nihai sistem D/E olduğu için asıl ölçüt orasıdır; ama model tek başına (korumasız) daha güvenilir olmadı. Tekrarlanabilirlik %57,9 → %47,4.
+* **v2.2 modeline (75 adım, 1 epoch) göre v2.3 (120 adım, ~1,6 epoch):** D/E'de teslim 23/40 → **30/40**, `TURN_LIMIT` 17 → 10, kanıtsız sayı %18,2 → %11,8, etiket = beklenen %78,3 → %80,0; halüsinasyon ve teslim ihlali her iki koşuda 0. [KANIT: `reports/eval_v2_2/` = v2.2 modelinin değerlendirmesi; v2.2 eğitim çıktısı bu depoda yok]
+* **Kötüleşen yönler (dürüstlük):** korumasız profillerde 120 adımlık model ilk koşudan kötü: C'de teslim 40 → 31 ve halüsinasyon %0 → %22,2; B'de ihlal %7,7 → %36,8. Nihai sistem D/E olduğu için asıl ölçüt orasıdır; ama model tek başına (korumasız) daha güvenilir olmadı. Tekrarlanabilirlik (D, 19 soru × 2) %57,9 → %47,4.
 Soru tipine göre teslim (gemma3-bist, profil D):
 | Soru tipi | eval_v2_2 | eval_v2_3 |
 |---|---|---|
@@ -265,16 +265,16 @@ v2.1 modeli **yedektir** (makro aracını eğitimde görmedi, L21); asıl model 
 ### 9.3 Eğitim ve hız ölçümleri
 | Ölçüm | Değer |
 |---|---|
-| Eğitim kaybı (başlangıç → son), doğrulama kaybı eğrisi | [SONUÇ BEKLENİYOR] |
-| Eğitilen token payı, Colab'da elenen örnek | [SONUÇ BEKLENİYOR] |
-| Nihai epoch / adım sayısı, GPU tipi, toplam eğitim süresi | [SONUÇ BEKLENİYOR] |
-| Gerçek Gemma tokenizer ile oturum uzunlukları (ort./p95/maks.) | [SONUÇ BEKLENİYOR] |
-| Şablon denetimi (`check_template`) sonucu, fine-tuned GGUF | [SONUÇ BEKLENİYOR] |
-| Gerçek model hızı: prompt ve üretim tok/sn (T4 / L4 / A100) | [SONUÇ BEKLENİYOR] |
-| Oturum başına ortalama süre (profil bazında, gerçek GPU) | [SONUÇ BEKLENİYOR] |
-| Gerçek koşu toplam süresi ve oturum sayısı | [SONUÇ BEKLENİYOR] |
-| Canlı tekrarlanabilirlik oranı (`--repeats 2`) | [SONUÇ BEKLENİYOR] |
-| Maks. `prompt_eval_count` (bağlam payı, 8192'ye karşı) | [SONUÇ BEKLENİYOR] |
+| Eğitim kaybı (v2.3, ortalama), doğrulama kaybı eğrisi | 0,2148; doğrulama 0,1234 → 0,02234 → 0,01321 (adım 40/80/120) |
+| Eğitilen token payı, elenen örnek | %11,24; 0 elenen |
+| Nihai epoch / adım sayısı, GPU tipi, toplam eğitim süresi | ~1,6 epoch / 120 adım, Kaggle T4 (float32), 21 810 sn (6,06 saat); adım başına ~163–256 sn |
+| Gerçek Gemma tokenizer ile oturum uzunlukları | v2.3 eğitim: ort. 5 011, en uzun 7 890 token (sınır 8192) |
+| Şablon denetimi (`check_template`) sonucu, fine-tuned GGUF | eğitim metniyle AYNI (ham yol) |
+| Gerçek model hızı | Kaggle T4: 400 oturum 13 160 sn (3,66 saat); yerel CPU: bir oturum 6–10 dk |
+| Oturum başına ortalama süre (T4, ince ayarlı) | A 5,9 sn; B 10,9; C 28,9; D 30,8; E 30,9 |
+| Gerçek koşu toplam süresi ve oturum sayısı | 13 160 sn; 400 oturum (+ 38 tekrar oturumu, 1 182 sn) |
+| Canlı tekrarlanabilirlik oranı (`--repeats 2`) | %47,4 (v2.3, D, 19 soru × 2); v2.2: %57,9 [L35] |
+| Maks. istem uzunluğu (8192 bağlama karşı) | 8181 (ince ayarlı D/E), 8191 (temel C) [L46] |
 | Yerel (CPU) referans ölçüm (Bilgisayar 1): prompt ~27 tok/sn; profil A tek soru ~114 sn | ölçüldü [KANIT: `docs/harness_design.md` §14.5] |
 
 ---
@@ -285,12 +285,12 @@ v2.1 modeli **yedektir** (makro aracını eğitimde görmedi, L21); asıl model 
 3. **Kapsam:** haber ve konuşma araçları yok; politika faizi serisi yok (fonlama maliyeti kullanıldı); `relate_to` yalnızca günlük seriler ve kısa örneklem [L20–L23, L43, L44].
 4. **Hız:** CPU'da değerlendirme pratik değil; Ollama önek önbelleği belirsizliği; eğitim süresi GPU'ya bağlı [L36–L39].
 5. **İstatistik:** küçük örneklem, çoklu test, nedensellik yok [L24–L26].
-6. **Doğrulama:** henüz gerçek model koşusu yok [L9, L35].
+6. **Doğrulama:** gerçek model koşusu yapıldı; D/E'de ~%25 oturum tur sınırıyla kesiliyor, tekrarlanabilirlik %47, korumasız profillerde model tek başına güvenilir değil [L35, L46–L49].
 
 ---
 
 ## 11. Sonuç ve gelecek çalışma (iskelet)
-* Kısa özet: sistem mimarisi, araçlar, veri ve politika **kanıtla** doldu (bölüm 2–5, 8); model karşılaştırması **[SONUÇ BEKLENİYOR]** (bölüm 9).
+* Kısa özet: sistem mimarisi, araçlar, veri ve politika **kanıtla** doldu (bölüm 2–5, 8); model karşılaştırması **bölüm 9'da ölçüldü** (D/E'de teslim 1/40 → 30/40; teslim edilen cevaplarda halüsinasyon %0 ve kural ihlali %0).
 * Gelecek: haber/KAP ve konuşma katmanı; TUPRS ve diğer hisseler için 2025Q1/Q2 elle KAP değerleri (YoY, F3 örnekleri); F3/CU adayları için daha uzun tarih aralığı; şema önerileri (`EQUITY`, ikincil veri sürümü alanı, uyarı kodları, `event_direction`). [KANIT: `docs/schema_wishlist.md`]
 
 ---
@@ -298,10 +298,10 @@ v2.1 modeli **yedektir** (makro aracını eğitimde görmedi, L21); asıl model 
 ## Ek A. Sunum için akış önerisi (iskelet)
 1. Problem: küçük LLM + finans = sayı uydurma, tavsiye, look-ahead (bölüm 1).
 2. Mimari şeması ve "LLM açıklar / Python hesaplar / harness denetler" (bölüm 2).
-3. Canlı demo: Soru 4 (TUPRS) araç zinciri ve `as_of` sızıntısızlığı; Soru 5 güvenlik cevabı (bölüm 8). *Canlı model çıktısı: [SONUÇ BEKLENİYOR]*
+3. Canlı demo: Soru 4 (TUPRS) araç zinciri ve `as_of` sızıntısızlığı; Soru 5 güvenlik cevabı (bölüm 8). *Canlı model çıktısı: `ask --record` kayıtları ve `replay` ile (docs/sunum_ve_canli_test.md)*
 4. Veri ve politika: KAP tarihine göre hizalama, yasal süre görünürlüğü, etiket kuralları (bölüm 4).
-5. Eğitim: Gemma 3 4B QLoRA, 600/50/100 oturum (bölüm 5). *Kayıp eğrisi: [SONUÇ BEKLENİYOR]*
-6. A–E sonuçları ve temel/ince ayarlı karşılaştırma (bölüm 9). *[SONUÇ BEKLENİYOR]*
+5. Eğitim: Gemma 3 4B QLoRA, 600/50/100 oturum (bölüm 5). *Kayıp eğrisi: doğrulama 0,1234 → 0,02234 → 0,01321 (bölüm 5.3)*
+6. A–E sonuçları ve temel/ince ayarlı karşılaştırma (bölüm 9): D/E'de teslim 1/40 → 30/40; teslim edilenlerde halüsinasyon %0, kural ihlali %0.
 7. Sınırlamalar ve dürüstlük (bölüm 10, `limitations.md`).
 
 ## Ek B. Kaynak dosyalar

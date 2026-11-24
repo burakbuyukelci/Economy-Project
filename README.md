@@ -35,7 +35,7 @@ Ağ yalnızca `scripts/download_*.py` içindedir (veri bir kez indirilir). EVDS 
 ## Hızlı kullanım
 **Tek soru, yerel model (Ollama gerekir; modeli kurmak için `training/README.md` bölüm 4):**
 ```
-python -m experiments.ask --model gemma3-bist --as-of 2026-09-10 --record reports/q5.json --log reports/q5.jsonl ^
+python -m experiments.ask --model gemma3-bist-v23 --as-of 2026-09-10 --record reports/q5.json --log reports/q5.jsonl ^
   --question "Dolar/TL yükseliyor, EREGL ihracatçı olduğu için kesin yükselir. Yarın EREGL alayım mı? Hedef fiyat ver."
 python -m experiments.replay reports/q5.json        # kayıtlı oturumu yeniden oynat: araç hash'leri, etiket, kanıt kilidi birebir aynı mı?
 ```
@@ -53,9 +53,11 @@ get_macro_context.run({"start": "2024-01-01", "end": "2026-09-10", "as_of": "202
 ## Eğitim ve değerlendirme (özet)
 1. Veri: `python -m training.build_dataset --out data/training/v2_2` (600/50/100 oturum; yalnızca gerçek v2 araç çıktıları; etiket politikadan).
 2. Eğitim (GPU): `training/kaggle/train_qlora_kaggle.ipynb` (Kaggle T4) ya da `training/colab/train_qlora.ipynb`. Paket: `python -m training.colab.make_bundle --data data/training/v2_2 --out colab_bundle.zip`.
-3. Yerel kurulum: GGUF → `ollama create gemma3-bist -f training/ollama/Modelfile` → `python -m experiments.check_template` (şablon denetimi zorunlu).
+3. Yerel kurulum: GGUF → `ollama create gemma3-bist-v23 -f training/ollama/Modelfile.v23` (nihai model v2.3) → `python -m experiments.check_template` (şablon denetimi zorunlu).
 4. Değerlendirme: `experiments/kaggle/eval_ollama_kaggle.ipynb` (A–E × temel/ince ayarlı model). Metrikler: sayısal halüsinasyon, hatalı araç çağrısı, kanıtsız sonuç, kural ihlali, tekrarlanabilirlik.
 Ayrıntı: `training/README.md`, `docs/harness_design.md` §14.
+
+**Sonuç özeti** (nihai model v2.3; 40 test sorusu, A–E, Kaggle T4; tablolar `python -m experiments.eval_tables reports/eval_v2_3`): D profilinde teslim edilen cevap temel modelde 1/40, ince ayarlıda **30/40**; D/E'de teslim edilen cevaplarda sayı halüsinasyonu **%0**, kural ihlali **%0**, etiket = politika **%100**. Zayıf yönler: ~%25 oturum tur sınırında güvenle kesilir, canlı tekrarlanabilirlik %47, korumasız profillerde (B/C) model tek başına güvenilir değildir (`docs/report/report_draft.md` §9, `limitations.md` L35, L46–L49).
 
 ## Belgeler
 `CLAUDE.md` (kurallar) · `docs/hoca_qa.md` (hoca açıklamaları, proje dokümanından önceliklidir) · `docs/data_dictionary.md` (her veri seti ve araç) · `docs/harness_design.md` · `docs/tool_usage_guide.md` · `docs/report/report_draft.md` ve `docs/report/limitations.md` (**bilinen sınırlamalar tek yerde**) · `reports/` (senaryo raporları).
