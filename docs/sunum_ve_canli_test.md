@@ -2,6 +2,12 @@
 
 İki kişilik ekip için: sunum akışı, canlı test günü komutları, kontrol listesi ve olası sorulara hazırlık. Sayılar repodaki kanıtlardan alınmıştır; **[SONUÇ BEKLENİYOR]** yazan yerler değerlendirme bitince doldurulur.
 
+## 0. Sunum biçimi (hocanın duyurusu, 2026-11-25)
+1. **Önceden hazırlanmış 5 senaryo:** sınıfa iz kayıtlarıyla gelinir: `reports/traces/scenario_1..5_*.json` (her biri: model+sürüm, istemler, araçlar/parametreler/tarihler, araç çıktıları, nihai yanıt, zaman damgaları, sıcaklık 0, seed 42). Gösterim: `python -m experiments.replay` DEĞİL, doğrudan JSON'u açıp anlatın; isterseniz `reports/demo/` kayıtlarını `replay` ile oynatın.
+2. **Canlı soru:** sınıfta bizim model ve kodla çalışır (`python -m experiments.chat --model gemma3-bist-v23 --as-of <tarih>` ya da `ask --trace ...`). Makul süre tanınacak; CPU'da teslim edilen cevap ≈3–10 dk.
+3. **Akademik dürüstlük (0 puan riski):** sabit "soru → cevap" eşleştirmesi YOK; model dışı kaynağı model çıktısı gibi sunmayın (`docs/sample_runs/` öğretmen betiğidir, model değildir); cevaptaki her sayı araç çıktısında olmalı (sayı doğrulayıcı denetler).
+4. **Teslim:** `submission.json` + ekler (`python -m experiments.build_submission`): kaynak kod, ince ayar verisi/yapılandırma, YALNIZCA LoRA adaptörü (+SHA-256, temel model adı/sürümü/kaynağı), RAG/bilgi tabanı JSON, 5 iz kaydı.
+
 ## 1. Canlı testten bir gün önce (kontrol listesi)
 - [ ] `git pull --rebase`, `.venv\Scripts\python.exe -m pytest -q` → hepsi geçmeli (≈2800 test, ≈3 dk).
 - [ ] Ollama çalışıyor: `ollama list` → nihai modelimiz **`gemma3-bist-v23`** listede (v2.3, 120 adım).

@@ -43,6 +43,12 @@ python -m experiments.replay reports/q5.json        # kayıtlı oturumu yeniden 
 
 **Sohbet gibi kullanım (arayüz = terminal):** `python -m experiments.chat --model gemma3-bist-v23 --as-of 2026-09-10` → `Soru>` satırına sorunuzu yazıp Enter'a basın, cevap ve denetim yazılır; çıkış `q`. Her soru `reports/chat/` altına karar kaydı olarak kaydedilir (`replay` ile yeniden oynatılır).
 
+**Sunum biçimi (hocanın kuralı) ve teslim paketi:** beş senaryo önceden çalıştırılır, her biri TAM iz kaydıyla (model/sürüm, sistem+kullanıcı istemi, araçlar + parametreler + tarih aralıkları, araç çıktıları,
+nihai yanıt, zaman damgaları, sıcaklık, seed) saklanır: `python -m experiments.ask ... --trace reports/traces/scenario_N.json --scenario ad`. Hazır kayıtlar `reports/traces/` altında.
+Teslim paketi (tek `submission.json` + ekler: kaynak kod, ince ayar dosyaları, **yalnızca LoRA adaptörü** + SHA-256, bilgi tabanı JSON'u, iz kayıtları):
+`python -m experiments.build_submission --adapter-zip "<Kaggle results.zip>" --out submission` (`submission/` git'e girmez). Canlı soru aynı `ask`/`chat` komutuyla sınıfta çalıştırılır.
+**Dürüstlük:** `docs/sample_runs/` modelsiz öğretmen betiğiyle üretilir, MODEL ÇIKTISI DEĞİLDİR; iz kayıtlarında cevabın kaynağı (`final_answer.source`) ve harness'in modelin çağrısına yaptığı her onarım yazılıdır.
+
 **Modelsiz örnek zincirler** (öğretmen betiği, gerçek araçlar, 5 örnek soru): `python -m experiments.sample_runs` → `docs/sample_runs/`.
 
 **Araçları doğrudan çağırmak:**

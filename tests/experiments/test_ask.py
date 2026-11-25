@@ -74,3 +74,21 @@ def test_off_topic_question_is_answered_instantly_without_model_or_tools(capsys)
     code = ask.main(["--question", "Yarın İstanbul'da hava nasıl olacak, şemsiye almalı mıyım?", "--as-of", "2026-09-10", "--model", "x"], backend_factory=boom)
     out = capsys.readouterr().out
     assert code == 0 and "Kapsam dışı" in out and out.rstrip().endswith("EYLEM: ANALYSIS_UNSAFE")
+
+
+@needs_data
+def test_trace_has_everything_the_instructor_requires(tmp_path, capsys):
+    out = tmp_path / "trace.json"
+    code = ask.main(["--question", Q5, "--model", "scripted", "--trace", str(out), "--scenario", "S5"], backend_factory=scripted(Q5))
+    assert code == 0
+    t = json.loads(out.read_text(encoding="utf-8"))
+    assert t["format"] == "cse481-trace-1" and t["scenario"] == "S5" and t["as_of"] == "2026-09-10"
+    assert t["model"]["name"] == "scripted" and t["model"]["version"] == "v2.3" and len(t["model"]["adapter_sha256"]) == 64
+    assert {"temperature", "seed", "num_ctx", "max_model_turns"} <= set(t["generation"])
+    assert t["prompts"]["system"] and "EREGL" in t["prompts"]["user"]
+    assert t["timing"]["started_at"] and t["timing"]["finished_at"] and t["timing"]["duration_s"] is not None
+    model_calls = [c for c in t["tool_calls"] if c["caller"] == "model"]
+    assert model_calls and model_calls[0]["tool"] == "get_macro_context" and model_calls[0]["params"]["as_of"] == "2026-09-10" and "start" in model_calls[0]["date_range"]
+    assert model_calls[0]["output"]["tool"] == "get_macro_context" and model_calls[0]["ts"]
+    assert t["final_answer"]["source"] == "model" and t["final_answer"]["text"].rstrip().endswith("EYLEM: INVESTIGATE")
+    assert t["audit"]["n_hallucinated"] == 0 and all(e["ts"] for e in t["events"])

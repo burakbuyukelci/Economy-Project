@@ -157,6 +157,19 @@ class OllamaBackend(LLMBackend):
         # ortam proxy'lerini YOK SAY (istek başka yere yönlenemesin) ve yönlendirmeyi izleme
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
+    def model_digest(self) -> str | None:
+        """Yerel Ollama'daki modelin özeti (digest; iz kaydı için). Bağlanılamazsa/bulunamazsa None (sahte değer yazılmaz). Yalnızca yerel host."""
+        try:
+            req = urllib.request.Request(f"{self.host}/api/tags")
+            with self._opener.open(req, timeout=10) as resp:
+                tags = json.loads(resp.read().decode("utf-8")).get("models", [])
+        except (urllib.error.URLError, OSError, json.JSONDecodeError, UnicodeDecodeError):
+            return None
+        for m in tags:
+            if m.get("name") in (self.model, f"{self.model}:latest"):
+                return m.get("digest")
+        return None
+
     def _post(self, path: str, body: dict[str, Any]) -> Any:
         req = urllib.request.Request(f"{self.host}{path}", data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")

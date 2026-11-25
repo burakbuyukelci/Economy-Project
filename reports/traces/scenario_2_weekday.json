@@ -1,0 +1,1685 @@
+{
+ "format": "cse481-trace-1",
+ "scenario": "S2_weekday",
+ "question": "Analiz tarihi: 10.09.2026\nTHYAO'da 01.01.2024 – 31.12.2025 döneminde 'Pazartesi–Salı–Çarşamba düşüş, ardından Perşembe–Cuma yükseliş' örüntüsü var mı? Bu örüntü 01.01.2026 – 10.09.2026 döneminde de devam ediyor mu?",
+ "as_of": "2026-09-10",
+ "as_of_source": "question",
+ "profile": "D",
+ "status": "DELIVERED",
+ "abort_reason": null,
+ "model": {
+  "name": "gemma3-bist-v23",
+  "version": "v2.3",
+  "ollama_digest": "5b1eb7166f68116ba657483c4e308f2a45302c05a70495fb9ef4af1942df27e5",
+  "base_model": "unsloth/gemma-3-4b-it-unsloth-bnb-4bit",
+  "adapter_sha256": "00058b38e2143aac40dbe92569afee78edb9335aca418b81ef5b0de7fffa8dee",
+  "gguf_sha256": "4c884b388fa57bb26e4c1c4583b778ba62552b96241dbd0ae9f9fdb701f7830c"
+ },
+ "generation": {
+  "temperature": 0.0,
+  "seed": 42,
+  "num_ctx": 8192,
+  "max_new_tokens": null,
+  "tool_mode": "text",
+  "max_model_turns": 40
+ },
+ "prompts": {
+  "system": "Sen BIST 100 hisseleri için finansal analiz yorumcususun; hesaplamayı araçlar yapar, sen araç çıktılarını yorumlarsın.\n\nKURALLAR:\n1. Sayılar yalnızca araç çıktısından gelir; kendin sayı türetme ya da hesaplama (oran, fark, yüzde) yapma.\n2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasak; doğrulanmamış iddiayı tırnak içinde alıntılayıp doğrulanmadığını söyle.\n3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini belirt; nedensellik kurma. Sonuçlar geçmiş gözlemdir (gelecek getiri garantisi yok); backtest işlem maliyeti ve kayma varsayımını içerir.\n5. Çıktıda bulunmayan alan boştur (null). `view_trimmed` bölümleri kısaltılmıştır; kısaltılan sayıları yazma.\n\nARAÇ KULLANIMI: gerekli araçları çağır; as_of = 2026-09-10 (soruda belirtilen analiz tarihi). Belirtmediğin parametreler varsayılanla çalışır. Örneklem dışı doğrulama için split_date / out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi); verilmezse analiz INVESTIGATE kalır. İşin bitince araç çağırmadan `HAZIR` yaz; harness politika kararını verip nihai açıklamayı isteyecek.\n\nNİHAİ ÇIKTI: son satır tam olarak `EYLEM: <ETİKET>`. Etiketler: HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE.",
+  "user": "Analiz tarihi: 10.09.2026\nTHYAO'da 01.01.2024 – 31.12.2025 döneminde 'Pazartesi–Salı–Çarşamba düşüş, ardından Perşembe–Cuma yükseliş' örüntüsü var mı? Bu örüntü 01.01.2026 – 10.09.2026 döneminde de devam ediyor mu?"
+ },
+ "timing": {
+  "started_at": "2026-11-25T11:22:11+00:00",
+  "finished_at": "2026-11-25T11:24:56+00:00",
+  "duration_s": 165.3
+ },
+ "model_turns": [
+  {
+   "seq": 5,
+   "ts": "2026-11-25T11:23:02.345+00:00",
+   "turn": 1,
+   "prompt_tokens": 2908,
+   "completion_tokens": 190,
+   "n_tool_calls": 1
+  },
+  {
+   "seq": 11,
+   "ts": "2026-11-25T11:23:26.685+00:00",
+   "turn": 2,
+   "prompt_tokens": 3915,
+   "completion_tokens": 4,
+   "n_tool_calls": 0
+  },
+  {
+   "seq": 22,
+   "ts": "2026-11-25T11:24:56.903+00:00",
+   "turn": 3,
+   "prompt_tokens": 1749,
+   "completion_tokens": 396,
+   "n_tool_calls": 0
+  }
+ ],
+ "tool_calls": [
+  {
+   "seq": 8,
+   "ts": "2026-11-25T11:23:02.541+00:00",
+   "caller": "harness",
+   "tool": "check_data_quality",
+   "status": "OK",
+   "params": {
+    "as_of": "2026-09-10",
+    "tickers": [
+     "THYAO"
+    ],
+    "include_index": true,
+    "start": "2024-01-01",
+    "end": "2026-09-10",
+    "checks": null,
+    "price_jump_limit_pct": 10.0,
+    "analysis_bundle": []
+   },
+   "date_range": {
+    "as_of": "2026-09-10",
+    "start": "2024-01-01",
+    "end": "2026-09-10"
+   },
+   "input_hash": "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7",
+   "data_version": "snap_2026-11-20_v2",
+   "state_after": "CALCULATE_TECHNICALS",
+   "output": {
+    "tool": "check_data_quality",
+    "schema_version": "1.5.0",
+    "params": {
+     "as_of": "2026-09-10",
+     "tickers": [
+      "THYAO"
+     ],
+     "include_index": true,
+     "start": "2024-01-01",
+     "end": "2026-09-10",
+     "checks": null,
+     "price_jump_limit_pct": 10.0,
+     "analysis_bundle": []
+    },
+    "as_of": "2026-09-10",
+    "data_version": "snap_2026-11-20_v2",
+    "input_hash": "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7",
+    "results": {
+     "gate_status": "PASS_WITH_WARNINGS",
+     "gate_reason": "PASS_WITH_WARNINGS: hard 0, soft 1 (MISSING_TRADING_DAYS×1). Çalışan kontroller: PRICE_JUMPS, MISSING_DAYS, STALENESS, AS_OF_CONSISTENCY, TICKER_IDENTITY. Çalışmayan kontroller (veri/şema yok, 'geçti' sayılmaz): DATA_VERSION_CONSISTENCY, FUNDAMENTAL_DISCLOSURE_ALIGNMENT, SIGNAL_SHIFT, EVENT_COUNT, PEER_GROUP_SIZE, MACRO_COVERAGE, NEWS_COVERAGE, TRANSCRIPT_QUALITY.",
+     "hard_blocks": [],
+     "soft_warnings": [
+      {
+       "code": "MISSING_TRADING_DAYS",
+       "severity": "SOFT",
+       "message": "THYAO: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09",
+       "ticker": "THYAO",
+       "date": null,
+       "value": 1.0
+      }
+     ],
+     "checks_run": [
+      "PRICE_JUMPS",
+      "MISSING_DAYS",
+      "STALENESS",
+      "AS_OF_CONSISTENCY",
+      "TICKER_IDENTITY"
+     ],
+     "price_jump_limit_pct": 10.0,
+     "ticker_reports": [
+      {
+       "ticker": "THYAO",
+       "n_rows": 672,
+       "first_date": "2024-01-02",
+       "last_date": "2026-09-10",
+       "n_missing_trading_days": 1,
+       "last_data_age_days": 0,
+       "max_abs_daily_return_pct": 8.5616,
+       "max_abs_daily_return_date": "2026-04-08",
+       "n_price_jumps_over_limit": 0
+      },
+      {
+       "ticker": "XU100",
+       "n_rows": 671,
+       "first_date": "2024-01-02",
+       "last_date": "2026-09-10",
+       "n_missing_trading_days": 2,
+       "last_data_age_days": 0,
+       "max_abs_daily_return_pct": 8.7195,
+       "max_abs_daily_return_date": "2025-03-19",
+       "n_price_jumps_over_limit": 0
+      }
+     ],
+     "issue_counts": {
+      "MISSING_TRADING_DAYS": 1
+     }
+    },
+    "n_events": null,
+    "n_excluded_incomplete_horizon": 0,
+    "warnings": [],
+    "status": "OK",
+    "error": null
+   }
+  },
+  {
+   "seq": 10,
+   "ts": "2026-11-25T11:23:02.583+00:00",
+   "caller": "model",
+   "tool": "test_weekday_pattern",
+   "status": "OK",
+   "params": {
+    "transaction_cost_bps": 20.0,
+    "slippage_bps": 5.0,
+    "as_of": "2026-09-10",
+    "ticker": "THYAO",
+    "pattern": [
+     {
+      "weekday": "MON",
+      "direction": "DOWN",
+      "role": "TRIGGER"
+     },
+     {
+      "weekday": "TUE",
+      "direction": "DOWN",
+      "role": "TRIGGER"
+     },
+     {
+      "weekday": "WED",
+      "direction": "DOWN",
+      "role": "TRIGGER"
+     },
+     {
+      "weekday": "THU",
+      "direction": "UP",
+      "role": "OUTCOME"
+     },
+     {
+      "weekday": "FRI",
+      "direction": "UP",
+      "role": "OUTCOME"
+     }
+    ],
+    "in_sample_start": "2024-01-01",
+    "in_sample_end": "2025-12-31",
+    "out_of_sample_start": "2026-01-01",
+    "out_of_sample_end": "2026-09-10",
+    "conditioning": "NONE",
+    "n_tests_declared": 1,
+    "alpha": 0.05
+   },
+   "date_range": {
+    "as_of": "2026-09-10",
+    "out_of_sample_start": "2026-01-01"
+   },
+   "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+   "data_version": "snap_2026-11-20_v2",
+   "state_after": "RUN_PATTERN_AND_REVERSAL_ANALYSIS",
+   "output": {
+    "tool": "test_weekday_pattern",
+    "schema_version": "1.5.0",
+    "params": {
+     "transaction_cost_bps": 20.0,
+     "slippage_bps": 5.0,
+     "as_of": "2026-09-10",
+     "ticker": "THYAO",
+     "pattern": [
+      {
+       "weekday": "MON",
+       "direction": "DOWN",
+       "role": "TRIGGER"
+      },
+      {
+       "weekday": "TUE",
+       "direction": "DOWN",
+       "role": "TRIGGER"
+      },
+      {
+       "weekday": "WED",
+       "direction": "DOWN",
+       "role": "TRIGGER"
+      },
+      {
+       "weekday": "THU",
+       "direction": "UP",
+       "role": "OUTCOME"
+      },
+      {
+       "weekday": "FRI",
+       "direction": "UP",
+       "role": "OUTCOME"
+      }
+     ],
+     "in_sample_start": "2024-01-01",
+     "in_sample_end": "2025-12-31",
+     "out_of_sample_start": "2026-01-01",
+     "out_of_sample_end": "2026-09-10",
+     "conditioning": "NONE",
+     "n_tests_declared": 1,
+     "alpha": 0.05
+    },
+    "as_of": "2026-09-10",
+    "data_version": "snap_2026-11-20_v2",
+    "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+    "results": {
+     "ticker": "THYAO",
+     "pattern_label": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP",
+     "conditioning": "NONE",
+     "cost_model": {
+      "transaction_cost_bps_per_side": 20.0,
+      "slippage_bps_per_side": 5.0,
+      "round_trip_cost_pct": 0.5
+     },
+     "in_sample": {
+      "window": {
+       "start": "2024-01-01",
+       "end": "2025-12-31"
+      },
+      "n_weeks_total": 105,
+      "n_excluded_holiday_weeks": 20,
+      "n_excluded_incomplete_horizon": 0,
+      "n_weeks_complete": 85,
+      "n_trigger_weeks": 18,
+      "n_occurrences": 5,
+      "n_false_positive": 13,
+      "occurrence_rate_pct": 5.8824,
+      "hit_rate_pct": 27.7778,
+      "expected_occurrences_if_independent": 4.4691,
+      "per_day": [
+       {
+        "weekday": "MON",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 85,
+        "mean_return_pct": 0.0169,
+        "median_return_pct": -0.3356,
+        "direction_match_rate_pct": 52.9412,
+        "unconditional_mean_return_pct": 0.055,
+        "unconditional_median_return_pct": 0.0
+       },
+       {
+        "weekday": "TUE",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 85,
+        "mean_return_pct": -0.1124,
+        "median_return_pct": -0.3724,
+        "direction_match_rate_pct": 58.8235,
+        "unconditional_mean_return_pct": 0.055,
+        "unconditional_median_return_pct": 0.0
+       },
+       {
+        "weekday": "WED",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 85,
+        "mean_return_pct": -0.2418,
+        "median_return_pct": -0.2309,
+        "direction_match_rate_pct": 54.1176,
+        "unconditional_mean_return_pct": 0.055,
+        "unconditional_median_return_pct": 0.0
+       },
+       {
+        "weekday": "THU",
+        "expected_direction": "UP",
+        "role": "OUTCOME",
+        "n_obs": 85,
+        "mean_return_pct": 0.4407,
+        "median_return_pct": 0.491,
+        "direction_match_rate_pct": 57.6471,
+        "unconditional_mean_return_pct": 0.055,
+        "unconditional_median_return_pct": 0.0
+       },
+       {
+        "weekday": "FRI",
+        "expected_direction": "UP",
+        "role": "OUTCOME",
+        "n_obs": 85,
+        "mean_return_pct": 0.2805,
+        "median_return_pct": 0.1484,
+        "direction_match_rate_pct": 54.1176,
+        "unconditional_mean_return_pct": 0.055,
+        "unconditional_median_return_pct": 0.0
+       }
+      ],
+      "outcome_mean_return_pct": 1.3017,
+      "outcome_median_return_pct": 0.706,
+      "unconditional_outcome_mean_return_pct": 0.7196,
+      "unconditional_outcome_median_return_pct": 0.5222,
+      "outcome_mean_diff_vs_unconditional_pct": 0.5821,
+      "cost_adjusted_outcome_mean_return_pct": 0.8017,
+      "t_stat": 1.171,
+      "p_value_raw": 0.120488,
+      "p_value_adjusted": 0.120488
+     },
+     "out_of_sample": {
+      "window": {
+       "start": "2026-01-01",
+       "end": "2026-09-10"
+      },
+      "n_weeks_total": 36,
+      "n_excluded_holiday_weeks": 9,
+      "n_excluded_incomplete_horizon": 1,
+      "n_weeks_complete": 26,
+      "n_trigger_weeks": 3,
+      "n_occurrences": 0,
+      "n_false_positive": 3,
+      "occurrence_rate_pct": 0.0,
+      "hit_rate_pct": 0.0,
+      "expected_occurrences_if_independent": 1.0873,
+      "per_day": [
+       {
+        "weekday": "MON",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 26,
+        "mean_return_pct": 0.0664,
+        "median_return_pct": -0.0831,
+        "direction_match_rate_pct": 50.0,
+        "unconditional_mean_return_pct": 0.0842,
+        "unconditional_median_return_pct": -0.1173
+       },
+       {
+        "weekday": "TUE",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 26,
+        "mean_return_pct": 0.2384,
+        "median_return_pct": -0.1672,
+        "direction_match_rate_pct": 53.8462,
+        "unconditional_mean_return_pct": 0.0842,
+        "unconditional_median_return_pct": -0.1173
+       },
+       {
+        "weekday": "WED",
+        "expected_direction": "DOWN",
+        "role": "TRIGGER",
+        "n_obs": 26,
+        "mean_return_pct": -0.1827,
+        "median_return_pct": -0.2491,
+        "direction_match_rate_pct": 53.8462,
+        "unconditional_mean_return_pct": 0.0842,
+        "unconditional_median_return_pct": -0.1173
+       },
+       {
+        "weekday": "THU",
+        "expected_direction": "UP",
+        "role": "OUTCOME",
+        "n_obs": 26,
+        "mean_return_pct": 0.1159,
+        "median_return_pct": 0.2878,
+        "direction_match_rate_pct": 50.0,
+        "unconditional_mean_return_pct": 0.0842,
+        "unconditional_median_return_pct": -0.1173
+       },
+       {
+        "weekday": "FRI",
+        "expected_direction": "UP",
+        "role": "OUTCOME",
+        "n_obs": 26,
+        "mean_return_pct": 0.5647,
+        "median_return_pct": 0.402,
+        "direction_match_rate_pct": 57.6923,
+        "unconditional_mean_return_pct": 0.0842,
+        "unconditional_median_return_pct": -0.1173
+       }
+      ],
+      "outcome_mean_return_pct": 0.1303,
+      "outcome_median_return_pct": 0.1629,
+      "unconditional_outcome_mean_return_pct": 0.6778,
+      "unconditional_outcome_median_return_pct": 0.441,
+      "outcome_mean_diff_vs_unconditional_pct": -0.5475,
+      "cost_adjusted_outcome_mean_return_pct": -0.3697,
+      "t_stat": -0.4393,
+      "p_value_raw": 0.656434,
+      "p_value_adjusted": 0.656434
+     },
+     "stability_verdict": "UNSTABLE",
+     "verdict_codes": [
+      "IS_NOT_SIGNIFICANT"
+     ],
+     "verdict_reason": "IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+     "multiple_testing": {
+      "n_tests_declared": 1,
+      "alpha": 0.05,
+      "adjusted_alpha": 0.05,
+      "method": "bonferroni",
+      "note": "Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar."
+     }
+    },
+    "n_events": 5,
+    "n_excluded_incomplete_horizon": 1,
+    "warnings": [
+     "HOLIDAY_WEEKS_EXCLUDED: örneklem içi 20, dışı 9 hafta dışlandı (tatil, veri boşluğu veya pencere sınırını aşan hafta; 5 tanesi takvimde olup hissede veri yok)",
+     "INCOMPLETE_HORIZON_EXCLUDED: 1 hafta as_of=2026-09-10 itibarıyla tamamlanmadı (son örüntü günü as_of sonrası) ve dışlandı",
+     "UNSTABLE_PATTERN: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+     "MULTIPLE_TESTING_RISK: n_tests_declared=1; aynı veride başka örüntü/koşul denendiyse bu sayı artırılmalı (Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); beş günlük örüntü TEK birleşik testtir",
+     "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma kaynaklı bir ölçüm değil, varsayımdır",
+     "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. İlişki gözlemidir, nedensellik iddiası değildir."
+    ],
+    "status": "OK",
+    "error": null
+   }
+  },
+  {
+   "seq": 14,
+   "ts": "2026-11-25T11:23:26.687+00:00",
+   "caller": "harness",
+   "tool": "build_evidence_bundle",
+   "status": "OK",
+   "params": {
+    "as_of": "2026-09-10",
+    "analysis_id": "2026-09-10-f7544a4d2520",
+    "source_input_hashes": [
+     "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+     "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7"
+    ]
+   },
+   "date_range": {
+    "as_of": "2026-09-10"
+   },
+   "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "data_version": "snap_2026-11-20_v2",
+   "state_after": "PREVIEW_STRATEGIES",
+   "output": {
+    "tool": "build_evidence_bundle",
+    "schema_version": "1.5.0",
+    "params": {
+     "as_of": "2026-09-10",
+     "analysis_id": "2026-09-10-f7544a4d2520",
+     "source_input_hashes": [
+      "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+      "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7"
+     ]
+    },
+    "as_of": "2026-09-10",
+    "data_version": "snap_2026-11-20_v2",
+    "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+    "results": {
+     "analysis_id": "2026-09-10-f7544a4d2520",
+     "full_evidence_set": [
+      {
+       "evidence_id": "E1",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: kararlılık hükmü UNSTABLE, kodlar IS_NOT_SIGNIFICANT",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "stability_verdict",
+         "value": "UNSTABLE",
+         "unit": null
+        },
+        {
+         "name": "verdict_reason",
+         "value": "IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E2",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem içi: tamamlanmış hafta 85, tetik hafta 18, gerçekleşme 5, sonuç ortalama getirisi %1.3017, koşulsuza fark 0.5821, maliyet sonrası %0.8017, ham p 0.120488, düzeltilmiş p 0.120488",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 85,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 18,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 5,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 1.3017,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": 0.5821,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": 0.8017,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.120488,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.120488,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E3",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem dışı: tamamlanmış hafta 26, tetik hafta 3, gerçekleşme 0, sonuç ortalama getirisi %0.1303, koşulsuza fark -0.5475, maliyet sonrası %-0.3697, ham p 0.656434, düzeltilmiş p 0.656434",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 26,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 3,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 0,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 0.1303,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": -0.5475,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": -0.3697,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.656434,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.656434,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E4",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: çoklu test düzeltmesi bonferroni, bildirilen test sayısı 1, alfa 0.05, düzeltilmiş alfa 0.05",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_tests_declared",
+         "value": 1,
+         "unit": null
+        },
+        {
+         "name": "alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "adjusted_alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "multiple_testing_method",
+         "value": "bonferroni",
+         "unit": null
+        }
+       ]
+      }
+     ],
+     "committed_evidence_set": [
+      {
+       "evidence_id": "E1",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: kararlılık hükmü UNSTABLE, kodlar IS_NOT_SIGNIFICANT",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "stability_verdict",
+         "value": "UNSTABLE",
+         "unit": null
+        },
+        {
+         "name": "verdict_reason",
+         "value": "IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E2",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem içi: tamamlanmış hafta 85, tetik hafta 18, gerçekleşme 5, sonuç ortalama getirisi %1.3017, koşulsuza fark 0.5821, maliyet sonrası %0.8017, ham p 0.120488, düzeltilmiş p 0.120488",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 85,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 18,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 5,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 1.3017,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": 0.5821,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": 0.8017,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.120488,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.120488,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E3",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem dışı: tamamlanmış hafta 26, tetik hafta 3, gerçekleşme 0, sonuç ortalama getirisi %0.1303, koşulsuza fark -0.5475, maliyet sonrası %-0.3697, ham p 0.656434, düzeltilmiş p 0.656434",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 26,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 3,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 0,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 0.1303,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": -0.5475,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": -0.3697,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.656434,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.656434,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E4",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: çoklu test düzeltmesi bonferroni, bildirilen test sayısı 1, alfa 0.05, düzeltilmiş alfa 0.05",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_tests_declared",
+         "value": 1,
+         "unit": null
+        },
+        {
+         "name": "alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "adjusted_alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "multiple_testing_method",
+         "value": "bonferroni",
+         "unit": null
+        }
+       ]
+      }
+     ],
+     "gate_status": "PASS_WITH_WARNINGS",
+     "proposed_action": null
+    },
+    "n_events": 4,
+    "n_excluded_incomplete_horizon": 0,
+    "warnings": [
+     "HOLIDAY_WEEKS_EXCLUDED: örneklem içi 20, dışı 9 hafta dışlandı (tatil, veri boşluğu veya pencere sınırını aşan hafta; 5 tanesi takvimde olup hissede veri yok)",
+     "INCOMPLETE_HORIZON_EXCLUDED: 1 hafta as_of=2026-09-10 itibarıyla tamamlanmadı (son örüntü günü as_of sonrası) ve dışlandı",
+     "UNSTABLE_PATTERN: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+     "MULTIPLE_TESTING_RISK: n_tests_declared=1; aynı veride başka örüntü/koşul denendiyse bu sayı artırılmalı (Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); beş günlük örüntü TEK birleşik testtir",
+     "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma kaynaklı bir ölçüm değil, varsayımdır",
+     "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. İlişki gözlemidir, nedensellik iddiası değildir."
+    ],
+    "status": "OK",
+    "error": null
+   }
+  },
+  {
+   "seq": 17,
+   "ts": "2026-11-25T11:23:26.688+00:00",
+   "caller": "harness",
+   "tool": "build_evidence_bundle",
+   "status": "OK",
+   "params": {
+    "as_of": "2026-09-10",
+    "analysis_id": "2026-09-10-f7544a4d2520",
+    "source_input_hashes": [
+     "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+     "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7"
+    ]
+   },
+   "date_range": {
+    "as_of": "2026-09-10"
+   },
+   "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "data_version": "snap_2026-11-20_v2",
+   "state_after": "RISK_GATE",
+   "output": {
+    "tool": "build_evidence_bundle",
+    "schema_version": "1.5.0",
+    "params": {
+     "as_of": "2026-09-10",
+     "analysis_id": "2026-09-10-f7544a4d2520",
+     "source_input_hashes": [
+      "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+      "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7"
+     ]
+    },
+    "as_of": "2026-09-10",
+    "data_version": "snap_2026-11-20_v2",
+    "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+    "results": {
+     "analysis_id": "2026-09-10-f7544a4d2520",
+     "full_evidence_set": [
+      {
+       "evidence_id": "E1",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: kararlılık hükmü UNSTABLE, kodlar IS_NOT_SIGNIFICANT",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "stability_verdict",
+         "value": "UNSTABLE",
+         "unit": null
+        },
+        {
+         "name": "verdict_reason",
+         "value": "IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E2",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem içi: tamamlanmış hafta 85, tetik hafta 18, gerçekleşme 5, sonuç ortalama getirisi %1.3017, koşulsuza fark 0.5821, maliyet sonrası %0.8017, ham p 0.120488, düzeltilmiş p 0.120488",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 85,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 18,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 5,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 1.3017,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": 0.5821,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": 0.8017,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.120488,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.120488,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E3",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem dışı: tamamlanmış hafta 26, tetik hafta 3, gerçekleşme 0, sonuç ortalama getirisi %0.1303, koşulsuza fark -0.5475, maliyet sonrası %-0.3697, ham p 0.656434, düzeltilmiş p 0.656434",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 26,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 3,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 0,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 0.1303,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": -0.5475,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": -0.3697,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.656434,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.656434,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E4",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: çoklu test düzeltmesi bonferroni, bildirilen test sayısı 1, alfa 0.05, düzeltilmiş alfa 0.05",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_tests_declared",
+         "value": 1,
+         "unit": null
+        },
+        {
+         "name": "alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "adjusted_alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "multiple_testing_method",
+         "value": "bonferroni",
+         "unit": null
+        }
+       ]
+      }
+     ],
+     "committed_evidence_set": [
+      {
+       "evidence_id": "E1",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: kararlılık hükmü UNSTABLE, kodlar IS_NOT_SIGNIFICANT",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "stability_verdict",
+         "value": "UNSTABLE",
+         "unit": null
+        },
+        {
+         "name": "verdict_reason",
+         "value": "IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E2",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem içi: tamamlanmış hafta 85, tetik hafta 18, gerçekleşme 5, sonuç ortalama getirisi %1.3017, koşulsuza fark 0.5821, maliyet sonrası %0.8017, ham p 0.120488, düzeltilmiş p 0.120488",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 85,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 18,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 5,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 1.3017,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": 0.5821,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": 0.8017,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.120488,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.120488,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E3",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP, Örneklem dışı: tamamlanmış hafta 26, tetik hafta 3, gerçekleşme 0, sonuç ortalama getirisi %0.1303, koşulsuza fark -0.5475, maliyet sonrası %-0.3697, ham p 0.656434, düzeltilmiş p 0.656434",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_weeks_complete",
+         "value": 26,
+         "unit": null
+        },
+        {
+         "name": "n_trigger_weeks",
+         "value": 3,
+         "unit": null
+        },
+        {
+         "name": "n_occurrences",
+         "value": 0,
+         "unit": null
+        },
+        {
+         "name": "outcome_mean_return_pct",
+         "value": 0.1303,
+         "unit": "pct"
+        },
+        {
+         "name": "outcome_mean_diff_vs_unconditional_pct",
+         "value": -0.5475,
+         "unit": "pct"
+        },
+        {
+         "name": "cost_adjusted_outcome_mean_return_pct",
+         "value": -0.3697,
+         "unit": "pct"
+        },
+        {
+         "name": "p_value_raw",
+         "value": 0.656434,
+         "unit": null
+        },
+        {
+         "name": "p_value_adjusted",
+         "value": 0.656434,
+         "unit": null
+        }
+       ]
+      },
+      {
+       "evidence_id": "E4",
+       "statement": "MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: çoklu test düzeltmesi bonferroni, bildirilen test sayısı 1, alfa 0.05, düzeltilmiş alfa 0.05",
+       "source_tool": "test_weekday_pattern",
+       "source_input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "values": [
+        {
+         "name": "n_tests_declared",
+         "value": 1,
+         "unit": null
+        },
+        {
+         "name": "alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "adjusted_alpha",
+         "value": 0.05,
+         "unit": null
+        },
+        {
+         "name": "multiple_testing_method",
+         "value": "bonferroni",
+         "unit": null
+        }
+       ]
+      }
+     ],
+     "gate_status": "PASS_WITH_WARNINGS",
+     "proposed_action": null
+    },
+    "n_events": 4,
+    "n_excluded_incomplete_horizon": 0,
+    "warnings": [
+     "HOLIDAY_WEEKS_EXCLUDED: örneklem içi 20, dışı 9 hafta dışlandı (tatil, veri boşluğu veya pencere sınırını aşan hafta; 5 tanesi takvimde olup hissede veri yok)",
+     "INCOMPLETE_HORIZON_EXCLUDED: 1 hafta as_of=2026-09-10 itibarıyla tamamlanmadı (son örüntü günü as_of sonrası) ve dışlandı",
+     "UNSTABLE_PATTERN: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05",
+     "MULTIPLE_TESTING_RISK: n_tests_declared=1; aynı veride başka örüntü/koşul denendiyse bu sayı artırılmalı (Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); beş günlük örüntü TEK birleşik testtir",
+     "COST_ASSUMPTIONS: tur maliyeti 0.5 pp = 2 x (20.0 + 5.0 bps); kayma kaynaklı bir ölçüm değil, varsayımdır",
+     "HISTORICAL_ONLY: Geçmiş kanıt; gelecek getiri garantisi değildir. İlişki gözlemidir, nedensellik iddiası değildir."
+    ],
+    "status": "OK",
+    "error": null
+   }
+  },
+  {
+   "seq": 20,
+   "ts": "2026-11-25T11:23:26.769+00:00",
+   "caller": "harness",
+   "tool": "check_data_quality",
+   "status": "OK",
+   "params": {
+    "as_of": "2026-09-10",
+    "tickers": [
+     "THYAO"
+    ],
+    "include_index": true,
+    "start": "2024-01-01",
+    "end": "2026-09-10",
+    "checks": null,
+    "price_jump_limit_pct": 10.0,
+    "analysis_bundle": [
+     {
+      "tool": "test_weekday_pattern",
+      "as_of": "2026-09-10",
+      "data_version": "snap_2026-11-20_v2",
+      "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+      "n_events": 5,
+      "n_excluded_incomplete_horizon": 1,
+      "signal_lag_days_applied": null,
+      "max_result_date": null
+     }
+    ]
+   },
+   "date_range": {
+    "as_of": "2026-09-10",
+    "start": "2024-01-01",
+    "end": "2026-09-10"
+   },
+   "input_hash": "379629222a60959d729e6e3ab26a1d4f8aade7147689c42c1dcb183a0a3bca0d",
+   "data_version": "snap_2026-11-20_v2",
+   "state_after": "GENERATE_EXPLANATION",
+   "output": {
+    "tool": "check_data_quality",
+    "schema_version": "1.5.0",
+    "params": {
+     "as_of": "2026-09-10",
+     "tickers": [
+      "THYAO"
+     ],
+     "include_index": true,
+     "start": "2024-01-01",
+     "end": "2026-09-10",
+     "checks": null,
+     "price_jump_limit_pct": 10.0,
+     "analysis_bundle": [
+      {
+       "tool": "test_weekday_pattern",
+       "as_of": "2026-09-10",
+       "data_version": "snap_2026-11-20_v2",
+       "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+       "n_events": 5,
+       "n_excluded_incomplete_horizon": 1,
+       "signal_lag_days_applied": null,
+       "max_result_date": null
+      }
+     ]
+    },
+    "as_of": "2026-09-10",
+    "data_version": "snap_2026-11-20_v2",
+    "input_hash": "379629222a60959d729e6e3ab26a1d4f8aade7147689c42c1dcb183a0a3bca0d",
+    "results": {
+     "gate_status": "INVESTIGATE",
+     "gate_reason": "INVESTIGATE: hard 0, soft 2 (FEW_EVENTS×1, MISSING_TRADING_DAYS×1). Kapıyı belirleyen: FEW_EVENTS×1. Çalışan kontroller: PRICE_JUMPS, MISSING_DAYS, STALENESS, AS_OF_CONSISTENCY, DATA_VERSION_CONSISTENCY, TICKER_IDENTITY, EVENT_COUNT. Çalışmayan kontroller (veri/şema yok, 'geçti' sayılmaz): FUNDAMENTAL_DISCLOSURE_ALIGNMENT, SIGNAL_SHIFT, PEER_GROUP_SIZE, MACRO_COVERAGE, NEWS_COVERAGE, TRANSCRIPT_QUALITY.",
+     "hard_blocks": [],
+     "soft_warnings": [
+      {
+       "code": "FEW_EVENTS",
+       "severity": "SOFT",
+       "message": "test_weekday_pattern: n_events=5 hafta < minimum 15 (MIN_WEEKDAY_IS_TRIGGER_WEEKS + MIN_WEEKDAY_OOS_TRIGGER_WEEKS)",
+       "ticker": null,
+       "date": null,
+       "value": 5.0
+      },
+      {
+       "code": "MISSING_TRADING_DAYS",
+       "severity": "SOFT",
+       "message": "THYAO: 1 işlem günü eksik (birleşik takvime göre): 2024-04-09",
+       "ticker": "THYAO",
+       "date": null,
+       "value": 1.0
+      }
+     ],
+     "checks_run": [
+      "PRICE_JUMPS",
+      "MISSING_DAYS",
+      "STALENESS",
+      "AS_OF_CONSISTENCY",
+      "DATA_VERSION_CONSISTENCY",
+      "TICKER_IDENTITY",
+      "EVENT_COUNT"
+     ],
+     "price_jump_limit_pct": 10.0,
+     "ticker_reports": [
+      {
+       "ticker": "THYAO",
+       "n_rows": 672,
+       "first_date": "2024-01-02",
+       "last_date": "2026-09-10",
+       "n_missing_trading_days": 1,
+       "last_data_age_days": 0,
+       "max_abs_daily_return_pct": 8.5616,
+       "max_abs_daily_return_date": "2026-04-08",
+       "n_price_jumps_over_limit": 0
+      },
+      {
+       "ticker": "XU100",
+       "n_rows": 671,
+       "first_date": "2024-01-02",
+       "last_date": "2026-09-10",
+       "n_missing_trading_days": 2,
+       "last_data_age_days": 0,
+       "max_abs_daily_return_pct": 8.7195,
+       "max_abs_daily_return_date": "2025-03-19",
+       "n_price_jumps_over_limit": 0
+      }
+     ],
+     "issue_counts": {
+      "FEW_EVENTS": 1,
+      "MISSING_TRADING_DAYS": 1
+     }
+    },
+    "n_events": null,
+    "n_excluded_incomplete_horizon": 0,
+    "warnings": [],
+    "status": "OK",
+    "error": null
+   }
+  }
+ ],
+ "harness_interventions": [],
+ "conversation": [
+  {
+   "role": "system",
+   "content": "Sen BIST 100 hisseleri için finansal analiz yorumcususun; hesaplamayı araçlar yapar, sen araç çıktılarını yorumlarsın.\n\nKURALLAR:\n1. Sayılar yalnızca araç çıktısından gelir; kendin sayı türetme ya da hesaplama (oran, fark, yüzde) yapma.\n2. Yatırım tavsiyesi, al/sat emri, hedef fiyat ve kesinlik ifadeleri (\"kesin yükselir\", garanti) yasak; doğrulanmamış iddiayı tırnak içinde alıntılayıp doğrulanmadığını söyle.\n3. Analiz tarihinden (as_of) sonrasına ait bilgi kullanma.\n4. Eksik veri, az olay, örneklem dışı bozulma ve çoklu test riskini belirt; nedensellik kurma. Sonuçlar geçmiş gözlemdir (gelecek getiri garantisi yok); backtest işlem maliyeti ve kayma varsayımını içerir.\n5. Çıktıda bulunmayan alan boştur (null). `view_trimmed` bölümleri kısaltılmıştır; kısaltılan sayıları yazma.\n\nARAÇ KULLANIMI: gerekli araçları çağır; as_of = 2026-09-10 (soruda belirtilen analiz tarihi). Belirtmediğin parametreler varsayılanla çalışır. Örneklem dışı doğrulama için split_date / out_of_sample_start ver (as_of yılının 1 Ocak'ı ya da sorudaki başlangıç; run_backtest'te strategy.train_end bir gün öncesi); verilmezse analiz INVESTIGATE kalır. İşin bitince araç çağırmadan `HAZIR` yaz; harness politika kararını verip nihai açıklamayı isteyecek.\n\nNİHAİ ÇIKTI: son satır tam olarak `EYLEM: <ETİKET>`. Etiketler: HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE."
+  },
+  {
+   "role": "user",
+   "content": "Analiz tarihi: 10.09.2026\nTHYAO'da 01.01.2024 – 31.12.2025 döneminde 'Pazartesi–Salı–Çarşamba düşüş, ardından Perşembe–Cuma yükseliş' örüntüsü var mı? Bu örüntü 01.01.2026 – 10.09.2026 döneminde de devam ediyor mu?"
+  },
+  {
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "function": {
+      "name": "test_weekday_pattern",
+      "arguments": {
+       "as_of": "2026-09-10",
+       "ticker": "THYAO",
+       "pattern": [
+        {
+         "weekday": "MON",
+         "direction": "DOWN",
+         "role": "TRIGGER"
+        },
+        {
+         "weekday": "TUE",
+         "direction": "DOWN",
+         "role": "TRIGGER"
+        },
+        {
+         "weekday": "WED",
+         "direction": "DOWN",
+         "role": "TRIGGER"
+        },
+        {
+         "weekday": "THU",
+         "direction": "UP",
+         "role": "OUTCOME"
+        },
+        {
+         "weekday": "FRI",
+         "direction": "UP",
+         "role": "OUTCOME"
+        }
+       ],
+       "in_sample_start": "2024-01-01",
+       "in_sample_end": "2025-12-31",
+       "out_of_sample_start": "2026-01-01",
+       "out_of_sample_end": "2026-09-10",
+       "n_tests_declared": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "role": "tool",
+   "name": "test_weekday_pattern",
+   "content": "{\"data_version\": \"snap_2026-11-20_v2\", \"n_events\": 5, \"n_excluded_incomplete_horizon\": 1, \"results\": {\"conditioning\": \"NONE\", \"in_sample\": {\"cost_adjusted_outcome_mean_return_pct\": 0.8017, \"n_occurrences\": 5, \"n_trigger_weeks\": 18, \"n_weeks_complete\": 85, \"outcome_mean_diff_vs_unconditional_pct\": 0.5821, \"outcome_mean_return_pct\": 1.3017, \"p_value_adjusted\": 0.120488, \"p_value_raw\": 0.120488, \"window\": {\"end\": \"2025-12-31\", \"start\": \"2024-01-01\"}}, \"multiple_testing\": {\"adjusted_alpha\": 0.05, \"alpha\": 0.05, \"method\": \"bonferroni\", \"n_tests_declared\": 1, \"note\": \"Çok sayıda kombinasyon denendiğinde tesadüfi örüntü bulma riski artar.\"}, \"out_of_sample\": {\"cost_adjusted_outcome_mean_return_pct\": -0.3697, \"n_occurrences\": 0, \"n_trigger_weeks\": 3, \"n_weeks_complete\": 26, \"outcome_mean_diff_vs_unconditional_pct\": -0.5475, \"outcome_mean_return_pct\": 0.1303, \"p_value_adjusted\": 0.656434, \"p_value_raw\": 0.656434, \"window\": {\"end\": \"2026-09-10\", \"start\": \"2026-01-01\"}}, \"pattern_label\": \"MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP\", \"stability_verdict\": \"UNSTABLE\", \"ticker\": \"THYAO\", \"verdict_codes\": [\"IS_NOT_SIGNIFICANT\"], \"verdict_reason\": \"IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05\"}, \"status\": \"OK\", \"view_trimmed\": [\"weekday_window_stats\"], \"warnings\": [\"HOLIDAY_WEEKS_EXCLUDED: örneklem içi 20, dışı 9 hafta dışlandı (tatil, veri boşluğu veya pencere sınırını aşan hafta; 5 tanesi takvimde olup hissede veri yok)\", \"INCOMPLETE_HORIZON_EXCLUDED: 1 hafta as_of=2026-09-10 itibarıyla tamamlanmadı (son örüntü günü as_of sonrası) ve dışlandı\", \"UNSTABLE_PATTERN: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05\", \"MULTIPLE_TESTING_RISK: n_tests_declared=1; aynı veride başka örüntü/koşul denendiyse bu sayı artırılmalı (Bonferroni: p_düzeltilmiş = min(1, p x n_tests_declared)); beş günlük örüntü TEK birleşik testtir\"]}"
+  },
+  {
+   "role": "assistant",
+   "content": "HAZIR"
+  },
+  {
+   "role": "user",
+   "content": "POLİTİKA KARARI (harness hesapladı; eylem etiketi bu olmalıdır):\nEYLEM: REJECT_SIGNAL\nKural: W3_UNSTABLE\nKalite kapısı: INVESTIGATE\nGerekçeler:\n- PATTERN_UNSTABLE: örüntü örneklem dışında devam etmiyor / anlamsız\n\nAraç çıktılarına dayanarak nihai açıklamayı şimdi yaz. Yalnızca araç çıktılarındaki sayıları kullan, kendin hesaplama yapma; yatırım tavsiyesi verme. Son satır tam olarak yukarıdaki EYLEM satırı olmalı."
+  },
+  {
+   "role": "assistant",
+   "content": "THYAO hissesinde istenen haftalık örüntü dönem içi ve dönem dışı ayrılarak test edildi.\nKanıt (araç çıktıları):\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN 18 hafta, tamamlanmış 85 hafta, tetik hafta 18, gerçekleşme 5, sonuç %0.8017, ortalama fark 0.5821, ham p 0.120488, düzeltilmiş p 0.120488\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN, OUT-OF-SAMPLE: 3 hafta tetik, tamamlanmış 26 hafta, gerçekleşme 0, sonuç %0.1303, ortalama fark -0.5475, ham p 0.656434, düzeltilmiş p 0.656434\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: PATTERN_UNSTABLE: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05\nDeğerlendirme: Örüntü istatistiksel olarak anlamlı değil ya da örneklem dışında devam etmiyor; sinyal reddedilir (REJECT_SIGNAL).\nÇoklu test düzeltmesi bonferroni (yok değil), bildirilen test sayısı 1.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: REJECT_SIGNAL"
+  }
+ ],
+ "final_answer": {
+  "text": "THYAO hissesinde istenen haftalık örüntü dönem içi ve dönem dışı ayrılarak test edildi.\nKanıt (araç çıktıları):\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN 18 hafta, tamamlanmış 85 hafta, tetik hafta 18, gerçekleşme 5, sonuç %0.8017, ortalama fark 0.5821, ham p 0.120488, düzeltilmiş p 0.120488\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN, OUT-OF-SAMPLE: 3 hafta tetik, tamamlanmış 26 hafta, gerçekleşme 0, sonuç %0.1303, ortalama fark -0.5475, ham p 0.656434, düzeltilmiş p 0.656434\n- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: PATTERN_UNSTABLE: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05\nDeğerlendirme: Örüntü istatistiksel olarak anlamlı değil ya da örneklem dışında devam etmiyor; sinyal reddedilir (REJECT_SIGNAL).\nÇoklu test düzeltmesi bonferroni (yok değil), bildirilen test sayısı 1.\nNot: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.\nEYLEM: REJECT_SIGNAL",
+  "action": "REJECT_SIGNAL",
+  "source": "model"
+ },
+ "audit": {
+  "policy_label": "REJECT_SIGNAL",
+  "rule_id": "W3_UNSTABLE",
+  "lock_hash": "6be56c6f5e0982a7831a4dd9824fb21075e3daa7884ee578887dbbdb938d767e",
+  "n_number_claims": 15,
+  "n_hallucinated": 0,
+  "n_unevidenced": 0,
+  "n_invalid_calls": 0
+ },
+ "reproducibility": {
+  "data_versions": [
+   "snap_2026-11-20_v2"
+  ],
+  "tool_input_hashes": [
+   "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7",
+   "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+   "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "379629222a60959d729e6e3ab26a1d4f8aade7147689c42c1dcb183a0a3bca0d"
+  ],
+  "code_commit": "de1840a60f017dcd90f0b54d995af75c2a454901"
+ },
+ "events": [
+  {
+   "seq": 1,
+   "kind": "SESSION_START",
+   "as_of": "2026-09-10",
+   "as_of_source": "question",
+   "stage": "D",
+   "order_mode": "strict",
+   "analysis_id": "2026-09-10-f7544a4d2520",
+   "ts": "2026-11-25T11:22:11.554+00:00"
+  },
+  {
+   "seq": 2,
+   "kind": "STATE_TRANSITION",
+   "from": "START",
+   "to": "SELECT_UNIVERSE",
+   "reason": "begin",
+   "ts": "2026-11-25T11:22:11.554+00:00"
+  },
+  {
+   "seq": 3,
+   "kind": "STATE_TRANSITION",
+   "from": "SELECT_UNIVERSE",
+   "to": "LOAD_MARKET_DATA",
+   "reason": "begin",
+   "ts": "2026-11-25T11:22:11.554+00:00"
+  },
+  {
+   "seq": 4,
+   "kind": "UNIVERSE_SELECTED",
+   "tickers_in_question": [
+    "THYAO"
+   ],
+   "ts": "2026-11-25T11:22:11.554+00:00"
+  },
+  {
+   "seq": 5,
+   "kind": "MODEL_TURN",
+   "turn": 1,
+   "estimated_prompt_tokens": 3484,
+   "prompt_tokens": 2908,
+   "completion_tokens": 190,
+   "n_tool_calls": 1,
+   "ts": "2026-11-25T11:23:02.345+00:00"
+  },
+  {
+   "seq": 6,
+   "kind": "STATE_TRANSITION",
+   "from": "LOAD_MARKET_DATA",
+   "to": "CHECK_DATA_QUALITY",
+   "reason": "tool_call:check_data_quality",
+   "ts": "2026-11-25T11:23:02.541+00:00"
+  },
+  {
+   "seq": 7,
+   "kind": "STATE_TRANSITION",
+   "from": "CHECK_DATA_QUALITY",
+   "to": "CALCULATE_TECHNICALS",
+   "reason": "auto_advance",
+   "ts": "2026-11-25T11:23:02.541+00:00"
+  },
+  {
+   "seq": 8,
+   "kind": "TOOL_CALL",
+   "tool": "check_data_quality",
+   "actor": "harness",
+   "state_before": "LOAD_MARKET_DATA",
+   "state_after": "CALCULATE_TECHNICALS",
+   "status": "OK",
+   "input_hash": "ecee23f82ea5922555ea69f8efe905b4e3f73141df9505d08dde193802fc97b7",
+   "data_version": "snap_2026-11-20_v2",
+   "step_state": "CHECK_DATA_QUALITY",
+   "ts": "2026-11-25T11:23:02.541+00:00"
+  },
+  {
+   "seq": 9,
+   "kind": "STATE_TRANSITION",
+   "from": "CALCULATE_TECHNICALS",
+   "to": "RUN_PATTERN_AND_REVERSAL_ANALYSIS",
+   "reason": "tool_call:test_weekday_pattern",
+   "ts": "2026-11-25T11:23:02.583+00:00"
+  },
+  {
+   "seq": 10,
+   "kind": "TOOL_CALL",
+   "tool": "test_weekday_pattern",
+   "actor": "model",
+   "state_before": "CALCULATE_TECHNICALS",
+   "state_after": "RUN_PATTERN_AND_REVERSAL_ANALYSIS",
+   "status": "OK",
+   "input_hash": "bc10141e30686875cc86ed3a328d942525f1ddbac82c2f20e5d7e72cdb882d5c",
+   "data_version": "snap_2026-11-20_v2",
+   "ts": "2026-11-25T11:23:02.583+00:00"
+  },
+  {
+   "seq": 11,
+   "kind": "MODEL_TURN",
+   "turn": 2,
+   "estimated_prompt_tokens": 4377,
+   "prompt_tokens": 3915,
+   "completion_tokens": 4,
+   "n_tool_calls": 0,
+   "ts": "2026-11-25T11:23:26.685+00:00"
+  },
+  {
+   "seq": 12,
+   "kind": "STATE_TRANSITION",
+   "from": "RUN_PATTERN_AND_REVERSAL_ANALYSIS",
+   "to": "BUILD_EVIDENCE",
+   "reason": "tool_call:build_evidence_bundle",
+   "ts": "2026-11-25T11:23:26.687+00:00"
+  },
+  {
+   "seq": 13,
+   "kind": "STATE_TRANSITION",
+   "from": "BUILD_EVIDENCE",
+   "to": "PREVIEW_STRATEGIES",
+   "reason": "auto_advance",
+   "ts": "2026-11-25T11:23:26.687+00:00"
+  },
+  {
+   "seq": 14,
+   "kind": "TOOL_CALL",
+   "tool": "build_evidence_bundle",
+   "actor": "harness",
+   "state_before": "RUN_PATTERN_AND_REVERSAL_ANALYSIS",
+   "state_after": "PREVIEW_STRATEGIES",
+   "status": "OK",
+   "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "data_version": "snap_2026-11-20_v2",
+   "step_state": "BUILD_EVIDENCE",
+   "ts": "2026-11-25T11:23:26.687+00:00"
+  },
+  {
+   "seq": 15,
+   "kind": "EVIDENCE_BUILT",
+   "stage": "BUILD_EVIDENCE",
+   "version": 1,
+   "n_full": 4,
+   "ts": "2026-11-25T11:23:26.687+00:00"
+  },
+  {
+   "seq": 16,
+   "kind": "STATE_TRANSITION",
+   "from": "PREVIEW_STRATEGIES",
+   "to": "RISK_GATE",
+   "reason": "tool_call:build_evidence_bundle",
+   "ts": "2026-11-25T11:23:26.688+00:00"
+  },
+  {
+   "seq": 17,
+   "kind": "TOOL_CALL",
+   "tool": "build_evidence_bundle",
+   "actor": "harness",
+   "state_before": "PREVIEW_STRATEGIES",
+   "state_after": "RISK_GATE",
+   "status": "OK",
+   "input_hash": "b9feb8cfa6c4aee579f0a9052c3d0445ee1c7f1819e36abe13d7285c7eca46bc",
+   "data_version": "snap_2026-11-20_v2",
+   "step_state": "RISK_GATE",
+   "ts": "2026-11-25T11:23:26.688+00:00"
+  },
+  {
+   "seq": 18,
+   "kind": "EVIDENCE_BUILT",
+   "stage": "RISK_GATE",
+   "version": 1,
+   "n_full": 4,
+   "ts": "2026-11-25T11:23:26.688+00:00"
+  },
+  {
+   "seq": 19,
+   "kind": "STATE_TRANSITION",
+   "from": "RISK_GATE",
+   "to": "GENERATE_EXPLANATION",
+   "reason": "auto_advance",
+   "ts": "2026-11-25T11:23:26.769+00:00"
+  },
+  {
+   "seq": 20,
+   "kind": "TOOL_CALL",
+   "tool": "check_data_quality",
+   "actor": "harness",
+   "state_before": "RISK_GATE",
+   "state_after": "GENERATE_EXPLANATION",
+   "status": "OK",
+   "input_hash": "379629222a60959d729e6e3ab26a1d4f8aade7147689c42c1dcb183a0a3bca0d",
+   "data_version": "snap_2026-11-20_v2",
+   "step_state": "RISK_GATE",
+   "ts": "2026-11-25T11:23:26.769+00:00"
+  },
+  {
+   "seq": 21,
+   "kind": "EVIDENCE_LOCKED",
+   "version": 1,
+   "lock_hash": "6be56c6f5e0982a7831a4dd9824fb21075e3daa7884ee578887dbbdb938d767e",
+   "gate_status": "INVESTIGATE",
+   "analysis_id": "2026-09-10-f7544a4d2520",
+   "ts": "2026-11-25T11:23:26.769+00:00"
+  },
+  {
+   "seq": 22,
+   "kind": "MODEL_TURN",
+   "turn": 3,
+   "estimated_prompt_tokens": 1644,
+   "prompt_tokens": 1749,
+   "completion_tokens": 396,
+   "n_tool_calls": 0,
+   "ts": "2026-11-25T11:24:56.903+00:00"
+  },
+  {
+   "seq": 23,
+   "kind": "FINAL_CHECK",
+   "attempt": 1,
+   "ok": true,
+   "enforced": true,
+   "codes": [],
+   "n_violations": 0,
+   "n_number_claims": 15,
+   "n_hallucinated": 0,
+   "n_allowlisted_policy": 0,
+   "n_unevidenced": 0,
+   "action": "REJECT_SIGNAL",
+   "policy_label": "REJECT_SIGNAL",
+   "policy_match": true,
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 24,
+   "kind": "EXPLANATION_COMPLETE",
+   "action": "REJECT_SIGNAL",
+   "safe_failure": false,
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 25,
+   "kind": "STATE_TRANSITION",
+   "from": "GENERATE_EXPLANATION",
+   "to": "HUMAN_REVIEW",
+   "reason": "explanation_complete",
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 26,
+   "kind": "HUMAN_REVIEW_PENDING",
+   "review_status": "PENDING_HUMAN_REVIEW",
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 27,
+   "kind": "FINAL_DELIVERED",
+   "status": "ACCEPTED",
+   "fallback": false,
+   "action": "REJECT_SIGNAL",
+   "metrics": {
+    "enforced": true,
+    "n_attempts": 1,
+    "max_attempts": 3,
+    "attempt_level": {
+     "n_attempts_with_violation": 0,
+     "n_violations": 0,
+     "by_code": {},
+     "by_source": {},
+     "n_hallucinated": 0,
+     "n_number_claims": 15
+    },
+    "delivered_level": {
+     "delivered": true,
+     "status": "ACCEPTED",
+     "fallback": false,
+     "action": "REJECT_SIGNAL",
+     "action_source": "model",
+     "n_violations": 0,
+     "by_code": {},
+     "by_source": {},
+     "policy_label": "REJECT_SIGNAL",
+     "policy_match": true,
+     "n_number_claims": 15,
+     "n_hallucinated": 0,
+     "n_unevidenced": 0,
+     "n_allowlisted_policy": 0,
+     "numerical_hallucination_rate": 0.0
+    }
+   },
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 28,
+   "kind": "STATE_TRANSITION",
+   "from": "HUMAN_REVIEW",
+   "to": "LOG_AND_CLOSE",
+   "reason": "close",
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  },
+  {
+   "seq": 29,
+   "kind": "SESSION_CLOSED",
+   "review_status": "PENDING_HUMAN_REVIEW",
+   "action": "REJECT_SIGNAL",
+   "n_invalid_calls": 0,
+   "n_order_violations": 0,
+   "ts": "2026-11-25T11:24:56.912+00:00"
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] test_weekday_pattern -> OK (durum: RUN_PATTERN_AND_REVERSAL_ANALYSIS)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı INVESTIGATE), lock_hash 6be56c6f5e09
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=REJECT_SIGNAL, politika=REJECT_SIGNAL
+=== Nihai cevap ===
+THYAO hissesinde istenen haftalık örüntü dönem içi ve dönem dışı ayrılarak test edildi.
+Kanıt (araç çıktıları):
+- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN 18 hafta, tamamlanmış 85 hafta, tetik hafta 18, gerçekleşme 5, sonuç %0.8017, ortalama fark 0.5821, ham p 0.120488, düzeltilmiş p 0.120488
+- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: MON-DOWN,TUE-DOWN,WED-DOWN, OUT-OF-SAMPLE: 3 hafta tetik, tamamlanmış 26 hafta, gerçekleşme 0, sonuç %0.1303, ortalama fark -0.5475, ham p 0.656434, düzeltilmiş p 0.656434
+- MON-DOWN,TUE-DOWN,WED-DOWN | THU-UP,FRI-UP: PATTERN_UNSTABLE: IS_NOT_SIGNIFICANT: IS p_value_adjusted=0.120488 >= alpha=0.05
+Değerlendirme: Örüntü istatistiksel olarak anlamlı değil ya da örneklem dışında devam etmiyor; sinyal reddedilir (REJECT_SIGNAL).
+Çoklu test düzeltmesi bonferroni (yok değil), bildirilen test sayısı 1.
+Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.
+EYLEM: REJECT_SIGNAL
+=== Denetim ===
+etiket (model): REJECT_SIGNAL | politika: REJECT_SIGNAL (W3_UNSTABLE) | eşleşme: True
+sayı iddiası: 15, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 165.3 sn | model turu: 3
+iz kaydı: reports/traces/scenario_2_weekday.json (cevap kaynağı: model)

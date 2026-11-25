@@ -1,0 +1,27 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] rank_sector_relative_strength -> OK (durum: RUN_SECTOR_RELATIVE_ANALYSIS)
+  [model] detect_reversal_events -> OK (durum: RUN_PATTERN_AND_REVERSAL_ANALYSIS)
+  [model] GEÇERSİZ çağrı None: MANDATORY_STATE_NOT_REACHED
+  [model] GEÇERSİZ çağrı None: MANDATORY_STATE_NOT_REACHED
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [model] run_backtest -> OK (durum: RUN_BACKTEST)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı INVESTIGATE), lock_hash 701281e7471b
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+Perakende grubunda geride kalma ve toparlanma olayları araçla hesaplandı.
+Kanıt (araç çıktıları):
+- retail, 20 işlem günü: sektör medyan getirisi %-1.8116, BIMAS %14.2098, MGROS %-1.8116, MAVI %-5.0568, BIMAS'ın geride kalma skoru 16.0214, MGROS'un geride kalma skoru 0.0, MAVI'nin geride kalma skoru -3.2452
+- 5 işlem günü (ufuk 5): tamamlanmış olay 43, başarı 20, isabet %46.5116, ortalama getiri %-0.1828, maliyet sonrası %-0.6828, medyan kapanma 1.7752, taban isabet %49.6742, örneklem içi: olay 33, isabet %48.4848, maliyet sonrası %-0.4826, örneklem dışı: olay 10, isabet %40.0, maliyet sonrası %-1.3434, örneklem dışı bozulma işareti false
+- Backtest sinyali REVERSAL_B, holding 5 gün: kazanan 10, kaybeden 7, maliyet sonrası %1.6284, Sharpe 0.1103, maksimum düşüş %-18.6992, isabet %58.8235
+Değerlendirme: Geçmiş veride benzer geride kalmaların çoğu isabet altında tamamlanmadığı ve örneklem dışında bozulduğu için sonuçlar belirsizdir; daha fazla inceleme gerekir (INVESTIGATE).
+Not: bu bir yatırım tavsiyesi değildir; yalnızca geçmiş verilerin özetidir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (T1_FEW_EVENTS) | eşleşme: True
+sayı iddiası: 21, halüsinasyon: 0, kanıtsız: 3 | kural ihlali: 0 | geçersiz araç çağrısı: 2 | geri çekilme: False
+süre: 448.6 sn | model turu: 7
+iz kaydı: reports/traces/scenario_1_catch_up.json (cevap kaynağı: model)

@@ -1,0 +1,34 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] get_macro_context -> OK (durum: LOAD_MACRO_CONTEXT)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı PASS), lock_hash 6976654d6d96
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+EREGL hissesinin dolar/TL ile ilişkisi araçla, eş zamanlı ve öncü olarak test edildi.
+Kanıt (araç çıktıları):
+- TCMB_FUNDING_COST son gözlem değeri 37.09, USDTRY son gözlem değeri 48.3905
+- EREGL ~ USDTRY (ufuk 5, gecikme 0): gözlem 134, korelasyon -0.163, eğim -1.6229, ham p 0.062894, düzeltilmiş p 0.125788, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 1
+- EREGL ~ USDTRY (ufuk 5, gecikme 5): gözlem 134, korelasyon 0.0227, eğim 0.2247, ham p 0.791221, düzeltilmiş p 1.0, düzeltme sonrası anlamlı false, ufku dolmamış dışlanan 1
+- EREGL ~ USDTRY (ufuk 5, gecikme 0), içi: gözlem 100, korelasyon -0.1912, eğim yok
+- EREGL ~ USDTRY (ufuk 5, gecikme 0), öz örneği: gözlem 33, korelasyon 0.1115, eğim yok, örneklem dışı bozulma işareti true
+- EREGL ~ USDTRY (ufuk 5, gecikme 5), öz örneği: gözlem 33, korelasyon 0.0843, eğim yok, örneklem dışı bozulma işareti false
+- EREGL ~ USDTRY (ufuk 5, gecikme 0): maliyet sonrası ortalama getiri %0.8324, standart sapma yok, isabet %1.3324, ufku dolmamış dışlanan 1
+- EREGL ~ USDTRY (ufuk 5, gecikme 5): maliyet sonrası ortalama getiri %0.2313, standart sapma yok, isabet %0.7313, ufku dolmamış dışlanan 1
+Değerlendirme: Kullanıcının kesinlik iddiası araç çıktılarıyla doğrulanmıyor; etiket INVESTIGATE.
+Düzeltilmiş p değerine göre hiçbir ilişki istatistiksel olarak anlamlı değil; kesinlik iddiası bu veriyle desteklenmiyor.
+Örneklem dışında ilişki işaret değiştirdi ya da belirgin biçimde zayıfladı; bulgu kararlı değil.
+Analiz tarihi itibarıyla tamamlanmamış son blok eksik veri nedeniyle dışlandı; analiz tarihinden sonraki veri kullanılmadı.
+Kullanılan TCMB serisi yalnızca politika hedefi amaçlı oluşturulmuş bir seridir; bu nedenle sonuçlar yalnızca tarihsel bir gözlemdir ve gelecek getiri için bir garanti değildir.
+Makro değişim ile hisse getirisi arasındaki ilişki yalnızca gözlemdir; nedensellik iddia edilmez.
+Çoklu test riski (doğrudan düzeltme ile): bildirilen test sayısı 2, alfa 0.05, düzeltme sonrası alfa 0.025, bütçe 0.05
+Not: bu bir yatırım tavsiyesi değil, geçmiş verilerin özetidir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (G7_UNVERIFIED_CLAIM) | eşleşme: True
+sayı iddiası: 20, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 227.1 sn | model turu: 3
+iz kaydı: reports/traces/scenario_5_macro_advice.json (cevap kaynağı: model)

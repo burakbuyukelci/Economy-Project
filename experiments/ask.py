@@ -15,7 +15,7 @@ import json
 import re
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -60,6 +60,8 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     ap.add_argument("--host", default=None, help="yalnızca localhost/127.0.0.1")
     ap.add_argument("--log", default=None, help="karar günlüğü JSONL (olay başına satır)")
     ap.add_argument("--record", default=None, help="yeniden oynatılabilir TAM karar kaydı (JSON); `python -m experiments.replay` ile doğrulanır")
+    ap.add_argument("--trace", default=None, help="hocanın sunum kuralı için TAM iz kaydı (JSON): model/sürüm, istemler, araçlar+params+tarihler, çıktılar, zaman damgaları, sıcaklık, seed")
+    ap.add_argument("--scenario", default=None, help="iz kaydına yazılan senaryo adı")
     ap.add_argument("--review", choices=[r.value for r in ReviewStatus if r != ReviewStatus.PENDING_HUMAN_REVIEW], default=None, help="insan incelemesi kararı (profil E)")
     ap.add_argument("--reviewer", default="reviewer")
     ap.add_argument("--reason", default="")
@@ -81,7 +83,9 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
     if args.log:
         Path(args.log).parent.mkdir(parents=True, exist_ok=True)
         Path(args.log).write_text("", encoding="utf-8")        # her çalıştırma temiz günlük
-        kwargs["log"] = EventLog(Path(args.log))
+        kwargs["log"] = EventLog(Path(args.log), timestamps=bool(args.trace))
+    elif args.trace:
+        kwargs["log"] = EventLog(timestamps=True)               # iz kaydı için zaman damgalı bellek günlüğü
     try:
         with real_tools():
             session = HarnessSession.from_question(text, explicit_as_of=as_of, profile=args.profile, **kwargs)
@@ -95,9 +99,11 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
                 model_name = backend.model
             else:
                 backend, model_name = backend_factory(text, session), args.model or "custom"
+            started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
             t0 = time.time()
             res = run_session(text, backend, session=session)
             secs = time.time() - t0
+            finished_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     except ValueError as exc:                                     # analiz tarihi çözümlenemedi
         print(f"HATA: analiz tarihi bulunamadı ({exc}). Soruya 'Analiz tarihi: GG.AA.YYYY' ekleyin ya da --as-of verin.", file=sys.stderr)
         return 2
@@ -126,6 +132,14 @@ def main(argv: list[str] | None = None, *, backend_factory: BackendFactory | Non
         Path(args.record).parent.mkdir(parents=True, exist_ok=True)
         Path(args.record).write_text(json.dumps(build_record(session, res.messages, question=text, model=model_name, review=review), ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"karar kaydı: {args.record} (tekrar oynatma: python -m experiments.replay {args.record})")
+    if args.trace:
+        from experiments.trace_export import build_trace
+
+        Path(args.trace).parent.mkdir(parents=True, exist_ok=True)
+        trace = build_trace(session, res, res.messages, question=text, model_name=model_name, backend=backend, started_at=started_at, finished_at=finished_at,
+                            duration_s=secs, scenario=args.scenario)
+        Path(args.trace).write_text(json.dumps(trace, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        print(f"iz kaydı: {args.trace} (cevap kaynağı: {trace['final_answer']['source']})")
     if args.log:
         print(f"karar günlüğü: {args.log} ({len(session.events)} olay)")
     return 0 if res.status == "DELIVERED" else 1

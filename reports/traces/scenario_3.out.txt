@@ -1,0 +1,27 @@
+=== Oturum: as_of 2026-09-10 (kaynak: question) | profil D | model gemma3-bist-v23 | durum DELIVERED ===
+=== Araç/durum izi ===
+  [harness] check_data_quality -> OK (durum: CALCULATE_TECHNICALS)
+  [model] detect_reversal_events -> OK (durum: RUN_PATTERN_AND_REVERSAL_ANALYSIS)
+  [harness] build_evidence_bundle -> OK (durum: PREVIEW_STRATEGIES)
+  [harness] build_evidence_bundle -> OK (durum: RISK_GATE)
+  [harness] check_data_quality -> OK (durum: GENERATE_EXPLANATION)
+  [harness] kanıt kilitlendi (kapı INVESTIGATE), lock_hash b59fa2def619
+  [harness] son denetim (deneme 1): ok=True, ihlal=0, eylem=INVESTIGATE, politika=INVESTIGATE
+=== Nihai cevap ===
+ASELS hissesinde istenen olay türleri için araçla hesaplanan olay sayısı ve durumları aşağıda.
+BB_LOWER_TOUCH (single_indicator): tespit edilen olay 12, son olay tarihi 2026-06-04, ham olay günü 17, çakışan ileri pencere 5
+- en uzun ileri pencere (5): tamamlanmış olay 12, başarı 8, yanlış pozitif 4, isabet %66.6667, ortalama getiri %0.868, maliyet sonrası %0.368
+- en kısa ileri pencere (1): tamamlanmış olay 12, başarı 8, yanlış pozitif 4, isabet %52.608, ortalama getiri %0.868, maliyet sonrası %0.368
+RSI dip (single_indicator): tespit edilen olay 5, son olay tarihi 2026-05-26, ham olay günü 5, çakışan ileri pencere 1
+- en uzun ileri pencere (5): tamamlanmış olay 5, başarı 5, yanlış pozitif 0, isabet %100.0, ortalama getiri %3.2824, maliyet sonrası %2.7824
+- en kısa ileri pencere (1): tamamlanmış olay 5, başarı 5, yanlış pozitif 0, isabet %100.0, ortalama getiri %3.2824, maliyet sonrası %2.7824
+Değerlendirme: Olay sayısı alt sınırın altında; sonuçlar belirsiz, daha fazla inceleme gerekir (INVESTIGATE).
+Backtest'te uygun evren yok; sonuçlar belirsiz.
+OOS doğrulaması yapılmadı.
+Bu çıktı yatırım tavsiyesi değildir; yalnızca araç çıktılarına dayalı tarihsel bir değerlendirmedir.
+EYLEM: INVESTIGATE
+=== Denetim ===
+etiket (model): INVESTIGATE | politika: INVESTIGATE (T1_FEW_EVENTS) | eşleşme: True
+sayı iddiası: 19, halüsinasyon: 0, kanıtsız: 0 | kural ihlali: 0 | geçersiz araç çağrısı: 0 | geri çekilme: False
+süre: 264.0 sn | model turu: 3
+iz kaydı: reports/traces/scenario_3_reversal.json (cevap kaynağı: model)

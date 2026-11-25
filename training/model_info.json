@@ -1,0 +1,34 @@
+{
+  "model_version": "v2.3",
+  "ollama_name": "gemma3-bist-v23",
+  "base_model": {
+    "name": "unsloth/gemma-3-4b-it-unsloth-bnb-4bit",
+    "family": "google/gemma-3-4b-it (Gemma 3, 4B, instruction-tuned)",
+    "training_load": "4-bit (bitsandbytes) via Unsloth; dry-run tokenizer: unsloth/gemma-3-4b-it",
+    "download_source": "https://huggingface.co/unsloth/gemma-3-4b-it-unsloth-bnb-4bit"
+  },
+  "adapter": {
+    "file": "adapter/adapter_model.safetensors",
+    "format": "LoRA (PEFT), safetensors",
+    "sha256": "00058b38e2143aac40dbe92569afee78edb9335aca418b81ef5b0de7fffa8dee",
+    "rank": 16,
+    "lora_alpha": 16,
+    "lora_dropout": 0
+  },
+  "local_runtime_artifact": {
+    "file": "gemma3-bist-v23-q4_k_m.gguf",
+    "note": "adapter merged into the base model, converted to GGUF and quantized (Q4_K_M); this is what Ollama runs locally (training/ollama/Modelfile.v23)",
+    "sha256": "4c884b388fa57bb26e4c1c4583b778ba62552b96241dbd0ae9f9fdb701f7830c"
+  },
+  "training": {
+    "script": "training/colab/train_qlora.py",
+    "command": "python training/colab/train_qlora.py --train train.jsonl --val val.jsonl --out /tmp/outputs/v2 --max-steps 120 --eval-steps 40 --gguf q4_k_m --save-steps 5 --checkpoint-dir /kaggle/working/ckpt --resume",
+    "hyperparameters": {"max_seq_length": 8192, "max_steps": 120, "epochs_equivalent": 1.6, "learning_rate": 0.0002, "lr_scheduler": "linear", "warmup_steps": 10,
+                        "weight_decay": 0.01, "optimizer": "adamw_8bit", "per_device_batch_size": 1, "gradient_accumulation_steps": 8, "lora_rank": 16, "lora_alpha": 16,
+                        "lora_dropout": 0, "seed": 3407, "eval_steps": 40, "precision": "float32 compute on a Kaggle T4"},
+    "results": {"train_loss": 0.2148, "val_loss_step_40": 0.1234, "val_loss_step_80": 0.02234, "val_loss_step_120": 0.01321, "train_runtime_s": 21809.6},
+    "data": {"generator_version": "2.3", "seed": 42, "train": "data/training/v2_3/train.jsonl (600 records)", "val": "data/training/v2_3/val.jsonl (50 records)",
+             "test": "data/training/v2_3/test.jsonl (40 questions, held out)", "data_version": "snap_2026-11-20_v2"}
+  },
+  "inference": {"temperature": 0, "seed": 42, "num_ctx": 8192, "num_predict": 1024, "tool_protocol": "text (<tool_call>{...}</tool_call>)"}
+}

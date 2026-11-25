@@ -40,3 +40,6 @@ eval_bundle*.zip
 # yerel sohbet ve hata ayiklama ciktilari
 reports/chat/
 reports/debug/
+
+# teslim paketi (adaptör 119 MB; experiments.build_submission ile yeniden üretilir)
+submission/
