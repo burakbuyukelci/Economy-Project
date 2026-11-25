@@ -208,7 +208,8 @@ def build(out: Path, adapter_zip: Path | None, traces_dir: Path, root: Path = RO
     files.append(_entry(out, out / "RUNNING.md", "run instructions"))
 
     manifest = {
-        "format": "cse481-submission-1", "course": "CSE-481 Engineering Economics", "project": "Integrated BIST 100 Agentic Financial Analytics Harness",
+        "format": "cse481-submission-1", "course": "CSE-481 Engineering Economics", "instructor": "Dr. Alper Özcan",
+        "team": [{"name": "Mert Osman Ayhan", "student_no": "20220808074"}, {"name": "Burak Büyükelçi", "student_no": "20220808071"}], "project": "Integrated BIST 100 Agentic Financial Analytics Harness",
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "code_commit": _git(root, "rev-parse", "HEAD"),
         "code_dirty_files": (_git(root, "status", "--porcelain") or "").count("\n") + (1 if _git(root, "status", "--porcelain") else 0),
         "model": {"version": info["model_version"], "ollama_name": info["ollama_name"], "base_model": info["base_model"],
