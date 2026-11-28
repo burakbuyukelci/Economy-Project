@@ -80,3 +80,12 @@ Durum: **AÇIK** = çözülmedi, **KABUL** = bilinçli sınır (belgeli), **KISM
 | L40 | Bilanço ana analizi 2025 ve sonrası dönemler içindir (TMS 29); öncesi karşılaştırılamaz (`PRE_TMS29_NOT_COMPARABLE`); banka için sanayi oranları kullanılmaz (`BANK_METRIC_SET`). | `CLAUDE.md` kural 7, `docs/hoca_qa.md` S4 |
 | L41 | Final sistemde bulut AI API'si yoktur; Ollama istemcisi yalnızca loopback adresi kabul eder. Eğitim verisi yalnızca v2 fiyat snapshot'ından ve kabul listesindeki bilanço sürümlerinden üretilir. | `CLAUDE.md` kural 4, 12; `harness/settings.py` |
 | L42 | Yatırım tavsiyesi ve hedef fiyat yoktur; çıktı yalnızca izinli eylem enum'ından gelir. | `CLAUDE.md` kural 5 |
+
+## Ek (2026-11-28): tam tarama sonucu
+
+| No | Sınırlama | Etki | Durum |
+|---|---|---|---|
+| L51 | **Sayı doğrulayıcı etiketlemeyi denetlemez.** Beş senaryo izinde sayılar araç çıktısında var ama bazıları yanlış alana/ufka bağlanmış (en ciddisi Senaryo 3: 1 günlük değerler 5 günlük diye yazılmış; Senaryo 1'de yanlış backtest sinyal türü; 4 ve 5'te yanlış etiket/cümle). | "Halüsinasyon 0" cevabın doğru olduğu anlamına gelmez. | AÇIK |
+| L52 | **Proje dokümanında istenip yapılmayanlar:** haber/konuşma; orta bant, Supertrend flip, KAMA, Ichimoku, destek/direnç temas olayları; backtest C/D/E varyantları; Fed ve TCMB politika faizi; ROA, cari/asit-test, F/K, PD/DD, FD/FAVÖK, işletme nakit akışı, banka oranları (NII dışında); büyük düşüş sonrası ve sektör/makro-hafta koşullu örüntüler; yapısal/geçici geride kalma ayrımı; hafıza (episodic). | Kapsam eksik. | AÇIK |
+| L53 | **Kapı bağlantıları:** `check_fundamental_alignment`, `check_macro_coverage`, `check_backtest_information` yazılı ve testli ama çalışma anındaki kapıya bağlı değil (araçlar veriyi `as_of`'ta kendileri keser). | Bu üç §26 kontrolü kapı raporunda görünmez. | AÇIK |
+

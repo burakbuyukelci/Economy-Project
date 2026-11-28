@@ -225,7 +225,7 @@ def build(out: Path, adapter_zip: Path | None, traces_dir: Path, root: Path = RO
             "docs/sample_runs/ inside the source code is produced by a deterministic teacher script (the training-data generator), NOT by the model; the submitted scenario answers are only in traces/.",
             "The harness may repair formatting mistakes in the model's tool calls (period spelling, ticker typo, split_date, unknown strategy parameters); every repair is logged with the model's original and the executed parameters (harness_interventions in each trace).",
         ],
-        "known_limitations": "see docs/report/limitations.md inside source_code.zip (L1-L50); about 25% of full-harness sessions in the 40-question evaluation ended at the turn limit without an answer.",
+        "known_limitations": "see docs/report/limitations.md inside source_code.zip (L1-L53): about 25% of full-harness sessions in the 40-question evaluation ended at the turn limit; answer texts can attach tool numbers to the wrong field or horizon (the verifier checks existence only); several course-document features are not implemented (L52).",
     }
     (out / "submission.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return manifest

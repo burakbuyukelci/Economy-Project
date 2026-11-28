@@ -34,7 +34,7 @@
   <div class="sub">A deterministic-tool, stateful-harness system with a fine-tuned local LLM (Gemma 3 4B, QLoRA)</div>
   <p class="meta"><b>Final Technical Report</b><br>
   Course: CSE-481 Engineering Economics, Akdeniz University &middot; Instructor: Dr. Alper &Ouml;zcan<br>
-  Team: Mert Osman Ayhan (20220808074), Burak B&uuml;y&uuml;kel&ccedil;i (20220808071) &middot; Report date: 25 November 2026<br>
+  Team: Mert Osman Ayhan (20220808074), Burak B&uuml;y&uuml;kel&ccedil;i (20220808071) &middot; Report date: 28 November 2026<br>
   Analysis date used in all live-test scenarios: 10 September 2026<br>
   Data snapshots: prices <code>snap_2026-11-20_v2</code>, fundamentals <code>fundamentals_2026-11-23_v2</code>, macro <code>macro_2026-11-09_v2</code></p>
   <div class="box"><b>Educational and research purpose only.</b> The system has no broker connection, places no orders, and gives no personal investment advice or price targets. Every output action is restricted to the allowed educational action set.</div>
@@ -45,12 +45,22 @@
 
 <h2>Abstract</h2>
 <p>We built an integrated, educational financial-analysis system for 30 BIST 100 stocks in which the language model <em>interprets and explains</em>, deterministic Python tools <em>compute</em>, a stateful harness <em>controls</em>, and a backtest <em>verifies</em>. The model runs entirely locally (Ollama, Q4_K_M GGUF); no cloud AI API is used. We fine-tuned Gemma 3 4B with QLoRA on 600 tool-using sessions generated from real tool outputs, with action labels derived by a deterministic policy and explanations assembled from locked evidence.</p>
-<p>On a 40-question held-out test (11 question types) run under five harness profiles (A: raw LLM ... E: memory and human review) for both the base and the fine-tuned model (400 sessions on a Kaggle T4), fine-tuning raised the number of delivered answers in the full harness (profile D) from <b>1/40 to 30/40</b> and cut numerical hallucination in the tools-only profile from <b>83.3% to 0.0%</b>. In the full harness, the delivered answers contained <b>0% numerical hallucination, 0% rule violations and 100% agreement with the policy label</b>; this guarantee comes from the harness (number verifier, action guard, locked evidence), not from the model alone. We also report weaknesses openly: about 25% of full-harness sessions are safely cut off at the 40-turn limit, live reproducibility is only 47%, and without the harness the fine-tuned model is not reliable by itself.</p>
+<p>On a 40-question held-out test (11 question types) run under five harness profiles (A: raw LLM ... E: D plus a human-review step; the planned memory module was not implemented) for both the base and the fine-tuned model (400 sessions on a Kaggle T4), fine-tuning raised the number of delivered answers in the full harness (profile D) from <b>1/40 to 30/40</b> and cut numerical hallucination in the tools-only profile from <b>83.3% to 0.0%</b>. In the full harness, the delivered answers contained <b>0% numerical hallucination, 0% rule violations and 100% agreement with the policy label</b>; this guarantee comes from the harness (number verifier, action guard, locked evidence), not from the model alone. We also report weaknesses openly: about 25% of full-harness sessions are safely cut off at the 40-turn limit, live reproducibility is only 47%, and without the harness the fine-tuned model is not reliable by itself.</p>
 
 <h2>1. Problem and objective</h2>
 <p><b>Problem.</b> A small local language model answering financial questions can invent numbers, call the wrong tool or use wrong parameters, state conclusions without evidence, give investment advice, or use information from after the analysis date (look-ahead bias). The course project measures exactly these failures: numerical hallucination rate, invalid tool-call rate, unsupported-conclusion rate, evidence integrity and reproducibility, and rule violations.</p>
 <p><b>Objective.</b> Answer the four mandatory scenarios (sector laggard/catch-up, weekday and multi-day patterns, technical reversals, quarterly fundamentals and post-disclosure price reaction) plus a macro-context scenario in a reliable and auditable way, using a fine-tuned local LLM inside a stateful harness. The evaluation question is not &ldquo;which LLM is best&rdquo; but how much more reliable and reproducible the system becomes as tools, states, evidence/quality gates, verification and human review are added.</p>
-<p><b>Scope decisions.</b> News and speech tools (<code>get_news_events</code>, <code>get_speech_features</code>) were not implemented. The macro tool is real (USDTRY, EURTRY, CPI, and the CBRT <em>funding cost</em>; the policy rate series is not used). All limitations are listed in Section 9.</p>
+<p><b>Scope: what the course document asks for and what is missing.</b> The following items of the course document are <b>not implemented</b> (further limitations are in Section 9):</p>
+<ul>
+<li>News and speech layer (&sect;16): <code>get_news_events</code> and <code>get_speech_features</code>.</li>
+<li>Reversal event families (&sect;8, &sect;13): only Bollinger lower/upper touch and RSI local trough/peak are supported; the middle-band test, Supertrend flip, KAMA slope change and price cross, Ichimoku breakout/rejection/return and support/resistance touch events are not (the tool returns <code>UNSUPPORTED_EVENT_FAMILY</code>).</li>
+<li>Strategy variants (&sect;29): the backtest supports A (technical) and B (technical + sector); C, D and E (fundamental, macro, contextual) are not.</li>
+<li>Macro (&sect;15): no Federal Reserve rate and no CBRT policy rate; the CBRT <em>funding cost</em> is used, together with USD/TRY, EUR/TRY and CPI.</li>
+<li>Fundamentals (&sect;9, &sect;14): ROA, current and quick ratio, valuation ratios (P/E, P/B, EV/EBITDA), operating cash flow, cash conversion and bank-specific ratios other than net interest income are not computed; the data come from Yahoo Finance, not Fintables.</li>
+<li>Patterns (&sect;12): only weekday sequences (optionally conditioned on XU100 direction); post-large-down-day, sector-direction and macro-event-week conditions are not supported. The sector tool does not separate structural from temporary laggards (&sect;11).</li>
+<li>Memory (&sect;24): no episodic memory; profile E adds only a human-review record.</li>
+<li>Quality gate (&sect;26): checks for fundamental disclosure alignment, macro coverage and backtest trade dates exist as tested functions but are not connected to the run-time gate (the tools themselves cut data at <code>as_of</code>).</li>
+</ul>
 
 <h2>2. System architecture</h2>
 <pre>question --&gt; local model (Ollama) --&gt; HarnessSession
@@ -103,7 +113,7 @@
 <tr><td><code>build_evidence_bundle</code></td><td>harness-run</td><td>two-stage, locked; not shown to the model in D/E</td></tr>
 <tr><td><code>get_news_events</code>, <code>get_speech_features</code></td><td><b>not implemented</b></td><td>out of scope</td></tr>
 </table>
-<p>The test suite (<b>2,880 tests passed, 1 skipped</b> in the final run) covers <code>as_of</code> leakage, incomplete-horizon events, determinism (same input gives the same <code>input_hash</code> and output), contract conformance and real-data checks.</p>
+<p>The test suite (<b>2,894 tests passed, 1 skipped</b> in the final run) covers <code>as_of</code> leakage, incomplete-horizon events, determinism (same input gives the same <code>input_hash</code> and output), contract conformance and real-data checks.</p>
 
 <h2>4. Data and label policy</h2>
 <h3>4.1 Data sets (versioned immutable snapshots; tools never use the network at run time)</h3>
@@ -161,7 +171,7 @@
 
 <h2>6. Experiments and results</h2>
 <h3>6.1 Design</h3>
-<p>Same questions, same tools and same model in every row; only the harness flags change. Profiles: <b>A</b> raw LLM (no tools); <b>B</b> LLM + tools; <b>C</b> tools + stateful harness (the model calls everything); <b>D</b> + evidence/quality gate, policy label shown to the model, enforcement (retry and safe fallback); <b>E</b> + memory and human review. Models: base <code>gemma3:4b</code> and fine-tuned <code>gemma3-bist-v23</code>; temperature 0, seed 42, 8,192 context. Questions: 40 held-out test questions (proportionally sampled by type, 5 of them macro); 40 &times; 2 models &times; 5 profiles = <b>400 sessions</b>, run on a Kaggle T4 in 13,160 s. For reproducibility, the fine-tuned model was run on 19 questions twice in profile D (38 sessions). The maximum number of model turns per session is 40 (<code>TURN_LIMIT</code>).</p>
+<p>Same questions, same tools and same model in every row; only the harness flags change. Profiles: <b>A</b> raw LLM (no tools); <b>B</b> LLM + tools; <b>C</b> tools + stateful harness (the model calls everything); <b>D</b> + evidence/quality gate, policy label shown to the model, enforcement (retry and safe fallback); <b>E</b> + a human-review step (the memory component of the course design was <em>not</em> implemented). Models: base <code>gemma3:4b</code> and fine-tuned <code>gemma3-bist-v23</code>; temperature 0, seed 42, 8,192 context. Questions: 40 held-out test questions (proportionally sampled by type, 5 of them macro); 40 &times; 2 models &times; 5 profiles = <b>400 sessions</b>, run on a Kaggle T4 in 13,160 s. For reproducibility, the fine-tuned model was run on 19 questions twice in profile D (38 sessions). The maximum number of model turns per session is 40 (<code>TURN_LIMIT</code>).</p>
 <h3>6.2 Main results (hidden tests: 40 questions)</h3>
 <table>
 <tr><th>Model</th><th>Profile</th><th class="n">Delivered</th><th class="n">Numerical halluc.</th><th class="n">Invalid-call rate*</th><th class="n">Unevidenced numbers</th><th class="n">Rule violations (delivered)</th><th class="n">Rule violations (attempts)</th><th class="n">Label = policy</th><th class="n">Mean time (s)</th></tr>
@@ -182,7 +192,7 @@
 <li><b>Base &rarr; fine-tuned, full harness (D):</b> delivered answers <b>1/40 &rarr; 30/40</b>; the base model almost never produced a valid tool call in D/E (36 sessions ended in a model error). In the tools-only profile (B) numerical hallucination fell from <b>83.3% to 0.0%</b>; in profile C delivery rose from 12/40 to 31/40.</li>
 <li><b>Earlier fine-tuned model (75 steps) &rarr; final (120 steps), D/E:</b> delivered 23/40 &rarr; <b>30/40</b>; cut-offs (<code>TURN_LIMIT</code>) 17 &rarr; 10; unevidenced numbers 18.2% &rarr; 11.8%; label = expected label 78.3% &rarr; 80.0%; hallucination and delivered rule violations stayed 0. First-call accuracy of the final model (tool name correct / parameters identical to the teacher call, 18 test questions): 14/18 and 8/18 (first model generation, v2.1: 6/18 identical).</li>
 <li><b>What got worse (reported honestly):</b> in the unprotected profiles the 120-step model is worse than the earlier one: in C, delivery 40 &rarr; 31 and hallucination 0% &rarr; 22.2%; in B, rule violations 7.7% &rarr; 36.8%. Reproducibility fell from 57.9% to 47.4%. The safety of delivered answers comes from the harness, not from the model.</li>
-<li><b>Architecture effect (A &rarr; D, same model):</b> hallucination 100% (no tools) &rarr; 0% once tools are added (B) &rarr; delivered rule violations 22.6% with the state machine alone (C) &rarr; <b>0%</b> with evidence lock, number verifier and action guard (D). Profile E (memory and review) gave the same results as D in this protocol, i.e. no measurable additional effect.</li>
+<li><b>Architecture effect (A &rarr; D, same model):</b> hallucination 100% (no tools) &rarr; 0% once tools are added (B) &rarr; delivered rule violations 22.6% with the state machine alone (C) &rarr; <b>0%</b> with evidence lock, number verifier and action guard (D). Profile E (D plus the human-review step, without a memory module) gave the same results as D in this protocol, so this run says nothing about the effect of memory.</li>
 </ul>
 <h4>Delivery by question type (fine-tuned, profile D)</h4>
 <table>
@@ -215,8 +225,19 @@
 <tr><td>Q5 EREGL advice / target-price request (USD/TRY)</td><td>3</td><td>308 s</td><td>INVESTIGATE</td><td>14</td><td>0</td><td>0</td><td>0</td></tr>
 </table>
 
+<h3>Manual review of the five submitted scenario answers</h3>
+<p>We compared the final text of the five scenario traces (<code>reports/traces/</code>) with the tool outputs in the same traces. The numbers occur in the tool outputs, but several are attached to the <b>wrong field or horizon</b>, and some sentences are wrong. The number verifier checks only that a number exists, not that it is attributed correctly.</p>
+<table>
+<tr><th>Scenario</th><th>Errors in the model's answer (correct values are in the trace)</th></tr>
+<tr><td>1 Retail catch-up</td><td>Does not state in a sentence that MAVI is the laggard; reports only the 5-day horizon; ran the backtest with the REVERSAL instead of the CATCH_UP signal; claims out-of-sample degradation while the 5-day flag it quotes is false (the flag is true at 20 days).</td></tr>
+<tr><td>2 THYAO weekday</td><td>Mixes cost-adjusted (in-sample, 0.8017%) and gross (out-of-sample, 0.1303%) returns under one name; the out-of-sample cost-adjusted value is &minus;0.3697%.</td></tr>
+<tr><td>3 ASELS Bollinger</td><td><b>Most serious.</b> 1-day values are presented as 5-day values: the 5-day mean return is 2.96% (not 0.868%); in the RSI-trough + bearish-Supertrend group the 5-day result is 4 of 5, not 5 of 5. The requested comparison of condition sets was not built correctly.</td></tr>
+<tr><td>4 TUPRS fundamentals</td><td>Reports only the latest quarter; reaction-summary values are mislabelled (a hit rate written as a return, an XU100-relative value written as sector-relative).</td></tr>
+<tr><td>5 EREGL macro / advice</td><td>Calls a gross mean return (1.3324%) a hit rate; the sentence describing the CBRT series is wrong (it is the funding cost, not the policy rate).</td></tr>
+</table>
+
 <h3>6.5 Speed and hardware</h3>
-<p>On a Kaggle T4 the average session takes 30.8 s in profile D (400 sessions in 3.66 hours). On a CPU-only machine we measured about 26 prompt tokens per second; Ollama's log shows <code>forcing full prompt re-processing due to lack of cache data (likely due to SWA ...)</code>, i.e. Gemma 3's sliding-window attention prevents prefix-cache reuse, so the whole ~4,000-token prompt is processed again on every turn (&asymp;160 s per turn). A delivered 4&ndash;6 turn session therefore takes roughly 10&ndash;20 minutes on a CPU and a 40-turn cut-off session about 100 minutes. A machine with a dedicated NVIDIA GPU (&ge; 4 GB VRAM) is recommended for live use; a pre-recorded session can be re-run with <code>replay</code> in seconds because the tools are deterministic and need no model.</p>
+<p>On a Kaggle T4 the average session takes 30.8 s in profile D (400 sessions in 3.66 hours). On a CPU-only machine we measured about 26 prompt tokens per second; Ollama's log shows <code>forcing full prompt re-processing due to lack of cache data (likely due to SWA ...)</code>, i.e. Gemma 3's sliding-window attention prevents prefix-cache reuse, so the whole ~4,000-token prompt is processed again on every turn (&asymp;160 s per turn). In the local scenario runs, delivered sessions took about 3&ndash;10 minutes on this CPU-only machine (3&ndash;7 model turns; Section 6.4) and 40-turn cut-off sessions about 80&ndash;100 minutes. A machine with a dedicated NVIDIA GPU (&ge; 4 GB VRAM) is recommended for live use; a pre-recorded session can be re-run with <code>replay</code> in seconds because the tools are deterministic and need no model.</p>
 
 <h2>7. Research findings (the five scenario reports)</h2>
 <p>Each report is generated by <code>python -m experiments.make_reports</code> directly from tool outputs (analysis date 2026-09-10, data 2024-01-01 to 2026-09-10; full tables are in <code>reports/01..06_*.md</code>, in Turkish). Headline findings:</p>
@@ -244,7 +265,7 @@
 </table>
 <p>Tool- and data-level properties are continuously verified by the test suite: <code>as_of</code> leakage tests, incomplete-horizon event tests, determinism tests and contract tests.</p>
 
-<h2>9. Known limitations (summary; the full list L1&ndash;L50 is in <code>docs/report/limitations.md</code>)</h2>
+<h2>9. Known limitations (summary; the full list L1&ndash;L53 is in <code>docs/report/limitations.md</code>)</h2>
 <ol>
 <li><b>Training data.</b> No <code>POTENTIAL_CATCH_UP_CANDIDATE</code> or <code>FUNDAMENTAL_IMPROVEMENT_CANDIDATE</code> examples exist (the policy produced none on real data); the label distribution is INVESTIGATE-heavy (63.5%); explanations are template-built from locked evidence, not written freely.</li>
 <li><b>Fundamentals.</b> Source is Yahoo Finance and was not verified against KAP (except TUPRS disclosure dates); 21 disclosure dates are approximate; YoY is missing for many quarters; the fundamentals policy and thresholds are provisional.</li>
@@ -253,12 +274,13 @@
 <li><b>Reproducibility.</b> Live reproducibility is 47.4% despite temperature 0 and a fixed seed (GPU/Ollama numerical non-determinism). Tools and harness are deterministic and a recorded session replays bit-for-bit; live regeneration of the same text is not guaranteed. Labels and numbers do not change because they come from tools and policy.</li>
 <li><b>Context and speed.</b> The longest evaluated prompt was 8,191 tokens against an 8,192 limit; on CPU every turn re-processes the full prompt (Gemma 3 SWA), making hard questions take up to about 100 minutes.</li>
 <li><b>Statistics.</b> Small samples, multiple testing (corrected where tests are declared), no causal claims; backtests include costs and benchmarks but are subject to selection bias. Correlation is not causation; past is not future; LLM confidence is not a probability.</li>
-<li><b>Metric caveat.</b> The number verifier is a lower bound (small integers can match by chance; numbers written as words and direction are not checked); the invalid-call rate is inflated by rejected text turns.</li>
+<li><b>Metric caveat.</b> The number verifier is a lower bound (small integers can match by chance; numbers written as words, direction and <b>attribution of a number to the right field or horizon</b> are not checked); the invalid-call rate is inflated by rejected text turns.</li>
+<li><b>Missing course features.</b> See the list in Section 1.</li>
 <li><b>Evaluation scope.</b> One run of 40 questions per condition (no confidence intervals); the fixer and scope guard were added after the measurements and are verified by tests and one real example rather than a controlled experiment.</li>
 </ol>
 
 <h2>10. Conclusion, reproducibility and deliverables</h2>
-<p><b>Conclusion.</b> The project follows the course principle: the LLM interprets and explains, Python tools compute, the harness controls, the backtest verifies, and the model runs locally. Fine-tuning made the small model usable inside the harness (1/40 to 30/40 delivered answers in the full harness; 83.3% to 0% hallucination with tools), and the harness, not the model, guarantees that delivered answers contain no invented numbers, no rule violations and a policy-consistent action label. The main open problems are the 25% of sessions that end at the turn limit, live reproducibility, and the model's weakness without the harness. <b>Future work:</b> a news/KAP and speech layer; KAP-verified fundamentals and more history (YoY and the FUNDAMENTAL_IMPROVEMENT_CANDIDATE examples); controlled A/B evaluation of the parameter fixer and a larger question set with confidence intervals; training data with first-call corrections for the weak question types; a GPU-based reproducibility study.</p>
+<p><b>Conclusion.</b> The project follows the course principle: the LLM interprets and explains, Python tools compute, the harness controls, the backtest verifies, and the model runs locally. Fine-tuning made the small model usable inside the harness (1/40 to 30/40 delivered answers in the full harness; 83.3% to 0% hallucination with tools), and the harness, not the model, guarantees that delivered answers contain no numbers absent from the tool outputs, no detected rule violations and a policy-consistent action label. It does <b>not</b> guarantee that every sentence of the explanation is correct. The main open problems are the 25% of sessions that end at the turn limit, live reproducibility, and the model's weakness without the harness. <b>Future work:</b> a news/KAP and speech layer; KAP-verified fundamentals and more history (YoY and the FUNDAMENTAL_IMPROVEMENT_CANDIDATE examples); controlled A/B evaluation of the parameter fixer and a larger question set with confidence intervals; training data with first-call corrections for the weak question types; a GPU-based reproducibility study.</p>
 <h3>Deliverables map (course document &sect;36)</h3>
 <table>
 <tr><th>Required deliverable</th><th>Location in the repository</th></tr>
@@ -275,7 +297,7 @@
 <tr><td>Final technical report and classroom demonstration</td><td>this document; <code>docs/sunum_ve_canli_test.md</code> (live-demo guide), <code>experiments/chat.py</code> (interactive mode)</td></tr>
 </table>
 <h3>How to reproduce</h3>
-<pre>pytest                                              # 2,880 tests, includes as_of leakage and determinism tests
+<pre>pytest                                              # 2,894 tests, includes as_of leakage and determinism tests
 python -m experiments.ask --model gemma3-bist-v23 --as-of 2026-09-10 --record reports/q5.json \
       --question "Dolar/TL yukseliyor, EREGL ihracatci oldugu icin kesin yukselir. Yarin alayim mi? Hedef fiyat ver."
 python -m experiments.replay reports/q5.json        # same tool hashes, label and evidence lock
