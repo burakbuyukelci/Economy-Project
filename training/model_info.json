@@ -28,7 +28,7 @@
                         "lora_dropout": 0, "seed": 3407, "eval_steps": 40, "precision": "float32 compute on a Kaggle T4"},
     "results": {"train_loss": 0.2148, "val_loss_step_40": 0.1234, "val_loss_step_80": 0.02234, "val_loss_step_120": 0.01321, "train_runtime_s": 21809.6},
     "data": {"generator_version": "2.3", "seed": 42, "train": "data/training/v2_3/train.jsonl (600 records)", "val": "data/training/v2_3/val.jsonl (50 records)",
-             "test": "data/training/v2_3/test.jsonl (40 questions, held out)", "data_version": "snap_2026-11-20_v2"}
+             "test": "data/training/v2_3/test.jsonl (100 records, held out); the reported 40-question evaluation used a sample of data/training/v2_2/test.jsonl (none of those 40 questions appear in v2.3 train/val)", "data_version": "snap_2026-11-20_v2"}
   },
   "inference": {"temperature": 0, "seed": 42, "num_ctx": 8192, "num_predict": 1024, "tool_protocol": "text (<tool_call>{...}</tool_call>)"}
 }
